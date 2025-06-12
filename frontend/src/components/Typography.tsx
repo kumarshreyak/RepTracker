@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppColor, getColorClass } from './Colors';
+import { Button, EditIcon, Tooltip } from './Button';
 
 interface TypographyProps {
   children: React.ReactNode;
@@ -368,6 +369,193 @@ export const FontDemo: React.FC<FontDemoProps> = ({ className = '' }) => {
                   <Typography variant="heading-xsmall-caps" color="red">
                     Red All Caps Heading
                   </Typography>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Button Examples */}
+          <div className="w-full">
+            <div className="flex flex-col gap-10 items-start justify-start w-full">
+              <div className="w-full">
+                <div className="flex flex-col gap-6 items-start justify-start w-full">
+                  <Typography variant="heading-xxlarge" color="dark">
+                    Buttons
+                  </Typography>
+                  <div className="bg-[#e0e0e0] h-0.5 w-full" />
+                </div>
+              </div>
+
+              <div className="flex flex-row gap-16 items-start justify-start">
+                {/* Regular Buttons Column */}
+                <div className="flex flex-col gap-16">
+                  {/* Button / Default */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      BUTTON / DEFAULT
+                    </Typography>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-row gap-4 items-center">
+                        <Button variant="default">Default</Button>
+                        <Button variant="primary">Primary</Button>
+                        <Button variant="danger">Danger</Button>
+                        <Button variant="secondary">Secondary</Button>
+                      </div>
+                      <div className="flex flex-row gap-4 items-center">
+                        <Button variant="default" icon={<EditIcon />}>Default</Button>
+                        <Button variant="primary" icon={<EditIcon />}>Primary</Button>
+                        <Button variant="danger" icon={<EditIcon />}>Danger</Button>
+                        <Button variant="secondary" icon={<EditIcon />}>Secondary</Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Button / Small */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      BUTTON / SMALL
+                    </Typography>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-row gap-4 items-center">
+                        <Button variant="default" size="small">Default</Button>
+                        <Button variant="primary" size="small">Primary</Button>
+                        <Button variant="danger" size="small">Danger</Button>
+                        <Button variant="secondary" size="small">Secondary</Button>
+                      </div>
+                      <div className="flex flex-row gap-4 items-center">
+                        <Button variant="default" size="small" icon={<EditIcon />}>Default</Button>
+                        <Button variant="primary" size="small" icon={<EditIcon />}>Primary</Button>
+                        <Button variant="danger" size="small" icon={<EditIcon />}>Danger</Button>
+                        <Button variant="secondary" size="small" icon={<EditIcon />}>Secondary</Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Button / Large */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      BUTTON / LARGE
+                    </Typography>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-row gap-4 items-center">
+                        <Button variant="default" size="large">Default</Button>
+                        <Button variant="primary" size="large">Primary</Button>
+                        <Button variant="danger" size="large">Danger</Button>
+                        <Button variant="secondary" size="large">Secondary</Button>
+                      </div>
+                      <div className="flex flex-row gap-4 items-center">
+                        <Button variant="default" size="large" icon={<EditIcon />}>Default</Button>
+                        <Button variant="primary" size="large" icon={<EditIcon />}>Primary</Button>
+                        <Button variant="danger" size="large" icon={<EditIcon />}>Danger</Button>
+                        <Button variant="secondary" size="large" icon={<EditIcon />}>Secondary</Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Icon-only button with tooltip */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      ICON-ONLY BUTTON WITH TOOLTIP
+                    </Typography>
+                    <div className="flex flex-row gap-4 items-center">
+                      <Tooltip text="Edit content">
+                        <Button variant="default" iconOnly icon={<EditIcon />}>
+                          Edit
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Text Buttons Column */}
+                <div className="flex flex-col gap-16">
+                  <div className="w-[323px]">
+                    <Typography variant="text-large-paragraph" color="light">
+                      Text buttons can be also be used for links.
+                    </Typography>
+                  </div>
+
+                  {/* Text Button / Default */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      TEXT BUTTON / DEFAULT
+                    </Typography>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="default">Default</Button>
+                      <Button variant="text" size="default" className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="default" className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="default" icon={<EditIcon />}>Default</Button>
+                      <Button variant="text" size="default" icon={<EditIcon />} className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="default" icon={<EditIcon />} className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                  </div>
+
+                  {/* Text Button / Small */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      TEXT BUTTON / SMALL
+                    </Typography>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="small">Default</Button>
+                      <Button variant="text" size="small" className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="small" className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="small" icon={<EditIcon />}>Default</Button>
+                      <Button variant="text" size="small" icon={<EditIcon />} className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="small" icon={<EditIcon />} className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                  </div>
+
+                  {/* Text Button / Large */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      TEXT BUTTON / LARGE
+                    </Typography>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="large">Default</Button>
+                      <Button variant="text" size="large" className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="large" className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="large" icon={<EditIcon />}>Default</Button>
+                      <Button variant="text" size="large" icon={<EditIcon />} className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="large" icon={<EditIcon />} className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                  </div>
+
+                  {/* Text Button / XLarge */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      TEXT BUTTON / XLARGE
+                    </Typography>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="xlarge">Default</Button>
+                      <Button variant="text" size="xlarge" className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="xlarge" className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="text" size="xlarge" icon={<EditIcon />}>Default</Button>
+                      <Button variant="text" size="xlarge" icon={<EditIcon />} className="text-[#333333] hover:text-[#757575]">Dark</Button>
+                      <Button variant="text" size="xlarge" icon={<EditIcon />} className="text-[#757575] hover:text-[#333333]">Light</Button>
+                    </div>
+                  </div>
+
+                  {/* Icon-only text button with tooltip */}
+                  <div className="flex flex-col gap-4">
+                    <Typography variant="heading-xsmall-caps" color="light">
+                      ICON-ONLY TEXT BUTTON WITH TOOLTIP
+                    </Typography>
+                    <div className="flex flex-row gap-4 items-center">
+                      <Tooltip text="Edit content">
+                        <Button variant="text" iconOnly icon={<EditIcon />}>
+                          Edit
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
