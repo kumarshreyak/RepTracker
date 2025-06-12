@@ -10,6 +10,7 @@
   --white: #ffffff;
   --link-blue: #2d7ff9;
   --link-blue-hover: #1283da;
+  --red: #ef3061;
 }
 
 @theme inline {
@@ -21,6 +22,7 @@
   --color-white: var(--white);
   --color-link-blue: var(--link-blue);
   --color-link-blue-hover: var(--link-blue-hover);
+  --color-red: var(--red);
   
   /* Font family variables from layout */
   --font-display: var(--font-sf-pro-display);
@@ -41,11 +43,49 @@ body {
 }
 
 /* Typography utilities matching Figma design */
-.heading-xsmall {
+
+/* Single Line Text Sizes */
+.text-small {
   font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  font-weight: 700;
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.text-default {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.text-large {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
   font-size: 15px;
-  line-height: 22px;
+  line-height: 20px;
+}
+
+.text-xlarge {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 24px;
+}
+
+/* Multi Line Paragraph Sizes */
+.text-small-paragraph {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.text-default-paragraph {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .text-large-paragraph {
@@ -55,17 +95,80 @@ body {
   line-height: 22px;
 }
 
-.display-large {
-  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 52px;
-  line-height: 56px;
-  letter-spacing: -0.312px;
+.text-xlarge-paragraph {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 26px;
 }
 
-.display-medium {
-  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+/* Regular Headings */
+.heading-xsmall {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.heading-small {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-weight: 600;
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.heading-default {
+  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 26px;
+}
+
+.heading-large {
+  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 23px;
+  line-height: 29px;
+}
+
+.heading-xlarge {
+  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 27px;
+  line-height: 34px;
+}
+
+.heading-xxlarge {
+  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 500;
   font-size: 35px;
-  line-height: normal;
+  line-height: 44px;
+}
+
+/* All Caps Headings */
+.heading-xsmall-caps {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+}
+
+.heading-small-caps {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.65px;
+}
+
+.heading-default-caps {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.75px;
 }
