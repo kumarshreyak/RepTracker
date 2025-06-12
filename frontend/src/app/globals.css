@@ -1,15 +1,30 @@
 @import "tailwindcss";
 
 :root {
+  /* Colors from Figma design */
   --background: #ffffff;
   --foreground: #171717;
+  --dark: #333333;
+  --light-gray-4: #e0e0e0; 
+  --light: #757575;
+  --white: #ffffff;
+  --link-blue: #2d7ff9;
+  --link-blue-hover: #1283da;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-dark: var(--dark);
+  --color-light-gray-4: var(--light-gray-4);
+  --color-light: var(--light);
+  --color-white: var(--white);
+  --color-link-blue: var(--link-blue);
+  --color-link-blue-hover: var(--link-blue-hover);
+  
+  /* Font family variables from layout */
+  --font-display: var(--font-sf-pro-display);
+  --font-text: var(--font-sf-pro-text);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +37,35 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* Typography utilities matching Figma design */
+.heading-xsmall {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.text-large-paragraph {
+  font-family: var(--font-sf-pro-text), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.display-large {
+  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 52px;
+  line-height: 56px;
+  letter-spacing: -0.312px;
+}
+
+.display-medium {
+  font-family: var(--font-sf-pro-display), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 35px;
+  line-height: normal;
 }

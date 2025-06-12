@@ -1,0 +1,1 @@
+export { Typography, FontDemo } from './Typography'; 
