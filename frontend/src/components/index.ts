@@ -1,1 +1,3 @@
-export { Typography, FontDemo } from './Typography'; 
+export { Typography, FontDemo } from './Typography';
+export { ColorSwatch, ColorFamilyDemo, ColorDemo, getColorClass } from './Colors';
+export type { AppColor, GrayscaleColor, ColorFamily } from './Colors'; 

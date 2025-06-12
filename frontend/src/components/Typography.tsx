@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppColor, getColorClass } from './Colors';
 
 interface TypographyProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ interface TypographyProps {
     | 'heading-xsmall-caps'
     | 'heading-small-caps'
     | 'heading-default-caps';
-  color?: 'dark' | 'light' | 'light-gray-4' | 'white' | 'link-blue' | 'red';
+  color?: AppColor;
   className?: string;
 }
 
@@ -30,15 +31,6 @@ export const Typography: React.FC<TypographyProps> = ({
   color = 'dark',
   className = '' 
 }) => {
-  const colorClasses = {
-    dark: 'text-[#333333]',
-    light: 'text-[#757575]', 
-    'light-gray-4': 'text-[#e0e0e0]',
-    white: 'text-[#ffffff]',
-    'link-blue': 'text-[#2d7ff9]',
-    red: 'text-[#ef3061]'
-  };
-
   const variantClasses = {
     'text-small': 'text-small',
     'text-default': 'text-default',
@@ -60,7 +52,7 @@ export const Typography: React.FC<TypographyProps> = ({
   };
 
   return (
-    <div className={`${variantClasses[variant]} ${colorClasses[color]} ${className}`}>
+    <div className={`${variantClasses[variant]} ${getColorClass(color)} ${className}`}>
       {children}
     </div>
   );
@@ -233,6 +225,148 @@ export const FontDemo: React.FC<FontDemoProps> = ({ className = '' }) => {
                   </Typography>
                   <Typography variant="text-xlarge-paragraph" color="dark">
                     Text XLarge Paragraph (17px) - Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                  </Typography>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Color Examples */}
+          <div className="w-full">
+            <div className="flex flex-col gap-8 items-start justify-start w-full">
+              <Typography variant="heading-default" color="dark">Color Examples</Typography>
+              
+              {/* Grayscale Colors */}
+              <div className="flex flex-col gap-4">
+                <Typography variant="heading-small" color="dark">Grayscale Colors</Typography>
+                <div className="flex flex-col gap-2">
+                  <Typography variant="text-large" color="dark">
+                    Dark text (#333333)
+                  </Typography>
+                  <Typography variant="text-large" color="light">
+                    Light text (#757575)
+                  </Typography>
+                  <Typography variant="text-large" color="light-gray-4">
+                    Light Gray 4 text (#e0e0e0)
+                  </Typography>
+                  <div className="bg-dark p-2 rounded">
+                    <Typography variant="text-large" color="white">
+                      White text on dark background (#ffffff)
+                    </Typography>
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Color Families */}
+              <div className="flex flex-col gap-6">
+                <Typography variant="heading-small" color="dark">Primary Color Families</Typography>
+                
+                {/* Blue Colors */}
+                <div className="flex flex-col gap-2">
+                  <Typography variant="heading-xsmall" color="blue">Blue Family</Typography>
+                  <div className="flex flex-col gap-1">
+                    <Typography variant="text-default" color="blue-bright">
+                      Blue Bright - Interactive elements and links
+                    </Typography>
+                    <Typography variant="text-default" color="blue">
+                      Blue Default - Primary actions
+                    </Typography>
+                    <Typography variant="text-default" color="blue-dark-1">
+                      Blue Dark - Hover states
+                    </Typography>
+                  </div>
+                </div>
+
+                {/* Red Colors */}
+                <div className="flex flex-col gap-2">
+                  <Typography variant="heading-xsmall" color="red">Red Family</Typography>
+                  <div className="flex flex-col gap-1">
+                    <Typography variant="text-default" color="red-bright">
+                      Red Bright - Critical alerts and errors
+                    </Typography>
+                    <Typography variant="text-default" color="red">
+                      Red Default - Error messages
+                    </Typography>
+                    <Typography variant="text-default" color="red-dark-1">
+                      Red Dark - Error hover states
+                    </Typography>
+                  </div>
+                </div>
+
+                {/* Green Colors */}
+                <div className="flex flex-col gap-2">
+                  <Typography variant="heading-xsmall" color="green">Green Family</Typography>
+                  <div className="flex flex-col gap-1">
+                    <Typography variant="text-default" color="green-bright">
+                      Green Bright - Success notifications
+                    </Typography>
+                    <Typography variant="text-default" color="green">
+                      Green Default - Positive actions
+                    </Typography>
+                    <Typography variant="text-default" color="green-dark-1">
+                      Green Dark - Success hover states
+                    </Typography>
+                  </div>
+                </div>
+
+                {/* Orange Colors */}
+                <div className="flex flex-col gap-2">
+                  <Typography variant="heading-xsmall" color="orange">Orange Family</Typography>
+                  <div className="flex flex-col gap-1">
+                    <Typography variant="text-default" color="orange-bright">
+                      Orange Bright - Warning alerts
+                    </Typography>
+                    <Typography variant="text-default" color="orange">
+                      Orange Default - Warning messages
+                    </Typography>
+                    <Typography variant="text-default" color="orange-dark-1">
+                      Orange Dark - Warning hover states
+                    </Typography>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accent Colors */}
+              <div className="flex flex-col gap-4">
+                <Typography variant="heading-small" color="dark">Accent Colors</Typography>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <Typography variant="text-default" color="purple">
+                      Purple - Premium features
+                    </Typography>
+                    <Typography variant="text-default" color="pink">
+                      Pink - Special highlights
+                    </Typography>
+                    <Typography variant="text-default" color="cyan">
+                      Cyan - Information states
+                    </Typography>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Typography variant="text-default" color="teal">
+                      Teal - Secondary actions
+                    </Typography>
+                    <Typography variant="text-default" color="yellow">
+                      Yellow - Attention markers
+                    </Typography>
+                  </div>
+                </div>
+              </div>
+
+              {/* Heading Color Examples */}
+              <div className="flex flex-col gap-4">
+                <Typography variant="heading-small" color="dark">Heading Color Examples</Typography>
+                <div className="flex flex-col gap-3">
+                  <Typography variant="heading-large" color="blue-bright">
+                    Blue Bright Heading
+                  </Typography>
+                  <Typography variant="heading-default" color="purple">
+                    Purple Default Heading
+                  </Typography>
+                  <Typography variant="heading-small" color="green">
+                    Green Small Heading
+                  </Typography>
+                  <Typography variant="heading-xsmall-caps" color="red">
+                    Red All Caps Heading
                   </Typography>
                 </div>
               </div>
