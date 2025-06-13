@@ -1,6 +1,6 @@
 import React from 'react';
 
-export interface ButtonProps {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   variant?: 'default' | 'primary' | 'danger' | 'secondary' | 'text';
   size?: 'small' | 'default' | 'large' | 'xlarge';
@@ -18,8 +18,8 @@ export const Button: React.FC<ButtonProps> = ({
   icon,
   iconOnly = false,
   className = '',
-  onClick,
   disabled = false,
+  ...htmlProps
 }) => {
   const baseClasses = 'relative inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
   
@@ -84,8 +84,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       className={combinedClasses}
-      onClick={onClick}
-      disabled={disabled}
+      {...htmlProps}
     >
       {icon && (
         <span className={iconSizeClasses[size]}>
