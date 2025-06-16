@@ -3,6 +3,7 @@
 import { Typography, Button } from "@/components";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface WorkoutSet {
   reps: number;
@@ -17,6 +18,7 @@ interface RoutineExercise {
 }
 
 export default function CreateRoutinePage() {
+  const { backendUser, isAuthenticated, isLoading } = useAuth();
   const [routineName, setRoutineName] = useState("");
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ export default function CreateRoutinePage() {
   }, []);
 
   const handleSaveRoutine = async () => {
-    if (!routineName.trim() || exercises.length === 0) {
+    if (!routineName.trim() || exercises.length === 0 || !backendUser?.id) {
       return;
     }
 
@@ -70,7 +72,7 @@ export default function CreateRoutinePage() {
       }));
 
       const workoutData = {
-        user_id: "user_1", // TODO: Get from auth context
+        user_id: backendUser.id,
         name: routineName,
         description: `Workout routine with ${exercises.length} exercises`,
         exercises: workoutExercises,
@@ -116,6 +118,26 @@ export default function CreateRoutinePage() {
     setExercises([]);
     localStorage.removeItem('routineExercises');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-light-gray-1 flex items-center justify-center">
+        <Typography variant="text-large" color="light">
+          Loading...
+        </Typography>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-light-gray-1 flex items-center justify-center">
+        <Typography variant="text-large" color="light">
+          Please sign in to continue
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-light-gray-1">
@@ -246,7 +268,7 @@ export default function CreateRoutinePage() {
             size="large"
             className="flex-1 justify-center"
             onClick={handleSaveRoutine}
-            disabled={!routineName.trim() || exercises.length === 0 || loading}
+            disabled={!routineName.trim() || exercises.length === 0 || loading || !backendUser?.id}
           >
             {loading ? "Saving..." : "Save Routine"}
           </Button>
