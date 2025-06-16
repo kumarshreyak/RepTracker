@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	pb "gymlog-backend/proto/gymlog/v1"
 	"gymlog-backend/internal/services"
+	pb "gymlog-backend/proto/gymlog/v1"
 )
 
 func main() {
@@ -23,13 +23,13 @@ func main() {
 
 	// Create service instances
 	// userService := services.NewUserService()
-	// exerciseService := services.NewExerciseService()
-	// workoutService := services.NewWorkoutService()
+	exerciseService := services.NewExerciseService()
+	workoutService := services.NewWorkoutService()
 
-	// // Register services with the gRPC server
+	// Register services with the gRPC server
 	// pb.RegisterUserServiceServer(s, userService)
-	// pb.RegisterExerciseServiceServer(s, exerciseService)
-	// pb.RegisterWorkoutServiceServer(s, workoutService)
+	pb.RegisterExerciseServiceServer(s, exerciseService)
+	pb.RegisterWorkoutServiceServer(s, workoutService)
 
 	// Register reflection service on gRPC server for debugging
 	reflection.Register(s)
@@ -40,4 +40,4 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
-} 
+}

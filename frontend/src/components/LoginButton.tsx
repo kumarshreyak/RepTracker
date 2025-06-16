@@ -1,7 +1,7 @@
-import { signIn, signOut } from "@/auth"
 import { auth } from "@/auth"
 import { Button } from "./Button"
 import { Typography } from "./Typography"
+import { signInWithGoogle, signOutAction } from "@/actions/auth"
 
 export async function LoginButton() {
   const session = await auth()
@@ -17,12 +17,7 @@ export async function LoginButton() {
             {session.user.name || session.user.email}
           </Typography>
         </div>
-        <form
-          action={async () => {
-            "use server"
-            await signOut()
-          }}
-        >
+        <form action={signOutAction}>
           <Button
             type="submit"
             variant="danger"
@@ -37,13 +32,7 @@ export async function LoginButton() {
   }
   
   return (
-    <form
-      action={async () => {
-        "use server"
-        await signIn("google")
-      }}
-      className="w-full"
-    >
+    <form action={signInWithGoogle} className="w-full">
       <Button
         type="submit"
         variant="primary"

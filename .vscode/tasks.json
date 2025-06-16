@@ -1,0 +1,88 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "start-backend",
+            "type": "shell",
+            "command": "go",
+            "args": ["run", "cmd/server/main.go"],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "go",
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*",
+                    "endsPattern": ".*gRPC server starting on port 50051.*"
+                }
+            }
+        },
+        {
+            "label": "build-backend",
+            "type": "shell",
+            "command": "go",
+            "args": ["build", "-o", "bin/server", "./cmd/server"],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "test-backend",
+            "type": "shell",
+            "command": "go",
+            "args": ["test", "./..."],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "install-frontend",
+            "type": "shell",
+            "command": "npm",
+            "args": ["install"],
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        }
+    ]
+} 
