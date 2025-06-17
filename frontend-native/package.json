@@ -1,0 +1,36 @@
+{
+  "name": "frontend-native",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-google-signin/google-signin": "^14.0.1",
+    "@react-navigation/bottom-tabs": "^7.3.15",
+    "@react-navigation/native": "^7.1.11",
+    "@react-navigation/stack": "^7.3.4",
+    "expo": "~53.0.11",
+    "expo-auth-session": "~6.2.0",
+    "expo-constants": "~17.1.6",
+    "expo-crypto": "~14.1.5",
+    "expo-linking": "~7.1.5",
+    "expo-status-bar": "~2.2.3",
+    "expo-web-browser": "~14.1.6",
+    "react": "19.0.0",
+    "react-native": "0.79.3",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
+  },
+  "private": true
+}
