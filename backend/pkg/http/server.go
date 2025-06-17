@@ -182,6 +182,7 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/workouts", s.handleListWorkouts).Methods("GET")
 	api.HandleFunc("/workouts", s.handleCreateWorkout).Methods("POST")
 	api.HandleFunc("/workouts/{id}", s.handleGetWorkout).Methods("GET")
+	api.HandleFunc("/workouts/{id}/start", s.handleStartWorkout).Methods("GET")
 	api.HandleFunc("/workouts/{id}", s.handleUpdateWorkout).Methods("PUT")
 	api.HandleFunc("/workouts/{id}", s.handleDeleteWorkout).Methods("DELETE")
 
@@ -664,6 +665,36 @@ func (s *Server) handleGetWorkout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Workout not found", http.StatusNotFound)
 		return
+	}
+
+	response := workoutToResponse(workout)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleStartWorkout(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	ctx := context.Background()
+	req := &pb.GetWorkoutRequest{Id: id}
+
+	workout, err := s.workoutService.GetWorkout(ctx, req)
+	if err != nil {
+		http.Error(w, "Workout not found", http.StatusNotFound)
+		return
+	}
+
+	// Populate exercise details for each exercise in the workout
+	for i, workoutExercise := range workout.Exercises {
+		exerciseReq := &pb.GetExerciseRequest{Id: workoutExercise.ExerciseId}
+		exercise, err := s.exerciseService.GetExercise(ctx, exerciseReq)
+		if err != nil {
+			log.Printf("Warning: Could not fetch exercise details for ID %s: %v", workoutExercise.ExerciseId, err)
+			// Continue without exercise details if not found
+			continue
+		}
+		workout.Exercises[i].Exercise = exercise
 	}
 
 	response := workoutToResponse(workout)

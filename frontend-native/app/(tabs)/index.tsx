@@ -117,8 +117,8 @@ export default function HomeTab() {
   };
 
   const handleStartRoutineWorkout = (routineId: string) => {
-    // TODO: Navigate to start workout with routine
-    console.log('Start workout with routine:', routineId);
+    // Navigate to active workout screen with routine ID
+    router.push(`/active-workout?routineId=${routineId}`);
   };
 
   if (!user) {
