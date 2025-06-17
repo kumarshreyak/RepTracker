@@ -27,6 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>gymlog</string>
           <string>com.anonymous.gymlog</string>
         </array>
       </dict>
