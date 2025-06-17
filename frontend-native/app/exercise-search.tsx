@@ -31,6 +31,11 @@ interface WorkoutSet {
   weight: number;
 }
 
+interface WorkoutSetInput {
+  reps: string;
+  weight: string;
+}
+
 interface RoutineExercise {
   id: string;
   name: string;
@@ -44,11 +49,11 @@ export default function ExerciseSearchRoute() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-  const [numberOfSets, setNumberOfSets] = useState(3);
-  const [sets, setSets] = useState<WorkoutSet[]>([
-    { reps: 10, weight: 0 },
-    { reps: 10, weight: 0 },
-    { reps: 10, weight: 0 },
+  const [numberOfSets, setNumberOfSets] = useState("3");
+  const [sets, setSets] = useState<WorkoutSetInput[]>([
+    { reps: "10", weight: "" },
+    { reps: "10", weight: "" },
+    { reps: "10", weight: "" },
   ]);
 
   // Fetch exercises
@@ -85,13 +90,14 @@ export default function ExerciseSearchRoute() {
 
   // Update sets array when numberOfSets changes
   useEffect(() => {
-    const newSets = Array.from({ length: numberOfSets }, (_, index) => 
-      sets[index] || { reps: 10, weight: 0 }
+    const setsCount = parseInt(numberOfSets) || 1;
+    const newSets = Array.from({ length: setsCount }, (_, index) => 
+      sets[index] || { reps: "10", weight: "" }
     );
     setSets(newSets);
   }, [numberOfSets]);
 
-  const updateSet = (index: number, field: 'reps' | 'weight', value: number) => {
+  const updateSet = (index: number, field: 'reps' | 'weight', value: string) => {
     const newSets = [...sets];
     newSets[index] = { ...newSets[index], [field]: value };
     setSets(newSets);
@@ -100,17 +106,27 @@ export default function ExerciseSearchRoute() {
   const isFormValid = () => {
     return selectedExercise && 
            sets.length > 0 && 
-           sets.every(set => set.reps > 0 && set.weight > 0);
+           sets.every(set => {
+             const reps = parseFloat(set.reps) || 0;
+             const weight = parseFloat(set.weight) || 0;
+             return reps > 0 && weight > 0;
+           });
   };
 
   const handleAddExercise = async () => {
     if (!selectedExercise || !isFormValid()) return;
     
+    // Convert string inputs to numbers for storage
+    const convertedSets: WorkoutSet[] = sets.map(set => ({
+      reps: parseFloat(set.reps) || 0,
+      weight: parseFloat(set.weight) || 0,
+    }));
+    
     const exerciseData: RoutineExercise = {
       id: selectedExercise.id,
       name: selectedExercise.name,
       muscle_group: selectedExercise.muscle_group,
-      sets: sets,
+      sets: convertedSets,
     };
     
     try {
@@ -130,11 +146,11 @@ export default function ExerciseSearchRoute() {
             text: 'Add Another',
             onPress: () => {
               setSelectedExercise(null);
-              setNumberOfSets(3);
+              setNumberOfSets("3");
               setSets([
-                { reps: 10, weight: 0 },
-                { reps: 10, weight: 0 },
-                { reps: 10, weight: 0 },
+                { reps: "10", weight: "" },
+                { reps: "10", weight: "" },
+                { reps: "10", weight: "" },
               ]);
             },
           },
@@ -177,7 +193,7 @@ export default function ExerciseSearchRoute() {
     </TouchableOpacity>
   );
 
-  const renderSetConfiguration = (set: WorkoutSet, index: number) => (
+  const renderSetConfiguration = (set: WorkoutSetInput, index: number) => (
     <View key={index} style={styles.setCard}>
       <Typography variant="text-small" color="dark" style={styles.setTitle}>
         Set {index + 1}
@@ -188,8 +204,8 @@ export default function ExerciseSearchRoute() {
             Reps *
           </Typography>
           <TextInput
-            value={set.reps.toString()}
-            onChangeText={(text) => updateSet(index, 'reps', parseInt(text) || 0)}
+            value={set.reps}
+            onChangeText={(text) => updateSet(index, 'reps', text)}
             keyboardType="numeric"
             style={styles.setInput}
             placeholderTextColor={getColor('light')}
@@ -200,8 +216,8 @@ export default function ExerciseSearchRoute() {
             Weight (lbs) *
           </Typography>
           <TextInput
-            value={set.weight.toString()}
-            onChangeText={(text) => updateSet(index, 'weight', parseFloat(text) || 0)}
+            value={set.weight}
+            onChangeText={(text) => updateSet(index, 'weight', text)}
             keyboardType="numeric"
             style={styles.setInput}
             placeholderTextColor={getColor('light')}
@@ -312,8 +328,8 @@ export default function ExerciseSearchRoute() {
                   Number of Sets *
                 </Typography>
                 <TextInput
-                  value={numberOfSets.toString()}
-                  onChangeText={(text) => setNumberOfSets(Math.max(1, parseInt(text) || 1))}
+                  value={numberOfSets}
+                  onChangeText={setNumberOfSets}
                   keyboardType="numeric"
                   style={styles.numberOfSetsInput}
                   placeholderTextColor={getColor('light')}
@@ -325,7 +341,7 @@ export default function ExerciseSearchRoute() {
                 {sets.map(renderSetConfiguration)}
               </ScrollView>
 
-              {!isFormValid() && (
+              {!isFormValid() && selectedExercise && (
                 <View style={styles.validationError}>
                   <Typography variant="text-small" color="red">
                     All fields are required. Please ensure all sets have reps greater than 0 and weight greater than 0.
