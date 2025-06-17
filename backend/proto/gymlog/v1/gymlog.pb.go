@@ -1578,6 +1578,983 @@ func (x *ListWorkoutsResponse) GetNextPageToken() string {
 	return ""
 }
 
+// Workout Session related messages (for active workout tracking)
+type WorkoutSessionSet struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TargetReps      int32                  `protobuf:"varint,1,opt,name=target_reps,json=targetReps,proto3" json:"target_reps,omitempty"`
+	TargetWeight    float32                `protobuf:"fixed32,2,opt,name=target_weight,json=targetWeight,proto3" json:"target_weight,omitempty"`
+	ActualReps      int32                  `protobuf:"varint,3,opt,name=actual_reps,json=actualReps,proto3" json:"actual_reps,omitempty"`
+	ActualWeight    float32                `protobuf:"fixed32,4,opt,name=actual_weight,json=actualWeight,proto3" json:"actual_weight,omitempty"`
+	DurationSeconds float32                `protobuf:"fixed32,5,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Distance        float32                `protobuf:"fixed32,6,opt,name=distance,proto3" json:"distance,omitempty"`
+	Notes           string                 `protobuf:"bytes,7,opt,name=notes,proto3" json:"notes,omitempty"`
+	Completed       bool                   `protobuf:"varint,8,opt,name=completed,proto3" json:"completed,omitempty"`
+	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *WorkoutSessionSet) Reset() {
+	*x = WorkoutSessionSet{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkoutSessionSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkoutSessionSet) ProtoMessage() {}
+
+func (x *WorkoutSessionSet) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkoutSessionSet.ProtoReflect.Descriptor instead.
+func (*WorkoutSessionSet) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *WorkoutSessionSet) GetTargetReps() int32 {
+	if x != nil {
+		return x.TargetReps
+	}
+	return 0
+}
+
+func (x *WorkoutSessionSet) GetTargetWeight() float32 {
+	if x != nil {
+		return x.TargetWeight
+	}
+	return 0
+}
+
+func (x *WorkoutSessionSet) GetActualReps() int32 {
+	if x != nil {
+		return x.ActualReps
+	}
+	return 0
+}
+
+func (x *WorkoutSessionSet) GetActualWeight() float32 {
+	if x != nil {
+		return x.ActualWeight
+	}
+	return 0
+}
+
+func (x *WorkoutSessionSet) GetDurationSeconds() float32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *WorkoutSessionSet) GetDistance() float32 {
+	if x != nil {
+		return x.Distance
+	}
+	return 0
+}
+
+func (x *WorkoutSessionSet) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *WorkoutSessionSet) GetCompleted() bool {
+	if x != nil {
+		return x.Completed
+	}
+	return false
+}
+
+func (x *WorkoutSessionSet) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *WorkoutSessionSet) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
+type WorkoutSessionExercise struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExerciseId    string                 `protobuf:"bytes,1,opt,name=exercise_id,json=exerciseId,proto3" json:"exercise_id,omitempty"`
+	Exercise      *Exercise              `protobuf:"bytes,2,opt,name=exercise,proto3" json:"exercise,omitempty"` // populated in responses
+	Sets          []*WorkoutSessionSet   `protobuf:"bytes,3,rep,name=sets,proto3" json:"sets,omitempty"`
+	Notes         string                 `protobuf:"bytes,4,opt,name=notes,proto3" json:"notes,omitempty"`
+	RestSeconds   int32                  `protobuf:"varint,5,opt,name=rest_seconds,json=restSeconds,proto3" json:"rest_seconds,omitempty"`
+	Completed     bool                   `protobuf:"varint,6,opt,name=completed,proto3" json:"completed,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkoutSessionExercise) Reset() {
+	*x = WorkoutSessionExercise{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkoutSessionExercise) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkoutSessionExercise) ProtoMessage() {}
+
+func (x *WorkoutSessionExercise) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkoutSessionExercise.ProtoReflect.Descriptor instead.
+func (*WorkoutSessionExercise) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *WorkoutSessionExercise) GetExerciseId() string {
+	if x != nil {
+		return x.ExerciseId
+	}
+	return ""
+}
+
+func (x *WorkoutSessionExercise) GetExercise() *Exercise {
+	if x != nil {
+		return x.Exercise
+	}
+	return nil
+}
+
+func (x *WorkoutSessionExercise) GetSets() []*WorkoutSessionSet {
+	if x != nil {
+		return x.Sets
+	}
+	return nil
+}
+
+func (x *WorkoutSessionExercise) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *WorkoutSessionExercise) GetRestSeconds() int32 {
+	if x != nil {
+		return x.RestSeconds
+	}
+	return 0
+}
+
+func (x *WorkoutSessionExercise) GetCompleted() bool {
+	if x != nil {
+		return x.Completed
+	}
+	return false
+}
+
+func (x *WorkoutSessionExercise) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *WorkoutSessionExercise) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
+type WorkoutSession struct {
+	state           protoimpl.MessageState    `protogen:"open.v1"`
+	Id              string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId          string                    `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	RoutineId       string                    `protobuf:"bytes,3,opt,name=routine_id,json=routineId,proto3" json:"routine_id,omitempty"` // Reference to the original routine/workout
+	Name            string                    `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Description     string                    `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Exercises       []*WorkoutSessionExercise `protobuf:"bytes,6,rep,name=exercises,proto3" json:"exercises,omitempty"`
+	StartedAt       *timestamppb.Timestamp    `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt      *timestamppb.Timestamp    `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	DurationSeconds int32                     `protobuf:"varint,9,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Notes           string                    `protobuf:"bytes,10,opt,name=notes,proto3" json:"notes,omitempty"`
+	IsActive        bool                      `protobuf:"varint,11,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"` // true if session is in progress
+	CreatedAt       *timestamppb.Timestamp    `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp    `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *WorkoutSession) Reset() {
+	*x = WorkoutSession{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkoutSession) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkoutSession) ProtoMessage() {}
+
+func (x *WorkoutSession) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkoutSession.ProtoReflect.Descriptor instead.
+func (*WorkoutSession) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *WorkoutSession) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WorkoutSession) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *WorkoutSession) GetRoutineId() string {
+	if x != nil {
+		return x.RoutineId
+	}
+	return ""
+}
+
+func (x *WorkoutSession) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WorkoutSession) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *WorkoutSession) GetExercises() []*WorkoutSessionExercise {
+	if x != nil {
+		return x.Exercises
+	}
+	return nil
+}
+
+func (x *WorkoutSession) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *WorkoutSession) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
+func (x *WorkoutSession) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *WorkoutSession) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *WorkoutSession) GetIsActive() bool {
+	if x != nil {
+		return x.IsActive
+	}
+	return false
+}
+
+func (x *WorkoutSession) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *WorkoutSession) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type CreateWorkoutSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	RoutineId     string                 `protobuf:"bytes,2,opt,name=routine_id,json=routineId,proto3" json:"routine_id,omitempty"` // The routine/workout to start
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Notes         string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateWorkoutSessionRequest) Reset() {
+	*x = CreateWorkoutSessionRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateWorkoutSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateWorkoutSessionRequest) ProtoMessage() {}
+
+func (x *CreateWorkoutSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateWorkoutSessionRequest.ProtoReflect.Descriptor instead.
+func (*CreateWorkoutSessionRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *CreateWorkoutSessionRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CreateWorkoutSessionRequest) GetRoutineId() string {
+	if x != nil {
+		return x.RoutineId
+	}
+	return ""
+}
+
+func (x *CreateWorkoutSessionRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateWorkoutSessionRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateWorkoutSessionRequest) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+type GetWorkoutSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkoutSessionRequest) Reset() {
+	*x = GetWorkoutSessionRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkoutSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkoutSessionRequest) ProtoMessage() {}
+
+func (x *GetWorkoutSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkoutSessionRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkoutSessionRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetWorkoutSessionRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UpdateWorkoutSessionRequest struct {
+	state           protoimpl.MessageState    `protogen:"open.v1"`
+	Id              string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name            string                    `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description     string                    `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Exercises       []*WorkoutSessionExercise `protobuf:"bytes,4,rep,name=exercises,proto3" json:"exercises,omitempty"`
+	FinishedAt      *timestamppb.Timestamp    `protobuf:"bytes,5,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	DurationSeconds int32                     `protobuf:"varint,6,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Notes           string                    `protobuf:"bytes,7,opt,name=notes,proto3" json:"notes,omitempty"`
+	IsActive        bool                      `protobuf:"varint,8,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateWorkoutSessionRequest) Reset() {
+	*x = UpdateWorkoutSessionRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateWorkoutSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateWorkoutSessionRequest) ProtoMessage() {}
+
+func (x *UpdateWorkoutSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateWorkoutSessionRequest.ProtoReflect.Descriptor instead.
+func (*UpdateWorkoutSessionRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *UpdateWorkoutSessionRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateWorkoutSessionRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateWorkoutSessionRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *UpdateWorkoutSessionRequest) GetExercises() []*WorkoutSessionExercise {
+	if x != nil {
+		return x.Exercises
+	}
+	return nil
+}
+
+func (x *UpdateWorkoutSessionRequest) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
+func (x *UpdateWorkoutSessionRequest) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *UpdateWorkoutSessionRequest) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *UpdateWorkoutSessionRequest) GetIsActive() bool {
+	if x != nil {
+		return x.IsActive
+	}
+	return false
+}
+
+type DeleteWorkoutSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteWorkoutSessionRequest) Reset() {
+	*x = DeleteWorkoutSessionRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteWorkoutSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteWorkoutSessionRequest) ProtoMessage() {}
+
+func (x *DeleteWorkoutSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteWorkoutSessionRequest.ProtoReflect.Descriptor instead.
+func (*DeleteWorkoutSessionRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *DeleteWorkoutSessionRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListWorkoutSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	StartDate     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	ActiveOnly    bool                   `protobuf:"varint,6,opt,name=active_only,json=activeOnly,proto3" json:"active_only,omitempty"` // filter for active sessions only
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWorkoutSessionsRequest) Reset() {
+	*x = ListWorkoutSessionsRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWorkoutSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWorkoutSessionsRequest) ProtoMessage() {}
+
+func (x *ListWorkoutSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWorkoutSessionsRequest.ProtoReflect.Descriptor instead.
+func (*ListWorkoutSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ListWorkoutSessionsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListWorkoutSessionsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListWorkoutSessionsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListWorkoutSessionsRequest) GetStartDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartDate
+	}
+	return nil
+}
+
+func (x *ListWorkoutSessionsRequest) GetEndDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndDate
+	}
+	return nil
+}
+
+func (x *ListWorkoutSessionsRequest) GetActiveOnly() bool {
+	if x != nil {
+		return x.ActiveOnly
+	}
+	return false
+}
+
+type ListWorkoutSessionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sessions      []*WorkoutSession      `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWorkoutSessionsResponse) Reset() {
+	*x = ListWorkoutSessionsResponse{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWorkoutSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWorkoutSessionsResponse) ProtoMessage() {}
+
+func (x *ListWorkoutSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWorkoutSessionsResponse.ProtoReflect.Descriptor instead.
+func (*ListWorkoutSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListWorkoutSessionsResponse) GetSessions() []*WorkoutSession {
+	if x != nil {
+		return x.Sessions
+	}
+	return nil
+}
+
+func (x *ListWorkoutSessionsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type StartExerciseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ExerciseIndex int32                  `protobuf:"varint,2,opt,name=exercise_index,json=exerciseIndex,proto3" json:"exercise_index,omitempty"` // index in the exercises array
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartExerciseRequest) Reset() {
+	*x = StartExerciseRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartExerciseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartExerciseRequest) ProtoMessage() {}
+
+func (x *StartExerciseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartExerciseRequest.ProtoReflect.Descriptor instead.
+func (*StartExerciseRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *StartExerciseRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *StartExerciseRequest) GetExerciseIndex() int32 {
+	if x != nil {
+		return x.ExerciseIndex
+	}
+	return 0
+}
+
+type FinishExerciseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ExerciseIndex int32                  `protobuf:"varint,2,opt,name=exercise_index,json=exerciseIndex,proto3" json:"exercise_index,omitempty"`
+	Notes         string                 `protobuf:"bytes,3,opt,name=notes,proto3" json:"notes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinishExerciseRequest) Reset() {
+	*x = FinishExerciseRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinishExerciseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinishExerciseRequest) ProtoMessage() {}
+
+func (x *FinishExerciseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinishExerciseRequest.ProtoReflect.Descriptor instead.
+func (*FinishExerciseRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *FinishExerciseRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *FinishExerciseRequest) GetExerciseIndex() int32 {
+	if x != nil {
+		return x.ExerciseIndex
+	}
+	return 0
+}
+
+func (x *FinishExerciseRequest) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+type UpdateSetRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ExerciseIndex   int32                  `protobuf:"varint,2,opt,name=exercise_index,json=exerciseIndex,proto3" json:"exercise_index,omitempty"`
+	SetIndex        int32                  `protobuf:"varint,3,opt,name=set_index,json=setIndex,proto3" json:"set_index,omitempty"`
+	ActualReps      int32                  `protobuf:"varint,4,opt,name=actual_reps,json=actualReps,proto3" json:"actual_reps,omitempty"`
+	ActualWeight    float32                `protobuf:"fixed32,5,opt,name=actual_weight,json=actualWeight,proto3" json:"actual_weight,omitempty"`
+	DurationSeconds float32                `protobuf:"fixed32,6,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Distance        float32                `protobuf:"fixed32,7,opt,name=distance,proto3" json:"distance,omitempty"`
+	Notes           string                 `protobuf:"bytes,8,opt,name=notes,proto3" json:"notes,omitempty"`
+	Completed       bool                   `protobuf:"varint,9,opt,name=completed,proto3" json:"completed,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateSetRequest) Reset() {
+	*x = UpdateSetRequest{}
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSetRequest) ProtoMessage() {}
+
+func (x *UpdateSetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gymlog_v1_gymlog_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSetRequest.ProtoReflect.Descriptor instead.
+func (*UpdateSetRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *UpdateSetRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *UpdateSetRequest) GetExerciseIndex() int32 {
+	if x != nil {
+		return x.ExerciseIndex
+	}
+	return 0
+}
+
+func (x *UpdateSetRequest) GetSetIndex() int32 {
+	if x != nil {
+		return x.SetIndex
+	}
+	return 0
+}
+
+func (x *UpdateSetRequest) GetActualReps() int32 {
+	if x != nil {
+		return x.ActualReps
+	}
+	return 0
+}
+
+func (x *UpdateSetRequest) GetActualWeight() float32 {
+	if x != nil {
+		return x.ActualWeight
+	}
+	return 0
+}
+
+func (x *UpdateSetRequest) GetDurationSeconds() float32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *UpdateSetRequest) GetDistance() float32 {
+	if x != nil {
+		return x.Distance
+	}
+	return 0
+}
+
+func (x *UpdateSetRequest) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *UpdateSetRequest) GetCompleted() bool {
+	if x != nil {
+		return x.Completed
+	}
+	return false
+}
+
 var File_proto_gymlog_v1_gymlog_proto protoreflect.FileDescriptor
 
 const file_proto_gymlog_v1_gymlog_proto_rawDesc = "" +
@@ -1725,7 +2702,110 @@ const file_proto_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"\bend_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendDate\"n\n" +
 	"\x14ListWorkoutsResponse\x12.\n" +
 	"\bworkouts\x18\x01 \x03(\v2\x12.gymlog.v1.WorkoutR\bworkouts\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\x86\x02\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x92\x03\n" +
+	"\x11WorkoutSessionSet\x12\x1f\n" +
+	"\vtarget_reps\x18\x01 \x01(\x05R\n" +
+	"targetReps\x12#\n" +
+	"\rtarget_weight\x18\x02 \x01(\x02R\ftargetWeight\x12\x1f\n" +
+	"\vactual_reps\x18\x03 \x01(\x05R\n" +
+	"actualReps\x12#\n" +
+	"\ractual_weight\x18\x04 \x01(\x02R\factualWeight\x12)\n" +
+	"\x10duration_seconds\x18\x05 \x01(\x02R\x0fdurationSeconds\x12\x1a\n" +
+	"\bdistance\x18\x06 \x01(\x02R\bdistance\x12\x14\n" +
+	"\x05notes\x18\a \x01(\tR\x05notes\x12\x1c\n" +
+	"\tcompleted\x18\b \x01(\bR\tcompleted\x129\n" +
+	"\n" +
+	"started_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
+	"\vfinished_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\"\xeb\x02\n" +
+	"\x16WorkoutSessionExercise\x12\x1f\n" +
+	"\vexercise_id\x18\x01 \x01(\tR\n" +
+	"exerciseId\x12/\n" +
+	"\bexercise\x18\x02 \x01(\v2\x13.gymlog.v1.ExerciseR\bexercise\x120\n" +
+	"\x04sets\x18\x03 \x03(\v2\x1c.gymlog.v1.WorkoutSessionSetR\x04sets\x12\x14\n" +
+	"\x05notes\x18\x04 \x01(\tR\x05notes\x12!\n" +
+	"\frest_seconds\x18\x05 \x01(\x05R\vrestSeconds\x12\x1c\n" +
+	"\tcompleted\x18\x06 \x01(\bR\tcompleted\x129\n" +
+	"\n" +
+	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
+	"\vfinished_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\"\x9b\x04\n" +
+	"\x0eWorkoutSession\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"routine_id\x18\x03 \x01(\tR\troutineId\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12?\n" +
+	"\texercises\x18\x06 \x03(\v2!.gymlog.v1.WorkoutSessionExerciseR\texercises\x129\n" +
+	"\n" +
+	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
+	"\vfinished_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\x12)\n" +
+	"\x10duration_seconds\x18\t \x01(\x05R\x0fdurationSeconds\x12\x14\n" +
+	"\x05notes\x18\n" +
+	" \x01(\tR\x05notes\x12\x1b\n" +
+	"\tis_active\x18\v \x01(\bR\bisActive\x129\n" +
+	"\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xa1\x01\n" +
+	"\x1bCreateWorkoutSessionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"routine_id\x18\x02 \x01(\tR\troutineId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x14\n" +
+	"\x05notes\x18\x05 \x01(\tR\x05notes\"*\n" +
+	"\x18GetWorkoutSessionRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xbf\x02\n" +
+	"\x1bUpdateWorkoutSessionRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12?\n" +
+	"\texercises\x18\x04 \x03(\v2!.gymlog.v1.WorkoutSessionExerciseR\texercises\x12;\n" +
+	"\vfinished_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\x12)\n" +
+	"\x10duration_seconds\x18\x06 \x01(\x05R\x0fdurationSeconds\x12\x14\n" +
+	"\x05notes\x18\a \x01(\tR\x05notes\x12\x1b\n" +
+	"\tis_active\x18\b \x01(\bR\bisActive\"-\n" +
+	"\x1bDeleteWorkoutSessionRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x84\x02\n" +
+	"\x1aListWorkoutSessionsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\x129\n" +
+	"\n" +
+	"start_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartDate\x125\n" +
+	"\bend_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendDate\x12\x1f\n" +
+	"\vactive_only\x18\x06 \x01(\bR\n" +
+	"activeOnly\"|\n" +
+	"\x1bListWorkoutSessionsResponse\x125\n" +
+	"\bsessions\x18\x01 \x03(\v2\x19.gymlog.v1.WorkoutSessionR\bsessions\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\\\n" +
+	"\x14StartExerciseRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
+	"\x0eexercise_index\x18\x02 \x01(\x05R\rexerciseIndex\"s\n" +
+	"\x15FinishExerciseRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
+	"\x0eexercise_index\x18\x02 \x01(\x05R\rexerciseIndex\x12\x14\n" +
+	"\x05notes\x18\x03 \x01(\tR\x05notes\"\xb6\x02\n" +
+	"\x10UpdateSetRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
+	"\x0eexercise_index\x18\x02 \x01(\x05R\rexerciseIndex\x12\x1b\n" +
+	"\tset_index\x18\x03 \x01(\x05R\bsetIndex\x12\x1f\n" +
+	"\vactual_reps\x18\x04 \x01(\x05R\n" +
+	"actualReps\x12#\n" +
+	"\ractual_weight\x18\x05 \x01(\x02R\factualWeight\x12)\n" +
+	"\x10duration_seconds\x18\x06 \x01(\x02R\x0fdurationSeconds\x12\x1a\n" +
+	"\bdistance\x18\a \x01(\x02R\bdistance\x12\x14\n" +
+	"\x05notes\x18\b \x01(\tR\x05notes\x12\x1c\n" +
+	"\tcompleted\x18\t \x01(\bR\tcompleted2\x86\x02\n" +
 	"\vUserService\x12;\n" +
 	"\n" +
 	"CreateUser\x12\x1c.gymlog.v1.CreateUserRequest\x1a\x0f.gymlog.v1.User\x125\n" +
@@ -1745,7 +2825,16 @@ const file_proto_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"GetWorkout\x12\x1c.gymlog.v1.GetWorkoutRequest\x1a\x12.gymlog.v1.Workout\x12D\n" +
 	"\rUpdateWorkout\x12\x1f.gymlog.v1.UpdateWorkoutRequest\x1a\x12.gymlog.v1.Workout\x12H\n" +
 	"\rDeleteWorkout\x12\x1f.gymlog.v1.DeleteWorkoutRequest\x1a\x16.google.protobuf.Empty\x12O\n" +
-	"\fListWorkouts\x12\x1e.gymlog.v1.ListWorkoutsRequest\x1a\x1f.gymlog.v1.ListWorkoutsResponseB&Z$github.com/gymlog/backend/pkg/api/v1b\x06proto3"
+	"\fListWorkouts\x12\x1e.gymlog.v1.ListWorkoutsRequest\x1a\x1f.gymlog.v1.ListWorkoutsResponse2\xc1\x05\n" +
+	"\x15WorkoutSessionService\x12Y\n" +
+	"\x14CreateWorkoutSession\x12&.gymlog.v1.CreateWorkoutSessionRequest\x1a\x19.gymlog.v1.WorkoutSession\x12S\n" +
+	"\x11GetWorkoutSession\x12#.gymlog.v1.GetWorkoutSessionRequest\x1a\x19.gymlog.v1.WorkoutSession\x12Y\n" +
+	"\x14UpdateWorkoutSession\x12&.gymlog.v1.UpdateWorkoutSessionRequest\x1a\x19.gymlog.v1.WorkoutSession\x12V\n" +
+	"\x14DeleteWorkoutSession\x12&.gymlog.v1.DeleteWorkoutSessionRequest\x1a\x16.google.protobuf.Empty\x12d\n" +
+	"\x13ListWorkoutSessions\x12%.gymlog.v1.ListWorkoutSessionsRequest\x1a&.gymlog.v1.ListWorkoutSessionsResponse\x12K\n" +
+	"\rStartExercise\x12\x1f.gymlog.v1.StartExerciseRequest\x1a\x19.gymlog.v1.WorkoutSession\x12M\n" +
+	"\x0eFinishExercise\x12 .gymlog.v1.FinishExerciseRequest\x1a\x19.gymlog.v1.WorkoutSession\x12C\n" +
+	"\tUpdateSet\x12\x1b.gymlog.v1.UpdateSetRequest\x1a\x19.gymlog.v1.WorkoutSessionB\x11Z\x0fproto/gymlog/v1b\x06proto3"
 
 var (
 	file_proto_gymlog_v1_gymlog_proto_rawDescOnce sync.Once
@@ -1759,87 +2848,131 @@ func file_proto_gymlog_v1_gymlog_proto_rawDescGZIP() []byte {
 	return file_proto_gymlog_v1_gymlog_proto_rawDescData
 }
 
-var file_proto_gymlog_v1_gymlog_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_proto_gymlog_v1_gymlog_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_proto_gymlog_v1_gymlog_proto_goTypes = []any{
-	(*User)(nil),                  // 0: gymlog.v1.User
-	(*CreateUserRequest)(nil),     // 1: gymlog.v1.CreateUserRequest
-	(*GetUserRequest)(nil),        // 2: gymlog.v1.GetUserRequest
-	(*UpdateUserRequest)(nil),     // 3: gymlog.v1.UpdateUserRequest
-	(*ListUsersRequest)(nil),      // 4: gymlog.v1.ListUsersRequest
-	(*ListUsersResponse)(nil),     // 5: gymlog.v1.ListUsersResponse
-	(*Exercise)(nil),              // 6: gymlog.v1.Exercise
-	(*CreateExerciseRequest)(nil), // 7: gymlog.v1.CreateExerciseRequest
-	(*GetExerciseRequest)(nil),    // 8: gymlog.v1.GetExerciseRequest
-	(*UpdateExerciseRequest)(nil), // 9: gymlog.v1.UpdateExerciseRequest
-	(*DeleteExerciseRequest)(nil), // 10: gymlog.v1.DeleteExerciseRequest
-	(*ListExercisesRequest)(nil),  // 11: gymlog.v1.ListExercisesRequest
-	(*ListExercisesResponse)(nil), // 12: gymlog.v1.ListExercisesResponse
-	(*WorkoutSet)(nil),            // 13: gymlog.v1.WorkoutSet
-	(*WorkoutExercise)(nil),       // 14: gymlog.v1.WorkoutExercise
-	(*Workout)(nil),               // 15: gymlog.v1.Workout
-	(*CreateWorkoutRequest)(nil),  // 16: gymlog.v1.CreateWorkoutRequest
-	(*GetWorkoutRequest)(nil),     // 17: gymlog.v1.GetWorkoutRequest
-	(*UpdateWorkoutRequest)(nil),  // 18: gymlog.v1.UpdateWorkoutRequest
-	(*DeleteWorkoutRequest)(nil),  // 19: gymlog.v1.DeleteWorkoutRequest
-	(*ListWorkoutsRequest)(nil),   // 20: gymlog.v1.ListWorkoutsRequest
-	(*ListWorkoutsResponse)(nil),  // 21: gymlog.v1.ListWorkoutsResponse
-	(*timestamppb.Timestamp)(nil), // 22: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),         // 23: google.protobuf.Empty
+	(*User)(nil),                        // 0: gymlog.v1.User
+	(*CreateUserRequest)(nil),           // 1: gymlog.v1.CreateUserRequest
+	(*GetUserRequest)(nil),              // 2: gymlog.v1.GetUserRequest
+	(*UpdateUserRequest)(nil),           // 3: gymlog.v1.UpdateUserRequest
+	(*ListUsersRequest)(nil),            // 4: gymlog.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),           // 5: gymlog.v1.ListUsersResponse
+	(*Exercise)(nil),                    // 6: gymlog.v1.Exercise
+	(*CreateExerciseRequest)(nil),       // 7: gymlog.v1.CreateExerciseRequest
+	(*GetExerciseRequest)(nil),          // 8: gymlog.v1.GetExerciseRequest
+	(*UpdateExerciseRequest)(nil),       // 9: gymlog.v1.UpdateExerciseRequest
+	(*DeleteExerciseRequest)(nil),       // 10: gymlog.v1.DeleteExerciseRequest
+	(*ListExercisesRequest)(nil),        // 11: gymlog.v1.ListExercisesRequest
+	(*ListExercisesResponse)(nil),       // 12: gymlog.v1.ListExercisesResponse
+	(*WorkoutSet)(nil),                  // 13: gymlog.v1.WorkoutSet
+	(*WorkoutExercise)(nil),             // 14: gymlog.v1.WorkoutExercise
+	(*Workout)(nil),                     // 15: gymlog.v1.Workout
+	(*CreateWorkoutRequest)(nil),        // 16: gymlog.v1.CreateWorkoutRequest
+	(*GetWorkoutRequest)(nil),           // 17: gymlog.v1.GetWorkoutRequest
+	(*UpdateWorkoutRequest)(nil),        // 18: gymlog.v1.UpdateWorkoutRequest
+	(*DeleteWorkoutRequest)(nil),        // 19: gymlog.v1.DeleteWorkoutRequest
+	(*ListWorkoutsRequest)(nil),         // 20: gymlog.v1.ListWorkoutsRequest
+	(*ListWorkoutsResponse)(nil),        // 21: gymlog.v1.ListWorkoutsResponse
+	(*WorkoutSessionSet)(nil),           // 22: gymlog.v1.WorkoutSessionSet
+	(*WorkoutSessionExercise)(nil),      // 23: gymlog.v1.WorkoutSessionExercise
+	(*WorkoutSession)(nil),              // 24: gymlog.v1.WorkoutSession
+	(*CreateWorkoutSessionRequest)(nil), // 25: gymlog.v1.CreateWorkoutSessionRequest
+	(*GetWorkoutSessionRequest)(nil),    // 26: gymlog.v1.GetWorkoutSessionRequest
+	(*UpdateWorkoutSessionRequest)(nil), // 27: gymlog.v1.UpdateWorkoutSessionRequest
+	(*DeleteWorkoutSessionRequest)(nil), // 28: gymlog.v1.DeleteWorkoutSessionRequest
+	(*ListWorkoutSessionsRequest)(nil),  // 29: gymlog.v1.ListWorkoutSessionsRequest
+	(*ListWorkoutSessionsResponse)(nil), // 30: gymlog.v1.ListWorkoutSessionsResponse
+	(*StartExerciseRequest)(nil),        // 31: gymlog.v1.StartExerciseRequest
+	(*FinishExerciseRequest)(nil),       // 32: gymlog.v1.FinishExerciseRequest
+	(*UpdateSetRequest)(nil),            // 33: gymlog.v1.UpdateSetRequest
+	(*timestamppb.Timestamp)(nil),       // 34: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 35: google.protobuf.Empty
 }
 var file_proto_gymlog_v1_gymlog_proto_depIdxs = []int32{
-	22, // 0: gymlog.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	22, // 1: gymlog.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	34, // 0: gymlog.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	34, // 1: gymlog.v1.User.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: gymlog.v1.ListUsersResponse.users:type_name -> gymlog.v1.User
-	22, // 3: gymlog.v1.Exercise.created_at:type_name -> google.protobuf.Timestamp
-	22, // 4: gymlog.v1.Exercise.updated_at:type_name -> google.protobuf.Timestamp
+	34, // 3: gymlog.v1.Exercise.created_at:type_name -> google.protobuf.Timestamp
+	34, // 4: gymlog.v1.Exercise.updated_at:type_name -> google.protobuf.Timestamp
 	6,  // 5: gymlog.v1.ListExercisesResponse.exercises:type_name -> gymlog.v1.Exercise
 	6,  // 6: gymlog.v1.WorkoutExercise.exercise:type_name -> gymlog.v1.Exercise
 	13, // 7: gymlog.v1.WorkoutExercise.sets:type_name -> gymlog.v1.WorkoutSet
 	14, // 8: gymlog.v1.Workout.exercises:type_name -> gymlog.v1.WorkoutExercise
-	22, // 9: gymlog.v1.Workout.started_at:type_name -> google.protobuf.Timestamp
-	22, // 10: gymlog.v1.Workout.finished_at:type_name -> google.protobuf.Timestamp
-	22, // 11: gymlog.v1.Workout.created_at:type_name -> google.protobuf.Timestamp
-	22, // 12: gymlog.v1.Workout.updated_at:type_name -> google.protobuf.Timestamp
+	34, // 9: gymlog.v1.Workout.started_at:type_name -> google.protobuf.Timestamp
+	34, // 10: gymlog.v1.Workout.finished_at:type_name -> google.protobuf.Timestamp
+	34, // 11: gymlog.v1.Workout.created_at:type_name -> google.protobuf.Timestamp
+	34, // 12: gymlog.v1.Workout.updated_at:type_name -> google.protobuf.Timestamp
 	14, // 13: gymlog.v1.CreateWorkoutRequest.exercises:type_name -> gymlog.v1.WorkoutExercise
-	22, // 14: gymlog.v1.CreateWorkoutRequest.started_at:type_name -> google.protobuf.Timestamp
+	34, // 14: gymlog.v1.CreateWorkoutRequest.started_at:type_name -> google.protobuf.Timestamp
 	14, // 15: gymlog.v1.UpdateWorkoutRequest.exercises:type_name -> gymlog.v1.WorkoutExercise
-	22, // 16: gymlog.v1.UpdateWorkoutRequest.finished_at:type_name -> google.protobuf.Timestamp
-	22, // 17: gymlog.v1.ListWorkoutsRequest.start_date:type_name -> google.protobuf.Timestamp
-	22, // 18: gymlog.v1.ListWorkoutsRequest.end_date:type_name -> google.protobuf.Timestamp
+	34, // 16: gymlog.v1.UpdateWorkoutRequest.finished_at:type_name -> google.protobuf.Timestamp
+	34, // 17: gymlog.v1.ListWorkoutsRequest.start_date:type_name -> google.protobuf.Timestamp
+	34, // 18: gymlog.v1.ListWorkoutsRequest.end_date:type_name -> google.protobuf.Timestamp
 	15, // 19: gymlog.v1.ListWorkoutsResponse.workouts:type_name -> gymlog.v1.Workout
-	1,  // 20: gymlog.v1.UserService.CreateUser:input_type -> gymlog.v1.CreateUserRequest
-	2,  // 21: gymlog.v1.UserService.GetUser:input_type -> gymlog.v1.GetUserRequest
-	3,  // 22: gymlog.v1.UserService.UpdateUser:input_type -> gymlog.v1.UpdateUserRequest
-	4,  // 23: gymlog.v1.UserService.ListUsers:input_type -> gymlog.v1.ListUsersRequest
-	7,  // 24: gymlog.v1.ExerciseService.CreateExercise:input_type -> gymlog.v1.CreateExerciseRequest
-	8,  // 25: gymlog.v1.ExerciseService.GetExercise:input_type -> gymlog.v1.GetExerciseRequest
-	9,  // 26: gymlog.v1.ExerciseService.UpdateExercise:input_type -> gymlog.v1.UpdateExerciseRequest
-	10, // 27: gymlog.v1.ExerciseService.DeleteExercise:input_type -> gymlog.v1.DeleteExerciseRequest
-	11, // 28: gymlog.v1.ExerciseService.ListExercises:input_type -> gymlog.v1.ListExercisesRequest
-	16, // 29: gymlog.v1.WorkoutService.CreateWorkout:input_type -> gymlog.v1.CreateWorkoutRequest
-	17, // 30: gymlog.v1.WorkoutService.GetWorkout:input_type -> gymlog.v1.GetWorkoutRequest
-	18, // 31: gymlog.v1.WorkoutService.UpdateWorkout:input_type -> gymlog.v1.UpdateWorkoutRequest
-	19, // 32: gymlog.v1.WorkoutService.DeleteWorkout:input_type -> gymlog.v1.DeleteWorkoutRequest
-	20, // 33: gymlog.v1.WorkoutService.ListWorkouts:input_type -> gymlog.v1.ListWorkoutsRequest
-	0,  // 34: gymlog.v1.UserService.CreateUser:output_type -> gymlog.v1.User
-	0,  // 35: gymlog.v1.UserService.GetUser:output_type -> gymlog.v1.User
-	0,  // 36: gymlog.v1.UserService.UpdateUser:output_type -> gymlog.v1.User
-	5,  // 37: gymlog.v1.UserService.ListUsers:output_type -> gymlog.v1.ListUsersResponse
-	6,  // 38: gymlog.v1.ExerciseService.CreateExercise:output_type -> gymlog.v1.Exercise
-	6,  // 39: gymlog.v1.ExerciseService.GetExercise:output_type -> gymlog.v1.Exercise
-	6,  // 40: gymlog.v1.ExerciseService.UpdateExercise:output_type -> gymlog.v1.Exercise
-	23, // 41: gymlog.v1.ExerciseService.DeleteExercise:output_type -> google.protobuf.Empty
-	12, // 42: gymlog.v1.ExerciseService.ListExercises:output_type -> gymlog.v1.ListExercisesResponse
-	15, // 43: gymlog.v1.WorkoutService.CreateWorkout:output_type -> gymlog.v1.Workout
-	15, // 44: gymlog.v1.WorkoutService.GetWorkout:output_type -> gymlog.v1.Workout
-	15, // 45: gymlog.v1.WorkoutService.UpdateWorkout:output_type -> gymlog.v1.Workout
-	23, // 46: gymlog.v1.WorkoutService.DeleteWorkout:output_type -> google.protobuf.Empty
-	21, // 47: gymlog.v1.WorkoutService.ListWorkouts:output_type -> gymlog.v1.ListWorkoutsResponse
-	34, // [34:48] is the sub-list for method output_type
-	20, // [20:34] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	34, // 20: gymlog.v1.WorkoutSessionSet.started_at:type_name -> google.protobuf.Timestamp
+	34, // 21: gymlog.v1.WorkoutSessionSet.finished_at:type_name -> google.protobuf.Timestamp
+	6,  // 22: gymlog.v1.WorkoutSessionExercise.exercise:type_name -> gymlog.v1.Exercise
+	22, // 23: gymlog.v1.WorkoutSessionExercise.sets:type_name -> gymlog.v1.WorkoutSessionSet
+	34, // 24: gymlog.v1.WorkoutSessionExercise.started_at:type_name -> google.protobuf.Timestamp
+	34, // 25: gymlog.v1.WorkoutSessionExercise.finished_at:type_name -> google.protobuf.Timestamp
+	23, // 26: gymlog.v1.WorkoutSession.exercises:type_name -> gymlog.v1.WorkoutSessionExercise
+	34, // 27: gymlog.v1.WorkoutSession.started_at:type_name -> google.protobuf.Timestamp
+	34, // 28: gymlog.v1.WorkoutSession.finished_at:type_name -> google.protobuf.Timestamp
+	34, // 29: gymlog.v1.WorkoutSession.created_at:type_name -> google.protobuf.Timestamp
+	34, // 30: gymlog.v1.WorkoutSession.updated_at:type_name -> google.protobuf.Timestamp
+	23, // 31: gymlog.v1.UpdateWorkoutSessionRequest.exercises:type_name -> gymlog.v1.WorkoutSessionExercise
+	34, // 32: gymlog.v1.UpdateWorkoutSessionRequest.finished_at:type_name -> google.protobuf.Timestamp
+	34, // 33: gymlog.v1.ListWorkoutSessionsRequest.start_date:type_name -> google.protobuf.Timestamp
+	34, // 34: gymlog.v1.ListWorkoutSessionsRequest.end_date:type_name -> google.protobuf.Timestamp
+	24, // 35: gymlog.v1.ListWorkoutSessionsResponse.sessions:type_name -> gymlog.v1.WorkoutSession
+	1,  // 36: gymlog.v1.UserService.CreateUser:input_type -> gymlog.v1.CreateUserRequest
+	2,  // 37: gymlog.v1.UserService.GetUser:input_type -> gymlog.v1.GetUserRequest
+	3,  // 38: gymlog.v1.UserService.UpdateUser:input_type -> gymlog.v1.UpdateUserRequest
+	4,  // 39: gymlog.v1.UserService.ListUsers:input_type -> gymlog.v1.ListUsersRequest
+	7,  // 40: gymlog.v1.ExerciseService.CreateExercise:input_type -> gymlog.v1.CreateExerciseRequest
+	8,  // 41: gymlog.v1.ExerciseService.GetExercise:input_type -> gymlog.v1.GetExerciseRequest
+	9,  // 42: gymlog.v1.ExerciseService.UpdateExercise:input_type -> gymlog.v1.UpdateExerciseRequest
+	10, // 43: gymlog.v1.ExerciseService.DeleteExercise:input_type -> gymlog.v1.DeleteExerciseRequest
+	11, // 44: gymlog.v1.ExerciseService.ListExercises:input_type -> gymlog.v1.ListExercisesRequest
+	16, // 45: gymlog.v1.WorkoutService.CreateWorkout:input_type -> gymlog.v1.CreateWorkoutRequest
+	17, // 46: gymlog.v1.WorkoutService.GetWorkout:input_type -> gymlog.v1.GetWorkoutRequest
+	18, // 47: gymlog.v1.WorkoutService.UpdateWorkout:input_type -> gymlog.v1.UpdateWorkoutRequest
+	19, // 48: gymlog.v1.WorkoutService.DeleteWorkout:input_type -> gymlog.v1.DeleteWorkoutRequest
+	20, // 49: gymlog.v1.WorkoutService.ListWorkouts:input_type -> gymlog.v1.ListWorkoutsRequest
+	25, // 50: gymlog.v1.WorkoutSessionService.CreateWorkoutSession:input_type -> gymlog.v1.CreateWorkoutSessionRequest
+	26, // 51: gymlog.v1.WorkoutSessionService.GetWorkoutSession:input_type -> gymlog.v1.GetWorkoutSessionRequest
+	27, // 52: gymlog.v1.WorkoutSessionService.UpdateWorkoutSession:input_type -> gymlog.v1.UpdateWorkoutSessionRequest
+	28, // 53: gymlog.v1.WorkoutSessionService.DeleteWorkoutSession:input_type -> gymlog.v1.DeleteWorkoutSessionRequest
+	29, // 54: gymlog.v1.WorkoutSessionService.ListWorkoutSessions:input_type -> gymlog.v1.ListWorkoutSessionsRequest
+	31, // 55: gymlog.v1.WorkoutSessionService.StartExercise:input_type -> gymlog.v1.StartExerciseRequest
+	32, // 56: gymlog.v1.WorkoutSessionService.FinishExercise:input_type -> gymlog.v1.FinishExerciseRequest
+	33, // 57: gymlog.v1.WorkoutSessionService.UpdateSet:input_type -> gymlog.v1.UpdateSetRequest
+	0,  // 58: gymlog.v1.UserService.CreateUser:output_type -> gymlog.v1.User
+	0,  // 59: gymlog.v1.UserService.GetUser:output_type -> gymlog.v1.User
+	0,  // 60: gymlog.v1.UserService.UpdateUser:output_type -> gymlog.v1.User
+	5,  // 61: gymlog.v1.UserService.ListUsers:output_type -> gymlog.v1.ListUsersResponse
+	6,  // 62: gymlog.v1.ExerciseService.CreateExercise:output_type -> gymlog.v1.Exercise
+	6,  // 63: gymlog.v1.ExerciseService.GetExercise:output_type -> gymlog.v1.Exercise
+	6,  // 64: gymlog.v1.ExerciseService.UpdateExercise:output_type -> gymlog.v1.Exercise
+	35, // 65: gymlog.v1.ExerciseService.DeleteExercise:output_type -> google.protobuf.Empty
+	12, // 66: gymlog.v1.ExerciseService.ListExercises:output_type -> gymlog.v1.ListExercisesResponse
+	15, // 67: gymlog.v1.WorkoutService.CreateWorkout:output_type -> gymlog.v1.Workout
+	15, // 68: gymlog.v1.WorkoutService.GetWorkout:output_type -> gymlog.v1.Workout
+	15, // 69: gymlog.v1.WorkoutService.UpdateWorkout:output_type -> gymlog.v1.Workout
+	35, // 70: gymlog.v1.WorkoutService.DeleteWorkout:output_type -> google.protobuf.Empty
+	21, // 71: gymlog.v1.WorkoutService.ListWorkouts:output_type -> gymlog.v1.ListWorkoutsResponse
+	24, // 72: gymlog.v1.WorkoutSessionService.CreateWorkoutSession:output_type -> gymlog.v1.WorkoutSession
+	24, // 73: gymlog.v1.WorkoutSessionService.GetWorkoutSession:output_type -> gymlog.v1.WorkoutSession
+	24, // 74: gymlog.v1.WorkoutSessionService.UpdateWorkoutSession:output_type -> gymlog.v1.WorkoutSession
+	35, // 75: gymlog.v1.WorkoutSessionService.DeleteWorkoutSession:output_type -> google.protobuf.Empty
+	30, // 76: gymlog.v1.WorkoutSessionService.ListWorkoutSessions:output_type -> gymlog.v1.ListWorkoutSessionsResponse
+	24, // 77: gymlog.v1.WorkoutSessionService.StartExercise:output_type -> gymlog.v1.WorkoutSession
+	24, // 78: gymlog.v1.WorkoutSessionService.FinishExercise:output_type -> gymlog.v1.WorkoutSession
+	24, // 79: gymlog.v1.WorkoutSessionService.UpdateSet:output_type -> gymlog.v1.WorkoutSession
+	58, // [58:80] is the sub-list for method output_type
+	36, // [36:58] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_proto_gymlog_v1_gymlog_proto_init() }
@@ -1853,9 +2986,9 @@ func file_proto_gymlog_v1_gymlog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_gymlog_v1_gymlog_proto_rawDesc), len(file_proto_gymlog_v1_gymlog_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   34,
 			NumExtensions: 0,
-			NumServices:   3,
+			NumServices:   4,
 		},
 		GoTypes:           file_proto_gymlog_v1_gymlog_proto_goTypes,
 		DependencyIndexes: file_proto_gymlog_v1_gymlog_proto_depIdxs,

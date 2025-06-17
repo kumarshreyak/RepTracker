@@ -746,3 +746,371 @@ var WorkoutService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/gymlog/v1/gymlog.proto",
 }
+
+const (
+	WorkoutSessionService_CreateWorkoutSession_FullMethodName = "/gymlog.v1.WorkoutSessionService/CreateWorkoutSession"
+	WorkoutSessionService_GetWorkoutSession_FullMethodName    = "/gymlog.v1.WorkoutSessionService/GetWorkoutSession"
+	WorkoutSessionService_UpdateWorkoutSession_FullMethodName = "/gymlog.v1.WorkoutSessionService/UpdateWorkoutSession"
+	WorkoutSessionService_DeleteWorkoutSession_FullMethodName = "/gymlog.v1.WorkoutSessionService/DeleteWorkoutSession"
+	WorkoutSessionService_ListWorkoutSessions_FullMethodName  = "/gymlog.v1.WorkoutSessionService/ListWorkoutSessions"
+	WorkoutSessionService_StartExercise_FullMethodName        = "/gymlog.v1.WorkoutSessionService/StartExercise"
+	WorkoutSessionService_FinishExercise_FullMethodName       = "/gymlog.v1.WorkoutSessionService/FinishExercise"
+	WorkoutSessionService_UpdateSet_FullMethodName            = "/gymlog.v1.WorkoutSessionService/UpdateSet"
+)
+
+// WorkoutSessionServiceClient is the client API for WorkoutSessionService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type WorkoutSessionServiceClient interface {
+	CreateWorkoutSession(ctx context.Context, in *CreateWorkoutSessionRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
+	GetWorkoutSession(ctx context.Context, in *GetWorkoutSessionRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
+	UpdateWorkoutSession(ctx context.Context, in *UpdateWorkoutSessionRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
+	DeleteWorkoutSession(ctx context.Context, in *DeleteWorkoutSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListWorkoutSessions(ctx context.Context, in *ListWorkoutSessionsRequest, opts ...grpc.CallOption) (*ListWorkoutSessionsResponse, error)
+	StartExercise(ctx context.Context, in *StartExerciseRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
+	FinishExercise(ctx context.Context, in *FinishExerciseRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
+	UpdateSet(ctx context.Context, in *UpdateSetRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
+}
+
+type workoutSessionServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewWorkoutSessionServiceClient(cc grpc.ClientConnInterface) WorkoutSessionServiceClient {
+	return &workoutSessionServiceClient{cc}
+}
+
+func (c *workoutSessionServiceClient) CreateWorkoutSession(ctx context.Context, in *CreateWorkoutSessionRequest, opts ...grpc.CallOption) (*WorkoutSession, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkoutSession)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_CreateWorkoutSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) GetWorkoutSession(ctx context.Context, in *GetWorkoutSessionRequest, opts ...grpc.CallOption) (*WorkoutSession, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkoutSession)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_GetWorkoutSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) UpdateWorkoutSession(ctx context.Context, in *UpdateWorkoutSessionRequest, opts ...grpc.CallOption) (*WorkoutSession, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkoutSession)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_UpdateWorkoutSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) DeleteWorkoutSession(ctx context.Context, in *DeleteWorkoutSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_DeleteWorkoutSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) ListWorkoutSessions(ctx context.Context, in *ListWorkoutSessionsRequest, opts ...grpc.CallOption) (*ListWorkoutSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWorkoutSessionsResponse)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_ListWorkoutSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) StartExercise(ctx context.Context, in *StartExerciseRequest, opts ...grpc.CallOption) (*WorkoutSession, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkoutSession)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_StartExercise_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) FinishExercise(ctx context.Context, in *FinishExerciseRequest, opts ...grpc.CallOption) (*WorkoutSession, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkoutSession)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_FinishExercise_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workoutSessionServiceClient) UpdateSet(ctx context.Context, in *UpdateSetRequest, opts ...grpc.CallOption) (*WorkoutSession, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkoutSession)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_UpdateSet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// WorkoutSessionServiceServer is the server API for WorkoutSessionService service.
+// All implementations must embed UnimplementedWorkoutSessionServiceServer
+// for forward compatibility.
+type WorkoutSessionServiceServer interface {
+	CreateWorkoutSession(context.Context, *CreateWorkoutSessionRequest) (*WorkoutSession, error)
+	GetWorkoutSession(context.Context, *GetWorkoutSessionRequest) (*WorkoutSession, error)
+	UpdateWorkoutSession(context.Context, *UpdateWorkoutSessionRequest) (*WorkoutSession, error)
+	DeleteWorkoutSession(context.Context, *DeleteWorkoutSessionRequest) (*emptypb.Empty, error)
+	ListWorkoutSessions(context.Context, *ListWorkoutSessionsRequest) (*ListWorkoutSessionsResponse, error)
+	StartExercise(context.Context, *StartExerciseRequest) (*WorkoutSession, error)
+	FinishExercise(context.Context, *FinishExerciseRequest) (*WorkoutSession, error)
+	UpdateSet(context.Context, *UpdateSetRequest) (*WorkoutSession, error)
+	mustEmbedUnimplementedWorkoutSessionServiceServer()
+}
+
+// UnimplementedWorkoutSessionServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedWorkoutSessionServiceServer struct{}
+
+func (UnimplementedWorkoutSessionServiceServer) CreateWorkoutSession(context.Context, *CreateWorkoutSessionRequest) (*WorkoutSession, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateWorkoutSession not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) GetWorkoutSession(context.Context, *GetWorkoutSessionRequest) (*WorkoutSession, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkoutSession not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) UpdateWorkoutSession(context.Context, *UpdateWorkoutSessionRequest) (*WorkoutSession, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkoutSession not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) DeleteWorkoutSession(context.Context, *DeleteWorkoutSessionRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkoutSession not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) ListWorkoutSessions(context.Context, *ListWorkoutSessionsRequest) (*ListWorkoutSessionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWorkoutSessions not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) StartExercise(context.Context, *StartExerciseRequest) (*WorkoutSession, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartExercise not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) FinishExercise(context.Context, *FinishExerciseRequest) (*WorkoutSession, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FinishExercise not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) UpdateSet(context.Context, *UpdateSetRequest) (*WorkoutSession, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSet not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) mustEmbedUnimplementedWorkoutSessionServiceServer() {}
+func (UnimplementedWorkoutSessionServiceServer) testEmbeddedByValue()                               {}
+
+// UnsafeWorkoutSessionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WorkoutSessionServiceServer will
+// result in compilation errors.
+type UnsafeWorkoutSessionServiceServer interface {
+	mustEmbedUnimplementedWorkoutSessionServiceServer()
+}
+
+func RegisterWorkoutSessionServiceServer(s grpc.ServiceRegistrar, srv WorkoutSessionServiceServer) {
+	// If the following call pancis, it indicates UnimplementedWorkoutSessionServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&WorkoutSessionService_ServiceDesc, srv)
+}
+
+func _WorkoutSessionService_CreateWorkoutSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateWorkoutSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).CreateWorkoutSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_CreateWorkoutSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).CreateWorkoutSession(ctx, req.(*CreateWorkoutSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_GetWorkoutSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkoutSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).GetWorkoutSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_GetWorkoutSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).GetWorkoutSession(ctx, req.(*GetWorkoutSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_UpdateWorkoutSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWorkoutSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).UpdateWorkoutSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_UpdateWorkoutSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).UpdateWorkoutSession(ctx, req.(*UpdateWorkoutSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_DeleteWorkoutSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorkoutSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).DeleteWorkoutSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_DeleteWorkoutSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).DeleteWorkoutSession(ctx, req.(*DeleteWorkoutSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_ListWorkoutSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkoutSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).ListWorkoutSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_ListWorkoutSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).ListWorkoutSessions(ctx, req.(*ListWorkoutSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_StartExercise_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartExerciseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).StartExercise(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_StartExercise_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).StartExercise(ctx, req.(*StartExerciseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_FinishExercise_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishExerciseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).FinishExercise(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_FinishExercise_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).FinishExercise(ctx, req.(*FinishExerciseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkoutSessionService_UpdateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).UpdateSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_UpdateSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).UpdateSet(ctx, req.(*UpdateSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// WorkoutSessionService_ServiceDesc is the grpc.ServiceDesc for WorkoutSessionService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var WorkoutSessionService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "gymlog.v1.WorkoutSessionService",
+	HandlerType: (*WorkoutSessionServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateWorkoutSession",
+			Handler:    _WorkoutSessionService_CreateWorkoutSession_Handler,
+		},
+		{
+			MethodName: "GetWorkoutSession",
+			Handler:    _WorkoutSessionService_GetWorkoutSession_Handler,
+		},
+		{
+			MethodName: "UpdateWorkoutSession",
+			Handler:    _WorkoutSessionService_UpdateWorkoutSession_Handler,
+		},
+		{
+			MethodName: "DeleteWorkoutSession",
+			Handler:    _WorkoutSessionService_DeleteWorkoutSession_Handler,
+		},
+		{
+			MethodName: "ListWorkoutSessions",
+			Handler:    _WorkoutSessionService_ListWorkoutSessions_Handler,
+		},
+		{
+			MethodName: "StartExercise",
+			Handler:    _WorkoutSessionService_StartExercise_Handler,
+		},
+		{
+			MethodName: "FinishExercise",
+			Handler:    _WorkoutSessionService_FinishExercise_Handler,
+		},
+		{
+			MethodName: "UpdateSet",
+			Handler:    _WorkoutSessionService_UpdateSet_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/gymlog/v1/gymlog.proto",
+}

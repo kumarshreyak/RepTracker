@@ -20,10 +20,11 @@ import (
 )
 
 type Server struct {
-	userService     *services.UserService
-	exerciseService *services.ExerciseService
-	workoutService  *services.WorkoutService
-	db              *database.MongoDB
+	userService           *services.UserService
+	exerciseService       *services.ExerciseService
+	workoutService        *services.WorkoutService
+	workoutSessionService *services.WorkoutSessionService
+	db                    *database.MongoDB
 }
 
 type GoogleUserRequest struct {
@@ -151,12 +152,86 @@ type ListWorkoutsResponse struct {
 	NextPageToken string            `json:"nextPageToken,omitempty"`
 }
 
-func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, db *database.MongoDB) *Server {
+// Workout Session HTTP types
+type WorkoutSessionSetResponse struct {
+	TargetReps      int32      `json:"targetReps"`
+	TargetWeight    float32    `json:"targetWeight"`
+	ActualReps      int32      `json:"actualReps"`
+	ActualWeight    float32    `json:"actualWeight"`
+	DurationSeconds float32    `json:"durationSeconds"`
+	Distance        float32    `json:"distance"`
+	Notes           string     `json:"notes"`
+	Completed       bool       `json:"completed"`
+	StartedAt       *time.Time `json:"startedAt,omitempty"`
+	FinishedAt      *time.Time `json:"finishedAt,omitempty"`
+}
+
+type WorkoutSessionExerciseResponse struct {
+	ExerciseID  string                      `json:"exerciseId"`
+	Exercise    *ExerciseResponse           `json:"exercise,omitempty"`
+	Sets        []WorkoutSessionSetResponse `json:"sets"`
+	Notes       string                      `json:"notes"`
+	RestSeconds int32                       `json:"restSeconds"`
+	Completed   bool                        `json:"completed"`
+	StartedAt   *time.Time                  `json:"startedAt,omitempty"`
+	FinishedAt  *time.Time                  `json:"finishedAt,omitempty"`
+}
+
+type WorkoutSessionResponse struct {
+	ID              string                           `json:"id"`
+	UserID          string                           `json:"userId"`
+	RoutineID       string                           `json:"routineId"`
+	Name            string                           `json:"name"`
+	Description     string                           `json:"description"`
+	Exercises       []WorkoutSessionExerciseResponse `json:"exercises"`
+	StartedAt       *time.Time                       `json:"startedAt,omitempty"`
+	FinishedAt      *time.Time                       `json:"finishedAt,omitempty"`
+	DurationSeconds int32                            `json:"durationSeconds"`
+	Notes           string                           `json:"notes"`
+	IsActive        bool                             `json:"isActive"`
+	CreatedAt       time.Time                        `json:"createdAt"`
+	UpdatedAt       time.Time                        `json:"updatedAt"`
+}
+
+type CreateWorkoutSessionRequest struct {
+	UserID      string `json:"userId"`
+	RoutineID   string `json:"routineId"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Notes       string `json:"notes,omitempty"`
+}
+
+type UpdateWorkoutSessionRequest struct {
+	Name            string                           `json:"name,omitempty"`
+	Description     string                           `json:"description,omitempty"`
+	Exercises       []WorkoutSessionExerciseResponse `json:"exercises,omitempty"`
+	FinishedAt      *time.Time                       `json:"finishedAt,omitempty"`
+	DurationSeconds int32                            `json:"durationSeconds,omitempty"`
+	Notes           string                           `json:"notes,omitempty"`
+	IsActive        *bool                            `json:"isActive,omitempty"`
+}
+
+type ListWorkoutSessionsResponse struct {
+	Sessions      []WorkoutSessionResponse `json:"sessions"`
+	NextPageToken string                   `json:"nextPageToken,omitempty"`
+}
+
+type UpdateSetRequest struct {
+	ActualReps      int32   `json:"actualReps"`
+	ActualWeight    float32 `json:"actualWeight"`
+	DurationSeconds float32 `json:"durationSeconds,omitempty"`
+	Distance        float32 `json:"distance,omitempty"`
+	Notes           string  `json:"notes,omitempty"`
+	Completed       bool    `json:"completed"`
+}
+
+func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, db *database.MongoDB) *Server {
 	return &Server{
-		userService:     userService,
-		exerciseService: exerciseService,
-		workoutService:  workoutService,
-		db:              db,
+		userService:           userService,
+		exerciseService:       exerciseService,
+		workoutService:        workoutService,
+		workoutSessionService: workoutSessionService,
+		db:                    db,
 	}
 }
 
@@ -185,6 +260,16 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/workouts/{id}/start", s.handleStartWorkout).Methods("GET")
 	api.HandleFunc("/workouts/{id}", s.handleUpdateWorkout).Methods("PUT")
 	api.HandleFunc("/workouts/{id}", s.handleDeleteWorkout).Methods("DELETE")
+
+	// Workout Session routes
+	api.HandleFunc("/workout-sessions", s.handleListWorkoutSessions).Methods("GET")
+	api.HandleFunc("/workout-sessions", s.handleCreateWorkoutSession).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}", s.handleGetWorkoutSession).Methods("GET")
+	api.HandleFunc("/workout-sessions/{id}", s.handleUpdateWorkoutSession).Methods("PUT")
+	api.HandleFunc("/workout-sessions/{id}", s.handleDeleteWorkoutSession).Methods("DELETE")
+	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/start", s.handleStartExercise).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/finish", s.handleFinishExercise).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}", s.handleUpdateSet).Methods("PUT")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -535,6 +620,414 @@ func (s *Server) handleDeleteExercise(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Helper function for workout session protobuf conversion
+func workoutSessionToResponse(pb *pb.WorkoutSession) WorkoutSessionResponse {
+	exercises := make([]WorkoutSessionExerciseResponse, len(pb.Exercises))
+	for i, ex := range pb.Exercises {
+		sets := make([]WorkoutSessionSetResponse, len(ex.Sets))
+		for j, set := range ex.Sets {
+			var startedAt, finishedAt *time.Time
+			if set.StartedAt != nil {
+				t := set.StartedAt.AsTime()
+				startedAt = &t
+			}
+			if set.FinishedAt != nil {
+				t := set.FinishedAt.AsTime()
+				finishedAt = &t
+			}
+
+			sets[j] = WorkoutSessionSetResponse{
+				TargetReps:      set.TargetReps,
+				TargetWeight:    set.TargetWeight,
+				ActualReps:      set.ActualReps,
+				ActualWeight:    set.ActualWeight,
+				DurationSeconds: set.DurationSeconds,
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+				Completed:       set.Completed,
+				StartedAt:       startedAt,
+				FinishedAt:      finishedAt,
+			}
+		}
+
+		var exerciseStartedAt, exerciseFinishedAt *time.Time
+		if ex.StartedAt != nil {
+			t := ex.StartedAt.AsTime()
+			exerciseStartedAt = &t
+		}
+		if ex.FinishedAt != nil {
+			t := ex.FinishedAt.AsTime()
+			exerciseFinishedAt = &t
+		}
+
+		exercises[i] = WorkoutSessionExerciseResponse{
+			ExerciseID:  ex.ExerciseId,
+			Sets:        sets,
+			Notes:       ex.Notes,
+			RestSeconds: ex.RestSeconds,
+			Completed:   ex.Completed,
+			StartedAt:   exerciseStartedAt,
+			FinishedAt:  exerciseFinishedAt,
+		}
+
+		if ex.Exercise != nil {
+			exerciseResp := exerciseToResponse(ex.Exercise)
+			exercises[i].Exercise = &exerciseResp
+		}
+	}
+
+	var startedAt, finishedAt *time.Time
+	if pb.StartedAt != nil {
+		t := pb.StartedAt.AsTime()
+		startedAt = &t
+	}
+	if pb.FinishedAt != nil {
+		t := pb.FinishedAt.AsTime()
+		finishedAt = &t
+	}
+
+	return WorkoutSessionResponse{
+		ID:              pb.Id,
+		UserID:          pb.UserId,
+		RoutineID:       pb.RoutineId,
+		Name:            pb.Name,
+		Description:     pb.Description,
+		Exercises:       exercises,
+		StartedAt:       startedAt,
+		FinishedAt:      finishedAt,
+		DurationSeconds: pb.DurationSeconds,
+		Notes:           pb.Notes,
+		IsActive:        pb.IsActive,
+		CreatedAt:       pb.CreatedAt.AsTime(),
+		UpdatedAt:       pb.UpdatedAt.AsTime(),
+	}
+}
+
+// Workout Session HTTP handlers
+func (s *Server) handleListWorkoutSessions(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	// Parse query parameters
+	pageSize := int32(50) // default
+	if ps := r.URL.Query().Get("pageSize"); ps != "" {
+		if parsed, err := strconv.ParseInt(ps, 10, 32); err == nil {
+			pageSize = int32(parsed)
+		}
+	}
+
+	pageToken := r.URL.Query().Get("pageToken")
+	userID := r.URL.Query().Get("userId")
+	activeOnly := r.URL.Query().Get("activeOnly") == "true"
+
+	req := &pb.ListWorkoutSessionsRequest{
+		UserId:     userID,
+		PageSize:   pageSize,
+		PageToken:  pageToken,
+		ActiveOnly: activeOnly,
+	}
+
+	// Parse date filters if provided
+	if startDate := r.URL.Query().Get("startDate"); startDate != "" {
+		if t, err := time.Parse(time.RFC3339, startDate); err == nil {
+			req.StartDate = timestamppb.New(t)
+		}
+	}
+	if endDate := r.URL.Query().Get("endDate"); endDate != "" {
+		if t, err := time.Parse(time.RFC3339, endDate); err == nil {
+			req.EndDate = timestamppb.New(t)
+		}
+	}
+
+	resp, err := s.workoutSessionService.ListWorkoutSessions(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to list workout sessions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	sessions := make([]WorkoutSessionResponse, len(resp.Sessions))
+	for i, session := range resp.Sessions {
+		sessions[i] = workoutSessionToResponse(session)
+	}
+
+	response := ListWorkoutSessionsResponse{
+		Sessions:      sessions,
+		NextPageToken: resp.NextPageToken,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleCreateWorkoutSession(w http.ResponseWriter, r *http.Request) {
+	var req CreateWorkoutSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Failed to decode workout session request body: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("🏃 Create workout session request received: %+v", req)
+
+	ctx := context.Background()
+
+	pbReq := &pb.CreateWorkoutSessionRequest{
+		UserId:      req.UserID,
+		RoutineId:   req.RoutineID,
+		Name:        req.Name,
+		Description: req.Description,
+		Notes:       req.Notes,
+	}
+
+	session, err := s.workoutSessionService.CreateWorkoutSession(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to create workout session: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to create workout session: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+
+	log.Printf("✅ Workout session created successfully: ID=%s", session.Id)
+}
+
+func (s *Server) handleGetWorkoutSession(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	ctx := context.Background()
+	req := &pb.GetWorkoutSessionRequest{Id: id}
+
+	session, err := s.workoutSessionService.GetWorkoutSession(ctx, req)
+	if err != nil {
+		http.Error(w, "Workout session not found", http.StatusNotFound)
+		return
+	}
+
+	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleUpdateWorkoutSession(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var req UpdateWorkoutSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+
+	pbReq := &pb.UpdateWorkoutSessionRequest{
+		Id:              id,
+		Name:            req.Name,
+		Description:     req.Description,
+		DurationSeconds: req.DurationSeconds,
+		Notes:           req.Notes,
+	}
+
+	if req.FinishedAt != nil {
+		pbReq.FinishedAt = timestamppb.New(*req.FinishedAt)
+	}
+
+	if req.IsActive != nil {
+		pbReq.IsActive = *req.IsActive
+	}
+
+	// Convert exercises if provided
+	if len(req.Exercises) > 0 {
+		exercises := make([]*pb.WorkoutSessionExercise, len(req.Exercises))
+		for i, ex := range req.Exercises {
+			sets := make([]*pb.WorkoutSessionSet, len(ex.Sets))
+			for j, set := range ex.Sets {
+				var startedAt, finishedAt *timestamppb.Timestamp
+				if set.StartedAt != nil {
+					startedAt = timestamppb.New(*set.StartedAt)
+				}
+				if set.FinishedAt != nil {
+					finishedAt = timestamppb.New(*set.FinishedAt)
+				}
+
+				sets[j] = &pb.WorkoutSessionSet{
+					TargetReps:      set.TargetReps,
+					TargetWeight:    set.TargetWeight,
+					ActualReps:      set.ActualReps,
+					ActualWeight:    set.ActualWeight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+					Completed:       set.Completed,
+					StartedAt:       startedAt,
+					FinishedAt:      finishedAt,
+				}
+			}
+
+			var exerciseStartedAt, exerciseFinishedAt *timestamppb.Timestamp
+			if ex.StartedAt != nil {
+				exerciseStartedAt = timestamppb.New(*ex.StartedAt)
+			}
+			if ex.FinishedAt != nil {
+				exerciseFinishedAt = timestamppb.New(*ex.FinishedAt)
+			}
+
+			exercises[i] = &pb.WorkoutSessionExercise{
+				ExerciseId:  ex.ExerciseID,
+				Sets:        sets,
+				Notes:       ex.Notes,
+				RestSeconds: ex.RestSeconds,
+				Completed:   ex.Completed,
+				StartedAt:   exerciseStartedAt,
+				FinishedAt:  exerciseFinishedAt,
+			}
+		}
+		pbReq.Exercises = exercises
+	}
+
+	session, err := s.workoutSessionService.UpdateWorkoutSession(ctx, pbReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update workout session: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleDeleteWorkoutSession(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	ctx := context.Background()
+	req := &pb.DeleteWorkoutSessionRequest{Id: id}
+
+	_, err := s.workoutSessionService.DeleteWorkoutSession(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to delete workout session: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleStartExercise(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sessionID := vars["id"]
+	exerciseIndexStr := vars["exerciseIndex"]
+
+	exerciseIndex, err := strconv.ParseInt(exerciseIndexStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid exercise index", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	req := &pb.StartExerciseRequest{
+		SessionId:     sessionID,
+		ExerciseIndex: int32(exerciseIndex),
+	}
+
+	session, err := s.workoutSessionService.StartExercise(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to start exercise: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleFinishExercise(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sessionID := vars["id"]
+	exerciseIndexStr := vars["exerciseIndex"]
+
+	exerciseIndex, err := strconv.ParseInt(exerciseIndexStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid exercise index", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body for notes
+	var reqBody struct {
+		Notes string `json:"notes,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		// Notes are optional, so ignore decode errors
+	}
+
+	ctx := context.Background()
+	req := &pb.FinishExerciseRequest{
+		SessionId:     sessionID,
+		ExerciseIndex: int32(exerciseIndex),
+		Notes:         reqBody.Notes,
+	}
+
+	session, err := s.workoutSessionService.FinishExercise(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to finish exercise: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleUpdateSet(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sessionID := vars["id"]
+	exerciseIndexStr := vars["exerciseIndex"]
+	setIndexStr := vars["setIndex"]
+
+	exerciseIndex, err := strconv.ParseInt(exerciseIndexStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid exercise index", http.StatusBadRequest)
+		return
+	}
+
+	setIndex, err := strconv.ParseInt(setIndexStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid set index", http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateSetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	pbReq := &pb.UpdateSetRequest{
+		SessionId:       sessionID,
+		ExerciseIndex:   int32(exerciseIndex),
+		SetIndex:        int32(setIndex),
+		ActualReps:      req.ActualReps,
+		ActualWeight:    req.ActualWeight,
+		DurationSeconds: req.DurationSeconds,
+		Distance:        req.Distance,
+		Notes:           req.Notes,
+		Completed:       req.Completed,
+	}
+
+	session, err := s.workoutSessionService.UpdateSet(ctx, pbReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update set: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // Workout HTTP handlers

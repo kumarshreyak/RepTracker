@@ -40,6 +40,7 @@ interface WorkoutExercise {
 
 interface ActiveWorkout {
   id?: string;
+  sessionId?: string; // Track the workout session ID
   routineId: string;
   routineName: string;
   routineDescription?: string;
@@ -92,24 +93,53 @@ export default function ActiveWorkoutScreen() {
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
       
       // Fetch the specific routine/workout with populated exercise details
-      const response = await fetch(`${API_BASE_URL}/api/workouts/${routineId}/start`);
+      const routineResponse = await fetch(`${API_BASE_URL}/api/workouts/${routineId}/start`);
       
-      if (!response.ok) {
+      if (!routineResponse.ok) {
         throw new Error('Failed to load routine');
       }
 
-      const data = await response.json();
+      const routineData = await routineResponse.json();
       
-      // Convert the routine data to active workout format
+      // Create a workout session from the routine
+      const sessionData = {
+        userId: user?.id,
+        routineId: routineData.id,
+        name: `${routineData.name} - ${new Date().toLocaleDateString()}`,
+        description: `Active workout session for ${routineData.name}`,
+        notes: '',
+      };
+
+      const sessionResponse = await fetch(`${API_BASE_URL}/api/workout-sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sessionData),
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create workout session');
+      }
+
+      const sessionResult = await sessionResponse.json();
+      console.log('Created workout session:', sessionResult);
+      
+      // Convert the session data to active workout format
       const workout: ActiveWorkout = {
-        routineId: data.id,
-        routineName: data.name,
-        routineDescription: data.description,
-        exercises: data.exercises.map((ex: any) => ({
+        sessionId: sessionResult.id,
+        routineId: routineData.id,
+        routineName: routineData.name,
+        routineDescription: routineData.description,
+        exercises: sessionResult.exercises.map((ex: any) => ({
           ...ex,
           completed: false,
           sets: ex.sets.map((set: any) => ({
-            ...set,
+            reps: set.targetReps || set.reps,
+            weight: set.targetWeight || set.weight,
+            durationSeconds: set.durationSeconds,
+            distance: set.distance,
+            notes: set.notes,
             completed: false,
           })),
         })),
@@ -118,8 +148,8 @@ export default function ActiveWorkoutScreen() {
 
       setActiveWorkout(workout);
     } catch (err) {
-      console.error('Error loading routine:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load routine');
+      console.error('Error loading routine and starting session:', err);
+      setError(err instanceof Error ? err.message : 'Failed to start workout session');
     } finally {
       setLoading(false);
     }
@@ -137,9 +167,13 @@ export default function ActiveWorkoutScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const toggleSetComplete = (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
+  const toggleSetComplete = async (exerciseIndex: number, setIndex: number) => {
+    if (!activeWorkout || !activeWorkout.sessionId) return;
 
+    const currentSet = activeWorkout.exercises[exerciseIndex].sets[setIndex];
+    const newCompletedState = !currentSet.completed;
+
+    // Update local state immediately for responsive UI
     setActiveWorkout(prev => {
       if (!prev) return prev;
 
@@ -149,23 +183,62 @@ export default function ActiveWorkoutScreen() {
       updated.exercises[exerciseIndex].sets = [...prev.exercises[exerciseIndex].sets];
       updated.exercises[exerciseIndex].sets[setIndex] = {
         ...prev.exercises[exerciseIndex].sets[setIndex],
-        completed: !prev.exercises[exerciseIndex].sets[setIndex].completed,
+        completed: newCompletedState,
       };
 
       // Check if all sets in exercise are completed
       const allSetsCompleted = updated.exercises[exerciseIndex].sets.every(set => set.completed);
       updated.exercises[exerciseIndex].completed = allSetsCompleted;
 
-      // Haptic feedback
-      Vibration.vibrate(50);
-
       return updated;
     });
+
+    // Haptic feedback
+    Vibration.vibrate(50);
+
+    // Update the backend workout session
+    try {
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      
+      const updateData = {
+        actualReps: currentSet.reps,
+        actualWeight: currentSet.weight,
+        durationSeconds: currentSet.durationSeconds || 0,
+        distance: currentSet.distance || 0,
+        notes: currentSet.notes || '',
+        completed: newCompletedState,
+      };
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/sets/${setIndex}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Failed to update set in backend');
+        // Optionally revert the local state change here
+      } else {
+        console.log(`Set ${setIndex + 1} of exercise ${exerciseIndex + 1} updated successfully`);
+      }
+    } catch (error) {
+      console.error('Error updating set:', error);
+      // Optionally revert the local state change here
+    }
   };
 
-  const toggleExerciseComplete = (exerciseIndex: number) => {
-    if (!activeWorkout) return;
+  const toggleExerciseComplete = async (exerciseIndex: number) => {
+    if (!activeWorkout || !activeWorkout.sessionId) return;
 
+    const currentExercise = activeWorkout.exercises[exerciseIndex];
+    const newCompletedState = !currentExercise.completed;
+
+    // Update local state immediately for responsive UI
     setActiveWorkout(prev => {
       if (!prev) return prev;
 
@@ -173,7 +246,6 @@ export default function ActiveWorkoutScreen() {
       updated.exercises = [...prev.exercises];
       updated.exercises[exerciseIndex] = { ...prev.exercises[exerciseIndex] };
       
-      const newCompletedState = !updated.exercises[exerciseIndex].completed;
       updated.exercises[exerciseIndex].completed = newCompletedState;
       
       // Update all sets to match exercise completion state
@@ -182,11 +254,65 @@ export default function ActiveWorkoutScreen() {
         completed: newCompletedState,
       }));
 
-      // Haptic feedback
-      Vibration.vibrate(newCompletedState ? [0, 100, 50, 100] : 50);
-
       return updated;
     });
+
+    // Haptic feedback
+    Vibration.vibrate(newCompletedState ? [0, 100, 50, 100] : 50);
+
+    // Update all sets in the backend to match the exercise completion state
+    try {
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      
+      // Update each set in the exercise
+      const setUpdatePromises = currentExercise.sets.map(async (set, setIndex) => {
+        const updateData = {
+          actualReps: set.reps,
+          actualWeight: set.weight,
+          durationSeconds: set.durationSeconds || 0,
+          distance: set.distance || 0,
+          notes: set.notes || '',
+          completed: newCompletedState,
+        };
+
+        return fetch(
+          `${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/sets/${setIndex}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+          }
+        );
+      });
+
+      const results = await Promise.all(setUpdatePromises);
+      const failedUpdates = results.filter(response => !response.ok);
+      
+      if (failedUpdates.length > 0) {
+        console.error(`Failed to update ${failedUpdates.length} sets in backend`);
+      } else {
+        console.log(`Exercise ${exerciseIndex + 1} completion state updated successfully`);
+      }
+
+      // Mark the exercise as finished/started in the backend
+      if (newCompletedState) {
+        await fetch(
+          `${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/finish`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notes: '' }),
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error updating exercise completion:', error);
+      // Optionally revert the local state change here
+    }
   };
 
   const handleEndWorkout = async () => {
@@ -212,40 +338,51 @@ export default function ActiveWorkoutScreen() {
       const finishedAt = new Date();
       const durationSeconds = Math.floor((finishedAt.getTime() - startTime.getTime()) / 1000);
 
-      // Create a completed workout record
-      const workoutData = {
-        userId: user.id,
-        name: `${activeWorkout.routineName} - ${finishedAt.toLocaleDateString()}`,
-        description: `Workout from routine: ${activeWorkout.routineName}`,
+      // Update the existing session with actual performance data and mark as completed
+      if (!activeWorkout.sessionId) {
+        throw new Error('No active workout session found');
+      }
+      const updateData = {
         exercises: activeWorkout.exercises.map(ex => ({
           exerciseId: ex.exerciseId,
           sets: ex.sets.map(set => ({
-            reps: set.reps,
-            weight: set.weight,
+            targetReps: set.reps,
+            targetWeight: set.weight,
+            actualReps: set.reps, // In this implementation, we're using target as actual
+            actualWeight: set.weight, // In a real app, user would input actual values
             durationSeconds: set.durationSeconds || 0,
             distance: set.distance || 0,
             notes: set.notes || '',
+            completed: set.completed || false,
+            startedAt: startTime.toISOString(),
+            finishedAt: set.completed ? finishedAt.toISOString() : null,
           })),
           notes: ex.notes || '',
           restSeconds: ex.restSeconds || 0,
+          completed: ex.completed || false,
+          startedAt: startTime.toISOString(),
+          finishedAt: ex.completed ? finishedAt.toISOString() : null,
         })),
-        startedAt: startTime.toISOString(),
         finishedAt: finishedAt.toISOString(),
         durationSeconds,
+        isActive: false,
         notes: activeWorkout.notes || `Completed ${activeWorkout.exercises.filter(ex => ex.completed).length}/${activeWorkout.exercises.length} exercises`,
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/workouts`, {
-        method: 'POST',
+      // Update the session to mark it as completed
+      const updateResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(workoutData),
+        body: JSON.stringify(updateData),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save workout');
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update workout session');
       }
+
+      console.log('Workout session completed successfully');
 
       // Navigate back to home with success message
       router.replace('/(tabs)');
@@ -260,10 +397,10 @@ export default function ActiveWorkoutScreen() {
       }, 500);
 
     } catch (err) {
-      console.error('Error saving workout:', err);
+      console.error('Error saving workout session:', err);
       Alert.alert(
         'Error',
-        'Failed to save workout. Please try again.',
+        'Failed to save workout session. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {

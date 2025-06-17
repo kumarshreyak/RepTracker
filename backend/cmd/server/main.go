@@ -39,9 +39,10 @@ func main() {
 	userService := services.NewUserService(db)
 	exerciseService := services.NewExerciseService()
 	workoutService := services.NewWorkoutService()
+	workoutSessionService := services.NewWorkoutSessionService(workoutService, exerciseService)
 
 	// Start HTTP server with all services
-	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, db)
+	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, workoutSessionService, db)
 	log.Println("Starting HTTP server on port 8080...")
 	if err := httpServer.Start("8080"); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)
