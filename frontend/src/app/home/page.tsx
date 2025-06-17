@@ -31,7 +31,7 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/routines?user_id=${backendUser.id}`);
+      const response = await fetch(`/api/workouts?user_id=${backendUser.id}`);
       const data = await response.json();
       
       if (!response.ok) {

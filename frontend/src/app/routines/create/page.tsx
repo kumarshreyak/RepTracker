@@ -80,7 +80,7 @@ export default function CreateRoutinePage() {
         notes: "",
       };
 
-      const response = await fetch('/api/routines', {
+      const response = await fetch('workouts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

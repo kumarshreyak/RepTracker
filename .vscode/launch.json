@@ -1,25 +1,47 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Frontend (Next.js)",
-            "type": "node-terminal",
+            "name": "Launch Frontend (React Native)",
+            "type": "reactnative",
             "request": "launch",
-            "command": "npm run dev",
-            "cwd": "${workspaceFolder}/frontend",
+            "platform": "exponent",
+            "cwd": "${workspaceFolder}/frontend-native",
+            "expoHostType": "lan",
+            "enableDebug": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Frontend (React Native) - Web",
+            "type": "reactnative",
+            "request": "launch",
+            "platform": "exponent",
+            "cwd": "${workspaceFolder}/frontend-native",
+            "expoHostType": "lan",
+            "enableDebug": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Frontend (Expo iOS)",
+            "type": "node-terminal", 
+            "request": "launch",
+            "command": "npx expo run:ios",
+            "cwd": "${workspaceFolder}/frontend-native",
             "console": "integratedTerminal",
-            "group": "build",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
                 "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
+                "panel": "shared"
             }
+        },
+        {
+            "name": "Attach to React Native (Metro)",
+            "type": "reactnative",
+            "request": "attach",
+            "cwd": "${workspaceFolder}/frontend-native",
+            "port": 8081,
+            "enableDebug": true
         },
         {
             "name": "Launch Backend (Go)",
@@ -35,31 +57,41 @@
         },
         {
             "name": "Launch Both (Frontend + Backend)",
-            "type": "node-terminal",
+            "type": "reactnative",
             "request": "launch",
-            "command": "npm run dev",
-            "cwd": "${workspaceFolder}/frontend",
+            "platform": "exponent",
+            "cwd": "${workspaceFolder}/frontend-native",
+            "expoHostType": "lan",
+            "enableDebug": true,
             "console": "integratedTerminal",
-            "preLaunchTask": "start-backend",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
+            "preLaunchTask": "start-backend"
         }
     ],
     "compounds": [
         {
             "name": "Launch Full Stack",
-            "configurations": ["Launch Backend (Go)", "Launch Frontend (Next.js)"],
+            "configurations": [
+                "Launch Backend (Go)",
+                "Launch Frontend (React Native)"
+            ],
             "stopAll": true,
             "presentation": {
                 "hidden": false,
                 "group": "GymLog",
                 "order": 1
+            }
+        },
+        {
+            "name": "Launch Full Stack (Web)",
+            "configurations": [
+                "Launch Backend (Go)",
+                "Launch Frontend (React Native) - Web"
+            ],
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "GymLog",
+                "order": 2
             }
         }
     ]
