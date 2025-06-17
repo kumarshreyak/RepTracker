@@ -7,7 +7,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Typography, Button } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -30,30 +30,49 @@ export default function HomeTab() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchRoutines = async () => {
+    console.log('[fetchRoutines] Starting fetch routine...');
+    console.log('[fetchRoutines] User ID:', user?.id);
+    
     if (!user?.id) {
+      console.log('[fetchRoutines] No user ID found, exiting early');
       setLoading(false);
       return;
     }
 
     try {
+      console.log('[fetchRoutines] Setting loading state to true');
       setLoading(true);
       setError(null);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-      const response = await fetch(`${API_BASE_URL}/api/workouts?user_id=${user.id}`);
+      const url = `${API_BASE_URL}/api/workouts?user_id=${user.id}`;
+      console.log('[fetchRoutines] API Base URL:', API_BASE_URL);
+      console.log('[fetchRoutines] Full URL:', url);
+      
+      console.log('[fetchRoutines] Making fetch request...');
+      const response = await fetch(url);
+      console.log('[fetchRoutines] Response received - Status:', response.status);
+      console.log('[fetchRoutines] Response OK:', response.ok);
+      console.log('[fetchRoutines] Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      console.log('[fetchRoutines] Parsing response JSON...');
       const data = await response.json();
+      console.log('[fetchRoutines] Response data:', JSON.stringify(data, null, 2));
       
       if (!response.ok) {
+        console.log('[fetchRoutines] Response not OK, throwing error');
         throw new Error(data.error || "Failed to fetch routines");
       }
       
-      if (data.success) {
-        setRoutines(data.workouts || []);
-      }
+      console.log('[fetchRoutines] Success! Setting routines:', data.workouts?.length || 0, 'routines');
+      setRoutines(data.workouts || []);
     } catch (err) {
-      console.error("Error fetching routines:", err);
+      console.error("[fetchRoutines] Error caught:", err);
+      console.error("[fetchRoutines] Error message:", err instanceof Error ? err.message : 'Unknown error');
+      console.error("[fetchRoutines] Error stack:", err instanceof Error ? err.stack : 'No stack trace');
       setError(err instanceof Error ? err.message : "Failed to fetch routines");
     } finally {
+      console.log('[fetchRoutines] Setting loading state to false');
       setLoading(false);
     }
   };
@@ -63,6 +82,15 @@ export default function HomeTab() {
       fetchRoutines();
     }
   }, [user?.id]);
+
+  // Refresh routines when screen comes back into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user?.id) {
+        fetchRoutines();
+      }
+    }, [user?.id])
+  );
 
   const handleSignOut = async () => {
     await authService.signOut();
