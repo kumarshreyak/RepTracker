@@ -1,36 +1,45 @@
 # Expo Router Navigation Setup
 
-This app now uses [Expo Router](https://docs.expo.dev/tutorial/add-navigation/) for file-based navigation, providing a seamless navigation experience across iOS, Android, and web.
+This app uses [Expo Router](https://docs.expo.dev/tutorial/add-navigation/) for file-based navigation, providing a seamless navigation experience across iOS, Android, and web.
 
 ## Navigation Structure
 
 ```
 app/
-├── _layout.tsx          # Root layout with Stack navigator
-├── index.tsx            # Entry point with authentication routing
-├── sign-in.tsx          # Sign-in screen (unauthenticated)
-├── create-routine.tsx   # Create routine screen (authenticated)
-├── +not-found.tsx       # 404 error page
-└── (tabs)/              # Tab navigator group
-    ├── _layout.tsx      # Tab layout configuration
-    ├── index.tsx        # Home tab (/)
-    └── profile.tsx      # Profile tab (/profile)
+├── _layout.tsx              # Root layout with Stack navigator
+├── index.tsx                # Entry point with authentication routing
+├── (auth)/                  # Authentication group
+│   ├── _layout.tsx          # Auth layout (stack)
+│   └── sign-in.tsx          # Sign-in screen (unauthenticated)
+├── (tabs)/                  # Tab navigator group
+│   ├── _layout.tsx          # Tab layout configuration
+│   ├── index.tsx            # Home tab (/)
+│   └── profile.tsx          # Profile tab (/profile)
+├── create-routine.tsx       # Create routine modal (authenticated)
+├── exercise-search.tsx      # Exercise search modal (authenticated)
+└── +not-found.tsx           # 404 error page
 ```
 
 ## Key Features
 
 ### 🔐 Authentication Flow
 - **Entry Point**: `app/index.tsx` handles initial routing based on auth state
-- **Unauthenticated users**: Redirected to `/sign-in` 
+- **Unauthenticated users**: Redirected to `/(auth)/sign-in` 
 - **Authenticated users**: Redirected to `/(tabs)` (tab navigator)
 - **Route Protection**: Individual routes check auth state and redirect to `/` if needed
 - **Centralized Routing**: All navigation goes through `/` which redirects appropriately
+- **Auth Group**: All authentication-related screens are organized in `(auth)/` group
 
 ### 📱 Tab Navigation
-- **Home Tab** (`/`): Main dashboard with routines and quick actions
-- **Profile Tab** (`/profile`): User profile and account settings
+- **Home Tab** (`/(tabs)`): Main dashboard with routines and quick actions
+- **Profile Tab** (`/(tabs)/profile`): User profile and account settings
 - Custom icons using Ionicons from `@expo/vector-icons`
 - Airtable design system styling
+
+### 🎭 Modal Screens
+- **Create Routine** (`/create-routine`): Modal for creating workout routines
+- **Exercise Search** (`/exercise-search`): Modal for searching and adding exercises
+- Both presented as modals with proper back navigation
 
 ### 🧭 Navigation Methods
 
@@ -61,6 +70,12 @@ import { Link } from 'expo-router';
 - All screens use the Airtable design system components
 - Consistent styling with `getColor()` utility
 - Typography and Button components throughout
+
+### 📝 TypeScript & Typed Routes
+- **Typed Routes**: TypeScript definitions for all routes in `expo-env.d.ts`
+- **Type Safety**: Navigation calls are type-checked
+- **IntelliSense**: Auto-completion for route paths
+- **Path Mapping**: `@/*` imports configured for `src/` directory
 
 ## Adding New Routes
 
@@ -118,12 +133,25 @@ The `+not-found.tsx` route handles any invalid URLs and provides a way to naviga
 
 ## Migration from React Navigation
 
-This app was migrated from React Navigation to Expo Router, removing the following dependencies:
+This app was migrated from React Navigation to Expo Router, with the following changes:
+
+### Removed Dependencies
 - `@react-navigation/native`
 - `@react-navigation/bottom-tabs` 
 - `@react-navigation/stack`
 
-The new system provides better TypeScript support, simpler navigation patterns, and automatic deep linking support.
+### Migrated from Hybrid Approach
+- **Before**: Mixed `app/` routes and `src/screens/` components
+- **After**: Pure file-based routing with all screens inline in `app/` directory
+- **Removed**: Entire `src/screens/` directory
+- **Consolidated**: All screen logic moved directly into route files
+
+### New Benefits
+- Better TypeScript support with typed routes
+- Simpler navigation patterns
+- Automatic deep linking support
+- Cleaner project structure
+- Better performance with file-based routing
 
 ## Troubleshooting
 
