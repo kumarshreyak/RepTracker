@@ -42,11 +42,37 @@ class AuthService {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        this.setState({
-          user,
-          isLoading: false,
-          isAuthenticated: true,
-        });
+        
+        // Validate that user has proper MongoDB ObjectID format (24 characters)
+        const isValidUserId = user.id && typeof user.id === 'string' && user.id.length === 24;
+        const hasSessionToken = user.sessionToken && typeof user.sessionToken === 'string';
+        
+        if (isValidUserId && hasSessionToken) {
+          console.log('Loaded valid stored user:', {
+            userId: user.id,
+            email: user.email,
+            hasSessionToken: !!user.sessionToken,
+          });
+          this.setState({
+            user,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+        } else {
+          console.log('Clearing invalid stored user:', {
+            userId: user.id,
+            userIdLength: user.id?.length,
+            hasSessionToken: !!user.sessionToken,
+            isValidUserId,
+          });
+          // Clear invalid stored user (likely old Google ID format)
+          await AsyncStorage.removeItem('user');
+          this.setState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading stored auth:', error);
@@ -90,26 +116,67 @@ class AuthService {
       if (userInfo.data?.user) {
         const googleUser = userInfo.data.user;
         
-        // Create user in backend (or use local storage for now)
-        // For demo purposes, we'll create a user object
-        const user: User = {
-          id: googleUser.id,
-          email: googleUser.email,
-          name: googleUser.name || '',
-          picture: googleUser.photo || undefined,
-          sessionToken: `session_${Date.now()}`, // In real app, get from backend
-        };
+        try {
+          // Call backend to create or get user
+          const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+          const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              googleId: googleUser.id,
+              email: googleUser.email,
+              name: googleUser.name || '',
+              picture: googleUser.photo || undefined,
+            }),
+          });
 
-        // Store user data
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-        
-        this.setState({
-          user,
-          isLoading: false,
-          isAuthenticated: true,
-        });
+          if (response.ok) {
+            const backendUser = await response.json();
+            console.log('Backend user created/retrieved:', backendUser);
+            
+            // Extract session token from response headers
+            const sessionToken = response.headers.get('X-Session-Token');
+            console.log('Session token from headers:', sessionToken);
+            
+            if (!sessionToken) {
+              console.error('No session token received from backend');
+              this.setState({ isLoading: false });
+              return false;
+            }
+            
+            // Create user object with backend ID and session token
+            const user: User = {
+              id: backendUser.id, // Use backend user ID, not Google ID
+              email: backendUser.email,
+              name: backendUser.name || '',
+              picture: backendUser.picture || undefined,
+              sessionToken: sessionToken,
+            };
 
-        return true;
+            // Store user data
+            await AsyncStorage.setItem('user', JSON.stringify(user));
+            
+            this.setState({
+              user,
+              isLoading: false,
+              isAuthenticated: true,
+            });
+
+            return true;
+          } else {
+            console.error('Failed to create/login user in backend:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('Backend error response:', errorText);
+            this.setState({ isLoading: false });
+            return false;
+          }
+        } catch (backendError) {
+          console.error('Error calling backend during sign-in:', backendError);
+          this.setState({ isLoading: false });
+          return false;
+        }
       } else {
         this.setState({ isLoading: false });
         return false;

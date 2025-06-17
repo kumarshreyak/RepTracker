@@ -7,7 +7,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Typography, Button } from '../src/components';
 import { getColor } from '../src/components/Colors';
@@ -50,42 +50,104 @@ export default function CreateRoutineRoute() {
     loadExercises();
   }, []);
 
+  // Refresh exercises when screen comes back into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadExercises = async () => {
+        try {
+          const saved = await AsyncStorage.getItem('routineExercises');
+          if (saved) {
+            const parsedExercises = JSON.parse(saved);
+            setExercises(parsedExercises);
+          } else {
+            setExercises([]);
+          }
+        } catch (error) {
+          console.error('Error loading exercises from AsyncStorage on focus:', error);
+          setExercises([]);
+        }
+      };
+
+      loadExercises();
+    }, [])
+  );
+
   const handleSaveRoutine = async () => {
-    if (!routineName.trim() || exercises.length === 0 || !user?.id) {
-      Alert.alert(
-        'Validation Error',
-        'Please enter a routine name and add at least one exercise.'
-      );
+    console.log('🚀 handleSaveRoutine: Starting routine save process');
+    console.log('📝 handleSaveRoutine: Current state:', {
+      routineName: routineName.trim(),
+      exercisesCount: exercises.length,
+      userId: user?.id,
+      hasUser: !!user,
+      userObject: user,
+      userIdType: typeof user?.id,
+      userIdLength: user?.id?.length,
+    });
+
+    // Check if user_id is in proper MongoDB ObjectID format (24 characters)
+    const isValidUserId = user?.id && typeof user.id === 'string' && user.id.length === 24;
+    
+    if (!routineName.trim() || exercises.length === 0 || !user?.id || !isValidUserId) {
+      console.log('❌ handleSaveRoutine: Validation failed:', {
+        hasRoutineName: !!routineName.trim(),
+        hasExercises: exercises.length > 0,
+        hasUserId: !!user?.id,
+        isValidUserId: isValidUserId,
+        userIdActual: user?.id,
+        userIdLength: user?.id?.length,
+      });
+      
+      if (!isValidUserId) {
+        Alert.alert(
+          'Authentication Error',
+          'Please sign out and sign in again to refresh your session.'
+        );
+      } else {
+        Alert.alert(
+          'Validation Error',
+          'Please enter a routine name and add at least one exercise.'
+        );
+      }
       return;
     }
 
+    console.log('✅ handleSaveRoutine: Validation passed, proceeding with save');
     setLoading(true);
     
     try {
+      console.log('🔄 handleSaveRoutine: Transforming exercises data');
+      console.log('📊 handleSaveRoutine: Raw exercises:', JSON.stringify(exercises, null, 2));
+
       // Transform exercises to match backend format
       const workoutExercises = exercises.map(exercise => ({
-        exercise_id: exercise.id,
+        exerciseId: exercise.id,
         sets: exercise.sets.map(set => ({
           reps: set.reps,
           weight: set.weight,
-          duration_seconds: 0,
+          durationSeconds: 0,
           distance: 0,
           notes: "",
         })),
         notes: "",
-        rest_seconds: 60,
+        restSeconds: 60,
       }));
 
+      console.log('🔧 handleSaveRoutine: Transformed workout exercises:', JSON.stringify(workoutExercises, null, 2));
+
       const workoutData = {
-        user_id: user.id,
+        userId: user.id,
         name: routineName,
         description: `Workout routine with ${exercises.length} exercises`,
         exercises: workoutExercises,
-        started_at: null,
+        startedAt: null,
         notes: "",
       };
 
+      console.log('📦 handleSaveRoutine: Final workout data:', JSON.stringify(workoutData, null, 2));
+
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      console.log('🌐 handleSaveRoutine: Making API request to:', `${API_BASE_URL}/api/workouts`);
+
       const response = await fetch(`${API_BASE_URL}/api/workouts`, {
         method: 'POST',
         headers: {
@@ -94,15 +156,30 @@ export default function CreateRoutineRoute() {
         body: JSON.stringify(workoutData),
       });
 
+      console.log('📡 handleSaveRoutine: Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
       if (!response.ok) {
-        throw new Error(`Failed to save routine: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ handleSaveRoutine: Response not ok:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText,
+        });
+        throw new Error(`Failed to save routine: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Routine saved successfully:', result);
+      console.log('✅ handleSaveRoutine: Routine saved successfully:', JSON.stringify(result, null, 2));
 
       // Clear AsyncStorage after successful save
+      console.log('🗑️ handleSaveRoutine: Clearing AsyncStorage');
       await AsyncStorage.removeItem('routineExercises');
+      console.log('✅ handleSaveRoutine: AsyncStorage cleared successfully');
       
       Alert.alert(
         'Success',
@@ -110,17 +187,22 @@ export default function CreateRoutineRoute() {
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => {
+              console.log('🔙 handleSaveRoutine: Navigating back');
+              router.back();
+            },
           },
         ]
       );
     } catch (error) {
-      console.error('Error saving routine:', error);
+      console.error('💥 handleSaveRoutine: Error occurred during save:', error);
+      console.error('💥 handleSaveRoutine: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       Alert.alert(
         'Error',
         'Failed to save routine. Please try again.'
       );
     } finally {
+      console.log('🏁 handleSaveRoutine: Setting loading to false');
       setLoading(false);
     }
   };

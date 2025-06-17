@@ -206,6 +206,8 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("🔐 Google auth request: %+v", req)
+
 	ctx := context.Background()
 
 	// Create or update user
@@ -217,9 +219,12 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		req.Picture,
 	)
 	if err != nil {
+		log.Printf("❌ Failed to create/update user: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to create/update user: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("✅ User created/updated: ID=%s, Email=%s", user.ID.Hex(), user.Email)
 
 	// Create session
 	expiresAt := time.Now().Add(24 * time.Hour) // 24 hours from now
@@ -229,11 +234,26 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	session, err := s.userService.CreateSession(ctx, user.ID, req.AccessToken, req.RefreshToken, expiresAt)
+	// Generate access token if not provided (for React Native clients)
+	accessToken := req.AccessToken
+	if accessToken == "" {
+		// Generate a unique session token for React Native clients
+		accessToken = fmt.Sprintf("session_%s_%d", user.ID.Hex(), time.Now().UnixNano())
+		log.Printf("🔑 Generated session token for React Native client: %s", accessToken)
+	} else {
+		log.Printf("🔑 Using provided access token: %s", accessToken)
+	}
+
+	log.Printf("📅 Session expires at: %v", expiresAt)
+
+	session, err := s.userService.CreateSession(ctx, user.ID, accessToken, req.RefreshToken, expiresAt)
 	if err != nil {
+		log.Printf("❌ Failed to create session: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to create session: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("✅ Session created successfully: ID=%s, Token=%s", session.ID.Hex(), session.AccessToken)
 
 	// Return user response
 	response := UserResponse{
@@ -248,9 +268,12 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 
 	// Set session token in response header
 	w.Header().Set("X-Session-Token", session.AccessToken)
+	log.Printf("📤 Setting X-Session-Token header: %s", session.AccessToken)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
+	log.Printf("✅ Google auth response sent successfully")
 }
 
 func (s *Server) handleValidateSession(w http.ResponseWriter, r *http.Request) {
@@ -569,9 +592,13 @@ func (s *Server) handleListWorkouts(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateWorkout(w http.ResponseWriter, r *http.Request) {
 	var req CreateWorkoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ Failed to decode workout request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("🏋️ Create workout request received: %+v", req)
+	log.Printf("👤 User ID from request: '%s' (length: %d)", req.UserID, len(req.UserID))
 
 	ctx := context.Background()
 
@@ -609,11 +636,16 @@ func (s *Server) handleCreateWorkout(w http.ResponseWriter, r *http.Request) {
 		pbReq.StartedAt = timestamppb.New(*req.StartedAt)
 	}
 
+	log.Printf("📋 Calling gRPC CreateWorkout with UserId: '%s'", pbReq.UserId)
+
 	workout, err := s.workoutService.CreateWorkout(ctx, pbReq)
 	if err != nil {
+		log.Printf("❌ gRPC CreateWorkout failed: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to create workout: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("✅ Workout created successfully: ID=%s", workout.Id)
 
 	response := workoutToResponse(workout)
 	w.Header().Set("Content-Type", "application/json")
