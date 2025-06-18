@@ -39,7 +39,7 @@ export default function ProfileTab() {
         </View>
 
         {/* User Profile Card */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <View style={styles.profileHeader}>
             {user.picture && (
               <Image source={{ uri: user.picture }} style={styles.avatar} />
@@ -56,7 +56,7 @@ export default function ProfileTab() {
         </View>
 
         {/* Profile Details */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
             Account Information
           </Typography>
@@ -92,7 +92,7 @@ export default function ProfileTab() {
         </View>
 
         {/* Actions */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
             Actions
           </Typography>
@@ -153,17 +153,9 @@ const styles = StyleSheet.create({
   title: {
     marginBottom: 8,
   },
-  card: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   profileHeader: {
     flexDirection: 'row',

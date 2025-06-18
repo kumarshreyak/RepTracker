@@ -164,7 +164,7 @@ export default function HomeTab() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.headerCard}>
+        <View style={styles.header}>
           <View style={styles.headerContent}>
             <View>
               <Typography variant="heading-large" color="dark" style={styles.welcomeTitle}>
@@ -185,7 +185,7 @@ export default function HomeTab() {
         </View>
 
         {/* User Profile */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Typography variant="heading-default" color="dark" style={styles.sectionTitle}>
             Your Profile
           </Typography>
@@ -242,7 +242,7 @@ export default function HomeTab() {
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Typography variant="heading-default" color="dark" style={styles.sectionTitle}>
             Quick Actions
           </Typography>
@@ -276,7 +276,7 @@ export default function HomeTab() {
         </View>
 
         {/* My Routines */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <View style={styles.routinesHeader}>
             <Typography variant="heading-default" color="dark">
               My Routines
@@ -335,7 +335,7 @@ export default function HomeTab() {
         </View>
 
         {/* System Status */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
             System Status
           </Typography>
@@ -373,18 +373,10 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  headerCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   headerContent: {
     flexDirection: 'row',
@@ -394,17 +386,9 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     marginBottom: 8,
   },
-  card: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
     marginBottom: 16,
@@ -462,7 +446,6 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   routinesList: {
-    gap: 16,
   },
   routineCard: {
     padding: 16,
@@ -470,6 +453,7 @@ const styles = StyleSheet.create({
     borderColor: getColor('light-gray-3'),
     borderRadius: 8,
     backgroundColor: 'white',
+    marginBottom: 12,
   },
   routineInfo: {
     marginBottom: 12,

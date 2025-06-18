@@ -292,7 +292,7 @@ export default function CreateRoutineRoute() {
         </View>
 
         {/* Routine Details */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
             Routine Details
           </Typography>
@@ -311,7 +311,7 @@ export default function CreateRoutineRoute() {
         </View>
 
         {/* Exercises Section */}
-        <View style={styles.card}>
+        <View style={styles.section}>
           <View style={styles.exercisesHeader}>
             <Typography variant="heading-small" color="dark">
               Exercises ({exercises.length})
@@ -385,17 +385,9 @@ const styles = StyleSheet.create({
   title: {
     marginVertical: 16,
   },
-  card: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
     marginBottom: 16,
@@ -481,6 +473,7 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 16,
     paddingBottom: 32,
+    marginTop: 8,
   },
   actionButton: {
     flex: 1,

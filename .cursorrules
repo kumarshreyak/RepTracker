@@ -21,9 +21,17 @@
 
 ### Layout & Spacing
 - Use consistent spacing with Tailwind classes
-- Prefer rounded corners with `rounded-lg` for cards and `rounded-[3px]` for buttons (as per Airtable style)
+- Prefer rounded corners with `rounded-lg` for individual items and `rounded-[3px]` for buttons (as per Airtable style)
 - Use `bg-light-gray-1` for page backgrounds
-- Use `bg-white` with subtle shadows for content cards
+- **Use section-based layout on plain backgrounds** - avoid cards for main content sections
+- Reserve white backgrounds with subtle shadows only for individual items within lists (e.g., routine cards, exercise items)
+
+### Layout Patterns
+- **Default approach**: Use section containers with `paddingHorizontal: 16` and `marginBottom: 24` on plain background
+- **Section style**: `{ paddingHorizontal: 16, marginBottom: 24 }` - no background, shadows, or borders
+- **Individual item cards**: Use white background with border/shadow only when displaying list items that need to stand out
+- **Page structure**: Header section + multiple content sections, all on light-gray-1 background
+- **Avoid**: Wrapping entire sections in white card containers - this creates unnecessary visual weight
 
 ### General Rules
 1. **Never use custom CSS colors** - always use the predefined Airtable color system
@@ -33,6 +41,7 @@
 5. **Use proper semantic structure** while maintaining visual design system
 6. **Follow Airtable's spacing and sizing patterns** as demonstrated in the component library
 7. **Keep text minimal** - users don't like to read. Use concise, actionable copy. Prioritize clarity over verbosity.
+8. **Use section-based layout by default** - don't wrap content sections in cards unless displaying individual items in a list
 
 ### File Structure
 - Components should be organized in `/frontend/src/components/`
