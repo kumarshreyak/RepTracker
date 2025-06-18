@@ -93,6 +93,7 @@ message ListExercisesRequest {
   string page_token = 2;
   string muscle_group = 3; // filter by muscle group
   string equipment = 4;    // filter by equipment
+  string search = 5;       // search by name, description, muscle group, or equipment
 }
 
 message ListExercisesResponse {

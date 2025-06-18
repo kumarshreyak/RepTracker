@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.3
-// source: proto/gymlog/v1/gymlog.proto
+// source: gymlog/v1/gymlog.proto
 
 package v1
 
@@ -236,7 +236,7 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/gymlog/v1/gymlog.proto",
+	Metadata: "gymlog/v1/gymlog.proto",
 }
 
 const (
@@ -490,7 +490,7 @@ var ExerciseService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/gymlog/v1/gymlog.proto",
+	Metadata: "gymlog/v1/gymlog.proto",
 }
 
 const (
@@ -744,7 +744,7 @@ var WorkoutService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/gymlog/v1/gymlog.proto",
+	Metadata: "gymlog/v1/gymlog.proto",
 }
 
 const (
@@ -1112,5 +1112,5 @@ var WorkoutSessionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/gymlog/v1/gymlog.proto",
+	Metadata: "gymlog/v1/gymlog.proto",
 }

@@ -499,12 +499,14 @@ func (s *Server) handleListExercises(w http.ResponseWriter, r *http.Request) {
 	pageToken := r.URL.Query().Get("pageToken")
 	muscleGroup := r.URL.Query().Get("muscleGroup")
 	equipment := r.URL.Query().Get("equipment")
+	search := r.URL.Query().Get("search")
 
 	req := &pb.ListExercisesRequest{
 		PageSize:    pageSize,
 		PageToken:   pageToken,
 		MuscleGroup: muscleGroup,
 		Equipment:   equipment,
+		Search:      search,
 	}
 
 	resp, err := s.exerciseService.ListExercises(ctx, req)

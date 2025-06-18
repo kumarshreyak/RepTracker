@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"regexp"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -318,6 +320,47 @@ func (s *ExerciseService) DeleteExercise(ctx context.Context, req *pb.DeleteExer
 // ListExercises lists exercises with optional filtering
 func (s *ExerciseService) ListExercises(ctx context.Context, req *pb.ListExercisesRequest) (*pb.ListExercisesResponse, error) {
 	filter := bson.M{}
+
+	// Apply search filter (searches across multiple fields with flexible word matching)
+	if req.Search != "" {
+		// Normalize search query: remove special chars, extra spaces, make lowercase
+		normalizedSearch := regexp.MustCompile(`[^\w\s]`).ReplaceAllString(req.Search, "")
+		normalizedSearch = regexp.MustCompile(`\s+`).ReplaceAllString(normalizedSearch, " ")
+		normalizedSearch = strings.TrimSpace(strings.ToLower(normalizedSearch))
+
+		if normalizedSearch != "" {
+			// Split into individual words for flexible matching
+			searchWords := strings.Fields(normalizedSearch)
+
+			// Create regex patterns for each word
+			var wordPatterns []string
+			for _, word := range searchWords {
+				// Escape special regex characters
+				escapedWord := regexp.QuoteMeta(word)
+				wordPatterns = append(wordPatterns, escapedWord)
+			}
+
+			// Create pattern that matches all words in any order with flexible separators
+			// This will match "push" and "up" in "Push-ups", "Push ups", "pushups", etc.
+			searchPattern := "(?i)"
+			for i, pattern := range wordPatterns {
+				if i > 0 {
+					// Allow any non-letter characters or no characters between words
+					searchPattern += "[^a-zA-Z]*"
+				}
+				searchPattern += pattern
+			}
+
+			// Search across multiple fields
+			searchRegex := bson.M{"$regex": searchPattern, "$options": "i"}
+			filter["$or"] = []bson.M{
+				{"name": searchRegex},
+				{"description": searchRegex},
+				{"muscle_group": searchRegex},
+				{"equipment": searchRegex},
+			}
+		}
+	}
 
 	// Apply filters
 	if req.MuscleGroup != "" {
