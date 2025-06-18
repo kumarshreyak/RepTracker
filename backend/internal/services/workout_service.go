@@ -2,29 +2,34 @@ package services
 
 import (
 	"context"
-	"strconv"
+	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"gymlog-backend/pkg/database"
+	"gymlog-backend/pkg/models"
 	pb "gymlog-backend/proto/gymlog/v1"
 )
 
 // WorkoutService implements the gRPC WorkoutService
 type WorkoutService struct {
 	pb.UnimplementedWorkoutServiceServer
-	// In a real app, this would have a database connection
-	workouts []*pb.Workout
-	nextID   int
+	db          *database.MongoDB
+	workoutColl *mongo.Collection
 }
 
 // NewWorkoutService creates a new WorkoutService instance
-func NewWorkoutService() *WorkoutService {
+func NewWorkoutService(db *database.MongoDB) *WorkoutService {
 	return &WorkoutService{
-		workouts: []*pb.Workout{},
-		nextID:   1,
+		db:          db,
+		workoutColl: db.GetCollection("workouts"),
 	}
 }
 
@@ -41,7 +46,14 @@ func (s *WorkoutService) CreateWorkout(ctx context.Context, req *pb.CreateWorkou
 		return nil, status.Error(codes.InvalidArgument, "at least one exercise is required")
 	}
 
-	// Validate exercises
+	// Convert user ID to ObjectID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Validate and convert exercises
+	var workoutExercises []models.WorkoutExercise
 	for i, exercise := range req.Exercises {
 		if exercise.ExerciseId == "" {
 			return nil, status.Errorf(codes.InvalidArgument, "exercise_id is required for exercise %d", i)
@@ -50,7 +62,13 @@ func (s *WorkoutService) CreateWorkout(ctx context.Context, req *pb.CreateWorkou
 			return nil, status.Errorf(codes.InvalidArgument, "at least one set is required for exercise %d", i)
 		}
 
-		// Validate sets
+		exerciseObjectID, err := primitive.ObjectIDFromHex(exercise.ExerciseId)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid exercise_id for exercise %d", i)
+		}
+
+		// Convert sets
+		var workoutSets []models.WorkoutSet
 		for j, set := range exercise.Sets {
 			if set.Reps <= 0 {
 				return nil, status.Errorf(codes.InvalidArgument, "reps must be positive for exercise %d, set %d", i, j)
@@ -58,33 +76,49 @@ func (s *WorkoutService) CreateWorkout(ctx context.Context, req *pb.CreateWorkou
 			if set.Weight < 0 {
 				return nil, status.Errorf(codes.InvalidArgument, "weight cannot be negative for exercise %d, set %d", i, j)
 			}
+
+			workoutSets = append(workoutSets, models.WorkoutSet{
+				Reps:            set.Reps,
+				Weight:          set.Weight,
+				DurationSeconds: int32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+			})
 		}
+
+		workoutExercises = append(workoutExercises, models.WorkoutExercise{
+			ExerciseID:  exerciseObjectID,
+			Sets:        workoutSets,
+			Notes:       exercise.Notes,
+			RestSeconds: exercise.RestSeconds,
+		})
 	}
 
-	now := timestamppb.Now()
-	id := strconv.Itoa(s.nextID)
-	s.nextID++
-
-	// Set started_at to now if not provided
-	startedAt := req.StartedAt
-	if startedAt == nil {
-		startedAt = now
+	now := time.Now()
+	var startedAt *time.Time
+	if req.StartedAt != nil {
+		t := req.StartedAt.AsTime()
+		startedAt = &t
 	}
 
-	workout := &pb.Workout{
-		Id:          id,
-		UserId:      req.UserId,
+	workout := models.Workout{
+		UserID:      userObjectID,
 		Name:        req.Name,
 		Description: req.Description,
-		Exercises:   req.Exercises,
+		Exercises:   workoutExercises,
 		StartedAt:   startedAt,
 		Notes:       req.Notes,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 
-	s.workouts = append(s.workouts, workout)
-	return workout, nil
+	result, err := s.workoutColl.InsertOne(ctx, workout)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to create workout")
+	}
+
+	workout.ID = result.InsertedID.(primitive.ObjectID)
+	return s.modelToProto(&workout), nil
 }
 
 // GetWorkout retrieves a workout by ID
@@ -93,12 +127,20 @@ func (s *WorkoutService) GetWorkout(ctx context.Context, req *pb.GetWorkoutReque
 		return nil, status.Error(codes.InvalidArgument, "workout id is required")
 	}
 
-	for _, workout := range s.workouts {
-		if workout.Id == req.Id {
-			return workout, nil
-		}
+	objectID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid workout ID")
 	}
-	return nil, status.Error(codes.NotFound, "workout not found")
+
+	var workout models.Workout
+	err = s.workoutColl.FindOne(ctx, bson.M{"_id": objectID}).Decode(&workout)
+	if err == mongo.ErrNoDocuments {
+		return nil, status.Error(codes.NotFound, "workout not found")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get workout")
+	}
+
+	return s.modelToProto(&workout), nil
 }
 
 // UpdateWorkout updates an existing workout
@@ -107,53 +149,89 @@ func (s *WorkoutService) UpdateWorkout(ctx context.Context, req *pb.UpdateWorkou
 		return nil, status.Error(codes.InvalidArgument, "workout id is required")
 	}
 
-	for i, workout := range s.workouts {
-		if workout.Id == req.Id {
-			// Update fields if provided
-			if req.Name != "" {
-				workout.Name = req.Name
-			}
-			if req.Description != "" {
-				workout.Description = req.Description
-			}
-			if len(req.Exercises) > 0 {
-				// Validate exercises before updating
-				for j, exercise := range req.Exercises {
-					if exercise.ExerciseId == "" {
-						return nil, status.Errorf(codes.InvalidArgument, "exercise_id is required for exercise %d", j)
-					}
-					if len(exercise.Sets) == 0 {
-						return nil, status.Errorf(codes.InvalidArgument, "at least one set is required for exercise %d", j)
-					}
-
-					// Validate sets
-					for k, set := range exercise.Sets {
-						if set.Reps <= 0 {
-							return nil, status.Errorf(codes.InvalidArgument, "reps must be positive for exercise %d, set %d", j, k)
-						}
-						if set.Weight < 0 {
-							return nil, status.Errorf(codes.InvalidArgument, "weight cannot be negative for exercise %d, set %d", j, k)
-						}
-					}
-				}
-				workout.Exercises = req.Exercises
-			}
-			if req.FinishedAt != nil {
-				workout.FinishedAt = req.FinishedAt
-			}
-			if req.DurationSeconds > 0 {
-				workout.DurationSeconds = req.DurationSeconds
-			}
-			if req.Notes != "" {
-				workout.Notes = req.Notes
-			}
-			workout.UpdatedAt = timestamppb.Now()
-
-			s.workouts[i] = workout
-			return workout, nil
-		}
+	objectID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid workout ID")
 	}
-	return nil, status.Error(codes.NotFound, "workout not found")
+
+	update := bson.M{
+		"updated_at": time.Now(),
+	}
+
+	if req.Name != "" {
+		update["name"] = req.Name
+	}
+	if req.Description != "" {
+		update["description"] = req.Description
+	}
+	if len(req.Exercises) > 0 {
+		// Validate and convert exercises
+		var workoutExercises []models.WorkoutExercise
+		for j, exercise := range req.Exercises {
+			if exercise.ExerciseId == "" {
+				return nil, status.Errorf(codes.InvalidArgument, "exercise_id is required for exercise %d", j)
+			}
+			if len(exercise.Sets) == 0 {
+				return nil, status.Errorf(codes.InvalidArgument, "at least one set is required for exercise %d", j)
+			}
+
+			exerciseObjectID, err := primitive.ObjectIDFromHex(exercise.ExerciseId)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "invalid exercise_id for exercise %d", j)
+			}
+
+			// Convert sets
+			var workoutSets []models.WorkoutSet
+			for k, set := range exercise.Sets {
+				if set.Reps <= 0 {
+					return nil, status.Errorf(codes.InvalidArgument, "reps must be positive for exercise %d, set %d", j, k)
+				}
+				if set.Weight < 0 {
+					return nil, status.Errorf(codes.InvalidArgument, "weight cannot be negative for exercise %d, set %d", j, k)
+				}
+
+				workoutSets = append(workoutSets, models.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: int32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				})
+			}
+
+			workoutExercises = append(workoutExercises, models.WorkoutExercise{
+				ExerciseID:  exerciseObjectID,
+				Sets:        workoutSets,
+				Notes:       exercise.Notes,
+				RestSeconds: exercise.RestSeconds,
+			})
+		}
+		update["exercises"] = workoutExercises
+	}
+	if req.FinishedAt != nil {
+		t := req.FinishedAt.AsTime()
+		update["finished_at"] = &t
+	}
+	if req.DurationSeconds > 0 {
+		update["duration_seconds"] = req.DurationSeconds
+	}
+	if req.Notes != "" {
+		update["notes"] = req.Notes
+	}
+
+	result, err := s.workoutColl.UpdateOne(
+		ctx,
+		bson.M{"_id": objectID},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to update workout")
+	}
+	if result.MatchedCount == 0 {
+		return nil, status.Error(codes.NotFound, "workout not found")
+	}
+
+	return s.GetWorkout(ctx, &pb.GetWorkoutRequest{Id: req.Id})
 }
 
 // DeleteWorkout deletes a workout
@@ -162,75 +240,132 @@ func (s *WorkoutService) DeleteWorkout(ctx context.Context, req *pb.DeleteWorkou
 		return nil, status.Error(codes.InvalidArgument, "workout id is required")
 	}
 
-	for i, workout := range s.workouts {
-		if workout.Id == req.Id {
-			// Remove workout from slice
-			s.workouts = append(s.workouts[:i], s.workouts[i+1:]...)
-			return &emptypb.Empty{}, nil
-		}
+	objectID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid workout ID")
 	}
-	return nil, status.Error(codes.NotFound, "workout not found")
+
+	result, err := s.workoutColl.DeleteOne(ctx, bson.M{"_id": objectID})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to delete workout")
+	}
+	if result.DeletedCount == 0 {
+		return nil, status.Error(codes.NotFound, "workout not found")
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 // ListWorkouts lists workouts with optional filtering
 func (s *WorkoutService) ListWorkouts(ctx context.Context, req *pb.ListWorkoutsRequest) (*pb.ListWorkoutsResponse, error) {
-	var filteredWorkouts []*pb.Workout
+	filter := bson.M{}
 
 	// Apply filters
-	for _, workout := range s.workouts {
-		include := true
+	if req.UserId != "" {
+		userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+		}
+		filter["user_id"] = userObjectID
+	}
 
-		// Filter by user_id
-		if req.UserId != "" {
-			if workout.UserId != req.UserId {
-				include = false
-			}
+	// Filter by date range
+	if req.StartDate != nil || req.EndDate != nil {
+		dateFilter := bson.M{}
+		if req.StartDate != nil {
+			dateFilter["$gte"] = req.StartDate.AsTime()
 		}
-
-		// Filter by date range
-		if req.StartDate != nil && workout.StartedAt != nil {
-			if workout.StartedAt.AsTime().Before(req.StartDate.AsTime()) {
-				include = false
-			}
+		if req.EndDate != nil {
+			dateFilter["$lte"] = req.EndDate.AsTime()
 		}
-		if req.EndDate != nil && workout.StartedAt != nil {
-			if workout.StartedAt.AsTime().After(req.EndDate.AsTime()) {
-				include = false
-			}
-		}
-
-		if include {
-			filteredWorkouts = append(filteredWorkouts, workout)
-		}
+		filter["started_at"] = dateFilter
 	}
 
 	// Apply pagination
-	pageSize := int(req.PageSize)
+	pageSize := int64(req.PageSize)
 	if pageSize <= 0 {
 		pageSize = 50 // Default page size
 	}
 
-	start := 0
+	skip := int64(0)
 	if req.PageToken != "" {
-		// In a real app, decode the page token to get the start index
+		// In a real app, decode the page token to get the skip value
 		// For simplicity, we're not implementing pagination here
 	}
 
-	end := start + pageSize
-	if end > len(filteredWorkouts) {
-		end = len(filteredWorkouts)
+	opts := options.Find().SetLimit(pageSize).SetSkip(skip)
+	cursor, err := s.workoutColl.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list workouts")
+	}
+	defer cursor.Close(ctx)
+
+	var workouts []models.Workout
+	if err := cursor.All(ctx, &workouts); err != nil {
+		return nil, status.Error(codes.Internal, "failed to decode workouts")
 	}
 
-	result := filteredWorkouts[start:end]
+	var protoWorkouts []*pb.Workout
+	for _, workout := range workouts {
+		protoWorkouts = append(protoWorkouts, s.modelToProto(&workout))
+	}
 
 	response := &pb.ListWorkoutsResponse{
-		Workouts: result,
+		Workouts: protoWorkouts,
 	}
 
 	// Set next page token if there are more results
-	if end < len(filteredWorkouts) {
-		response.NextPageToken = "next_page" // In real app, encode the next start position
+	if int64(len(workouts)) == pageSize {
+		response.NextPageToken = "next_page" // In real app, encode the next skip position
 	}
 
 	return response, nil
+}
+
+// modelToProto converts a workout model to protobuf workout
+func (s *WorkoutService) modelToProto(workout *models.Workout) *pb.Workout {
+	var exercises []*pb.WorkoutExercise
+	for _, exercise := range workout.Exercises {
+		var sets []*pb.WorkoutSet
+		for _, set := range exercise.Sets {
+			sets = append(sets, &pb.WorkoutSet{
+				Reps:            set.Reps,
+				Weight:          set.Weight,
+				DurationSeconds: float32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+			})
+		}
+
+		exercises = append(exercises, &pb.WorkoutExercise{
+			ExerciseId:  exercise.ExerciseID.Hex(),
+			Sets:        sets,
+			Notes:       exercise.Notes,
+			RestSeconds: exercise.RestSeconds,
+		})
+	}
+
+	var startedAt *timestamppb.Timestamp
+	if workout.StartedAt != nil {
+		startedAt = timestamppb.New(*workout.StartedAt)
+	}
+
+	var finishedAt *timestamppb.Timestamp
+	if workout.FinishedAt != nil {
+		finishedAt = timestamppb.New(*workout.FinishedAt)
+	}
+
+	return &pb.Workout{
+		Id:              workout.ID.Hex(),
+		UserId:          workout.UserID.Hex(),
+		Name:            workout.Name,
+		Description:     workout.Description,
+		Exercises:       exercises,
+		StartedAt:       startedAt,
+		FinishedAt:      finishedAt,
+		DurationSeconds: workout.DurationSeconds,
+		Notes:           workout.Notes,
+		CreatedAt:       timestamppb.New(workout.CreatedAt),
+		UpdatedAt:       timestamppb.New(workout.UpdatedAt),
+	}
 }

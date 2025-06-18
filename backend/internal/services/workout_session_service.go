@@ -3,31 +3,36 @@ package services
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"gymlog-backend/pkg/database"
+	"gymlog-backend/pkg/models"
 	pb "gymlog-backend/proto/gymlog/v1"
 )
 
 // WorkoutSessionService implements the gRPC WorkoutSessionService
 type WorkoutSessionService struct {
 	pb.UnimplementedWorkoutSessionServiceServer
-	// In a real app, this would have a database connection
-	sessions        []*pb.WorkoutSession
-	nextID          int
+	db              *database.MongoDB
+	sessionColl     *mongo.Collection
 	workoutService  *WorkoutService
 	exerciseService *ExerciseService
 }
 
 // NewWorkoutSessionService creates a new WorkoutSessionService instance
-func NewWorkoutSessionService(workoutService *WorkoutService, exerciseService *ExerciseService) *WorkoutSessionService {
+func NewWorkoutSessionService(db *database.MongoDB, workoutService *WorkoutService, exerciseService *ExerciseService) *WorkoutSessionService {
 	return &WorkoutSessionService{
-		sessions:        []*pb.WorkoutSession{},
-		nextID:          1,
+		db:              db,
+		sessionColl:     db.GetCollection("workout_sessions"),
 		workoutService:  workoutService,
 		exerciseService: exerciseService,
 	}
@@ -43,6 +48,17 @@ func (s *WorkoutSessionService) CreateWorkoutSession(ctx context.Context, req *p
 		return nil, status.Error(codes.InvalidArgument, "routine_id is required")
 	}
 
+	// Convert IDs to ObjectIDs
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	routineObjectID, err := primitive.ObjectIDFromHex(req.RoutineId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid routine_id")
+	}
+
 	// Get the routine/workout template
 	workoutReq := &pb.GetWorkoutRequest{Id: req.RoutineId}
 	routine, err := s.workoutService.GetWorkout(ctx, workoutReq)
@@ -50,60 +66,60 @@ func (s *WorkoutSessionService) CreateWorkoutSession(ctx context.Context, req *p
 		return nil, status.Errorf(codes.NotFound, "routine not found: %v", err)
 	}
 
-	now := timestamppb.Now()
-	id := strconv.Itoa(s.nextID)
-	s.nextID++
+	now := time.Now()
 
 	// Convert routine exercises to session exercises with target values
-	sessionExercises := make([]*pb.WorkoutSessionExercise, len(routine.Exercises))
-	for i, routineExercise := range routine.Exercises {
-		// Get exercise details
+	var sessionExercises []models.WorkoutSessionExercise
+	for _, routineExercise := range routine.Exercises {
+		// Get exercise details (optional, for reference)
 		exerciseReq := &pb.GetExerciseRequest{Id: routineExercise.ExerciseId}
-		exercise, err := s.exerciseService.GetExercise(ctx, exerciseReq)
+		_, err := s.exerciseService.GetExercise(ctx, exerciseReq)
 		if err != nil {
 			// Log warning but continue - exercise details are optional
-			exercise = nil
+		}
+
+		exerciseObjectID, err := primitive.ObjectIDFromHex(routineExercise.ExerciseId)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid exercise_id in routine")
 		}
 
 		// Convert sets to session sets with target and actual values
-		sessionSets := make([]*pb.WorkoutSessionSet, len(routineExercise.Sets))
-		for j, routineSet := range routineExercise.Sets {
-			sessionSets[j] = &pb.WorkoutSessionSet{
+		var sessionSets []models.WorkoutSessionSet
+		for _, routineSet := range routineExercise.Sets {
+			sessionSets = append(sessionSets, models.WorkoutSessionSet{
 				TargetReps:      routineSet.Reps,
 				TargetWeight:    routineSet.Weight,
 				ActualReps:      0, // To be filled during workout
 				ActualWeight:    0, // To be filled during workout
-				DurationSeconds: routineSet.DurationSeconds,
+				DurationSeconds: int32(routineSet.DurationSeconds),
 				Distance:        routineSet.Distance,
 				Notes:           routineSet.Notes,
 				Completed:       false,
 				StartedAt:       nil,
 				FinishedAt:      nil,
-			}
+			})
 		}
 
-		sessionExercises[i] = &pb.WorkoutSessionExercise{
-			ExerciseId:  routineExercise.ExerciseId,
-			Exercise:    exercise,
+		sessionExercises = append(sessionExercises, models.WorkoutSessionExercise{
+			ExerciseID:  exerciseObjectID,
 			Sets:        sessionSets,
 			Notes:       routineExercise.Notes,
 			RestSeconds: routineExercise.RestSeconds,
 			Completed:   false,
 			StartedAt:   nil,
 			FinishedAt:  nil,
-		}
+		})
 	}
 
 	// Use provided name or generate one
 	sessionName := req.Name
 	if sessionName == "" {
-		sessionName = fmt.Sprintf("%s Session - %s", routine.Name, now.AsTime().Format("Jan 2, 2006"))
+		sessionName = fmt.Sprintf("%s Session - %s", routine.Name, now.Format("Jan 2, 2006"))
 	}
 
-	session := &pb.WorkoutSession{
-		Id:              id,
-		UserId:          req.UserId,
-		RoutineId:       req.RoutineId,
+	session := models.WorkoutSession{
+		UserID:          userObjectID,
+		RoutineID:       routineObjectID,
 		Name:            sessionName,
 		Description:     req.Description,
 		Exercises:       sessionExercises,
@@ -116,8 +132,13 @@ func (s *WorkoutSessionService) CreateWorkoutSession(ctx context.Context, req *p
 		UpdatedAt:       now,
 	}
 
-	s.sessions = append(s.sessions, session)
-	return session, nil
+	result, err := s.sessionColl.InsertOne(ctx, session)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to create workout session")
+	}
+
+	session.ID = result.InsertedID.(primitive.ObjectID)
+	return s.modelToProto(&session), nil
 }
 
 // GetWorkoutSession retrieves a workout session by ID
@@ -126,12 +147,20 @@ func (s *WorkoutSessionService) GetWorkoutSession(ctx context.Context, req *pb.G
 		return nil, status.Error(codes.InvalidArgument, "session id is required")
 	}
 
-	for _, session := range s.sessions {
-		if session.Id == req.Id {
-			return session, nil
-		}
+	objectID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session ID")
 	}
-	return nil, status.Error(codes.NotFound, "workout session not found")
+
+	var session models.WorkoutSession
+	err = s.sessionColl.FindOne(ctx, bson.M{"_id": objectID}).Decode(&session)
+	if err == mongo.ErrNoDocuments {
+		return nil, status.Error(codes.NotFound, "workout session not found")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get workout session")
+	}
+
+	return s.modelToProto(&session), nil
 }
 
 // UpdateWorkoutSession updates an existing workout session
@@ -140,44 +169,114 @@ func (s *WorkoutSessionService) UpdateWorkoutSession(ctx context.Context, req *p
 		return nil, status.Error(codes.InvalidArgument, "session id is required")
 	}
 
-	for i, session := range s.sessions {
-		if session.Id == req.Id {
-			// Update fields if provided
-			if req.Name != "" {
-				session.Name = req.Name
-			}
-			if req.Description != "" {
-				session.Description = req.Description
-			}
-			if len(req.Exercises) > 0 {
-				session.Exercises = req.Exercises
-			}
-			if req.FinishedAt != nil {
-				session.FinishedAt = req.FinishedAt
-				session.IsActive = false
+	objectID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session ID")
+	}
 
-				// Calculate duration if session is finished
-				if session.StartedAt != nil {
-					duration := req.FinishedAt.AsTime().Sub(session.StartedAt.AsTime())
-					session.DurationSeconds = int32(duration.Seconds())
+	update := bson.M{
+		"updated_at": time.Now(),
+	}
+
+	if req.Name != "" {
+		update["name"] = req.Name
+	}
+	if req.Description != "" {
+		update["description"] = req.Description
+	}
+	if len(req.Exercises) > 0 {
+		// Convert protobuf exercises to model exercises
+		var sessionExercises []models.WorkoutSessionExercise
+		for _, exercise := range req.Exercises {
+			exerciseObjectID, err := primitive.ObjectIDFromHex(exercise.ExerciseId)
+			if err != nil {
+				return nil, status.Error(codes.InvalidArgument, "invalid exercise_id")
+			}
+
+			var sessionSets []models.WorkoutSessionSet
+			for _, set := range exercise.Sets {
+				var startedAt, finishedAt *time.Time
+				if set.StartedAt != nil {
+					t := set.StartedAt.AsTime()
+					startedAt = &t
 				}
-			}
-			if req.DurationSeconds > 0 {
-				session.DurationSeconds = req.DurationSeconds
-			}
-			if req.Notes != "" {
-				session.Notes = req.Notes
-			}
-			if req.IsActive != session.IsActive {
-				session.IsActive = req.IsActive
-			}
-			session.UpdatedAt = timestamppb.Now()
+				if set.FinishedAt != nil {
+					t := set.FinishedAt.AsTime()
+					finishedAt = &t
+				}
 
-			s.sessions[i] = session
-			return session, nil
+				sessionSets = append(sessionSets, models.WorkoutSessionSet{
+					TargetReps:      set.TargetReps,
+					TargetWeight:    set.TargetWeight,
+					ActualReps:      set.ActualReps,
+					ActualWeight:    set.ActualWeight,
+					DurationSeconds: int32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+					Completed:       set.Completed,
+					StartedAt:       startedAt,
+					FinishedAt:      finishedAt,
+				})
+			}
+
+			var exerciseStartedAt, exerciseFinishedAt *time.Time
+			if exercise.StartedAt != nil {
+				t := exercise.StartedAt.AsTime()
+				exerciseStartedAt = &t
+			}
+			if exercise.FinishedAt != nil {
+				t := exercise.FinishedAt.AsTime()
+				exerciseFinishedAt = &t
+			}
+
+			sessionExercises = append(sessionExercises, models.WorkoutSessionExercise{
+				ExerciseID:  exerciseObjectID,
+				Sets:        sessionSets,
+				Notes:       exercise.Notes,
+				RestSeconds: exercise.RestSeconds,
+				Completed:   exercise.Completed,
+				StartedAt:   exerciseStartedAt,
+				FinishedAt:  exerciseFinishedAt,
+			})
+		}
+		update["exercises"] = sessionExercises
+	}
+	if req.FinishedAt != nil {
+		t := req.FinishedAt.AsTime()
+		update["finished_at"] = &t
+		update["is_active"] = false
+
+		// Calculate duration if session is finished
+		var session models.WorkoutSession
+		err = s.sessionColl.FindOne(ctx, bson.M{"_id": objectID}).Decode(&session)
+		if err == nil {
+			duration := t.Sub(session.StartedAt)
+			update["duration_seconds"] = int32(duration.Seconds())
 		}
 	}
-	return nil, status.Error(codes.NotFound, "workout session not found")
+	if req.DurationSeconds > 0 {
+		update["duration_seconds"] = req.DurationSeconds
+	}
+	if req.Notes != "" {
+		update["notes"] = req.Notes
+	}
+	if req.IsActive != update["is_active"] {
+		update["is_active"] = req.IsActive
+	}
+
+	result, err := s.sessionColl.UpdateOne(
+		ctx,
+		bson.M{"_id": objectID},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to update workout session")
+	}
+	if result.MatchedCount == 0 {
+		return nil, status.Error(codes.NotFound, "workout session not found")
+	}
+
+	return s.GetWorkoutSession(ctx, &pb.GetWorkoutSessionRequest{Id: req.Id})
 }
 
 // DeleteWorkoutSession deletes a workout session
@@ -186,79 +285,88 @@ func (s *WorkoutSessionService) DeleteWorkoutSession(ctx context.Context, req *p
 		return nil, status.Error(codes.InvalidArgument, "session id is required")
 	}
 
-	for i, session := range s.sessions {
-		if session.Id == req.Id {
-			// Remove session from slice
-			s.sessions = append(s.sessions[:i], s.sessions[i+1:]...)
-			return &emptypb.Empty{}, nil
-		}
+	objectID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session ID")
 	}
-	return nil, status.Error(codes.NotFound, "workout session not found")
+
+	result, err := s.sessionColl.DeleteOne(ctx, bson.M{"_id": objectID})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to delete workout session")
+	}
+	if result.DeletedCount == 0 {
+		return nil, status.Error(codes.NotFound, "workout session not found")
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 // ListWorkoutSessions lists workout sessions with optional filtering
 func (s *WorkoutSessionService) ListWorkoutSessions(ctx context.Context, req *pb.ListWorkoutSessionsRequest) (*pb.ListWorkoutSessionsResponse, error) {
-	var filteredSessions []*pb.WorkoutSession
+	filter := bson.M{}
 
 	// Apply filters
-	for _, session := range s.sessions {
-		include := true
+	if req.UserId != "" {
+		userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+		}
+		filter["user_id"] = userObjectID
+	}
 
-		// Filter by user_id
-		if req.UserId != "" {
-			if session.UserId != req.UserId {
-				include = false
-			}
-		}
+	// Filter by active status
+	if req.ActiveOnly {
+		filter["is_active"] = true
+	}
 
-		// Filter by active status
-		if req.ActiveOnly && !session.IsActive {
-			include = false
+	// Filter by date range
+	if req.StartDate != nil || req.EndDate != nil {
+		dateFilter := bson.M{}
+		if req.StartDate != nil {
+			dateFilter["$gte"] = req.StartDate.AsTime()
 		}
-
-		// Filter by date range
-		if req.StartDate != nil && session.StartedAt != nil {
-			if session.StartedAt.AsTime().Before(req.StartDate.AsTime()) {
-				include = false
-			}
+		if req.EndDate != nil {
+			dateFilter["$lte"] = req.EndDate.AsTime()
 		}
-		if req.EndDate != nil && session.StartedAt != nil {
-			if session.StartedAt.AsTime().After(req.EndDate.AsTime()) {
-				include = false
-			}
-		}
-
-		if include {
-			filteredSessions = append(filteredSessions, session)
-		}
+		filter["started_at"] = dateFilter
 	}
 
 	// Apply pagination
-	pageSize := int(req.PageSize)
+	pageSize := int64(req.PageSize)
 	if pageSize <= 0 {
 		pageSize = 50 // Default page size
 	}
 
-	start := 0
+	skip := int64(0)
 	if req.PageToken != "" {
-		// In a real app, decode the page token to get the start index
+		// In a real app, decode the page token to get the skip value
 		// For simplicity, we're not implementing pagination here
 	}
 
-	end := start + pageSize
-	if end > len(filteredSessions) {
-		end = len(filteredSessions)
+	opts := options.Find().SetLimit(pageSize).SetSkip(skip)
+	cursor, err := s.sessionColl.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list workout sessions")
+	}
+	defer cursor.Close(ctx)
+
+	var sessions []models.WorkoutSession
+	if err := cursor.All(ctx, &sessions); err != nil {
+		return nil, status.Error(codes.Internal, "failed to decode workout sessions")
 	}
 
-	result := filteredSessions[start:end]
+	var protoSessions []*pb.WorkoutSession
+	for _, session := range sessions {
+		protoSessions = append(protoSessions, s.modelToProto(&session))
+	}
 
 	response := &pb.ListWorkoutSessionsResponse{
-		Sessions: result,
+		Sessions: protoSessions,
 	}
 
 	// Set next page token if there are more results
-	if end < len(filteredSessions) {
-		response.NextPageToken = "next_page" // In real app, encode the next start position
+	if int64(len(sessions)) == pageSize {
+		response.NextPageToken = "next_page" // In real app, encode the next skip position
 	}
 
 	return response, nil
@@ -398,4 +506,77 @@ func (s *WorkoutSessionService) UpdateSet(ctx context.Context, req *pb.UpdateSet
 	}
 
 	return s.UpdateWorkoutSession(ctx, updateReq)
+}
+
+// modelToProto converts a workout session model to protobuf workout session
+func (s *WorkoutSessionService) modelToProto(session *models.WorkoutSession) *pb.WorkoutSession {
+	var exercises []*pb.WorkoutSessionExercise
+	for _, exercise := range session.Exercises {
+		var sets []*pb.WorkoutSessionSet
+		for _, set := range exercise.Sets {
+			var startedAt, finishedAt *timestamppb.Timestamp
+			if set.StartedAt != nil {
+				startedAt = timestamppb.New(*set.StartedAt)
+			}
+			if set.FinishedAt != nil {
+				finishedAt = timestamppb.New(*set.FinishedAt)
+			}
+
+			sets = append(sets, &pb.WorkoutSessionSet{
+				TargetReps:      set.TargetReps,
+				TargetWeight:    set.TargetWeight,
+				ActualReps:      set.ActualReps,
+				ActualWeight:    set.ActualWeight,
+				DurationSeconds: float32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+				Completed:       set.Completed,
+				StartedAt:       startedAt,
+				FinishedAt:      finishedAt,
+			})
+		}
+
+		var exerciseStartedAt, exerciseFinishedAt *timestamppb.Timestamp
+		if exercise.StartedAt != nil {
+			exerciseStartedAt = timestamppb.New(*exercise.StartedAt)
+		}
+		if exercise.FinishedAt != nil {
+			exerciseFinishedAt = timestamppb.New(*exercise.FinishedAt)
+		}
+
+		// Get exercise details
+		exerciseDetails, _ := s.exerciseService.GetExercise(context.Background(), &pb.GetExerciseRequest{Id: exercise.ExerciseID.Hex()})
+
+		exercises = append(exercises, &pb.WorkoutSessionExercise{
+			ExerciseId:  exercise.ExerciseID.Hex(),
+			Exercise:    exerciseDetails,
+			Sets:        sets,
+			Notes:       exercise.Notes,
+			RestSeconds: exercise.RestSeconds,
+			Completed:   exercise.Completed,
+			StartedAt:   exerciseStartedAt,
+			FinishedAt:  exerciseFinishedAt,
+		})
+	}
+
+	var finishedAt *timestamppb.Timestamp
+	if session.FinishedAt != nil {
+		finishedAt = timestamppb.New(*session.FinishedAt)
+	}
+
+	return &pb.WorkoutSession{
+		Id:              session.ID.Hex(),
+		UserId:          session.UserID.Hex(),
+		RoutineId:       session.RoutineID.Hex(),
+		Name:            session.Name,
+		Description:     session.Description,
+		Exercises:       exercises,
+		StartedAt:       timestamppb.New(session.StartedAt),
+		FinishedAt:      finishedAt,
+		DurationSeconds: session.DurationSeconds,
+		Notes:           session.Notes,
+		IsActive:        session.IsActive,
+		CreatedAt:       timestamppb.New(session.CreatedAt),
+		UpdatedAt:       timestamppb.New(session.UpdatedAt),
+	}
 }

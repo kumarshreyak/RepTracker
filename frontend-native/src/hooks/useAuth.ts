@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { authService, AuthState } from '../auth/AuthService';
 
 export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>(authService.getState());
+  const [authState, setAuthState] = useState<AuthState>(() => authService.getState());
 
   useEffect(() => {
     const unsubscribe = authService.subscribe(setAuthState);

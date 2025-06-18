@@ -37,9 +37,9 @@ func main() {
 
 	// Create service instances
 	userService := services.NewUserService(db)
-	exerciseService := services.NewExerciseService()
-	workoutService := services.NewWorkoutService()
-	workoutSessionService := services.NewWorkoutSessionService(workoutService, exerciseService)
+	exerciseService := services.NewExerciseService(db)
+	workoutService := services.NewWorkoutService(db)
+	workoutSessionService := services.NewWorkoutSessionService(db, workoutService, exerciseService)
 
 	// Start HTTP server with all services
 	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, workoutSessionService, db)
