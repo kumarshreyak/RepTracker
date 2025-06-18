@@ -15,12 +15,12 @@ import { authService, User } from '../../src/auth/AuthService';
 
 interface Routine {
   id: string;
-  user_id: string;
+  userId: string;
   name: string;
   description: string;
   exercises: any[];
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function HomeTab() {
@@ -136,7 +136,7 @@ export default function HomeTab() {
           {routine.description}
         </Typography>
         <Typography variant="text-small" color="light" style={styles.routineMeta}>
-          {routine.exercises?.length || 0} exercises • Created {new Date(routine.created_at).toLocaleDateString()}
+          {routine.exercises?.length || 0} exercises • Created {new Date(routine.createdAt).toLocaleDateString()}
         </Typography>
       </View>
       
@@ -184,62 +184,7 @@ export default function HomeTab() {
           </View>
         </View>
 
-        {/* User Profile */}
-        <View style={styles.section}>
-          <Typography variant="heading-default" color="dark" style={styles.sectionTitle}>
-            Your Profile
-          </Typography>
-          
-          <View style={styles.profileGrid}>
-            <View style={styles.profileItem}>
-              <Typography variant="text-small" color="light" style={styles.profileLabel}>
-                Name
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user?.name || 'Not provided'}
-              </Typography>
-            </View>
-            
-            <View style={styles.profileItem}>
-              <Typography variant="text-small" color="light" style={styles.profileLabel}>
-                Email
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user?.email || 'Not provided'}
-              </Typography>
-            </View>
-            
-            <View style={styles.profileItem}>
-              <Typography variant="text-small" color="light" style={styles.profileLabel}>
-                User ID
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user?.id || 'Not provided'}
-              </Typography>
-            </View>
-            
-            <View style={styles.profileItem}>
-              <Typography variant="text-small" color="light" style={styles.profileLabel}>
-                Session Token
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user?.sessionToken ? `${user.sessionToken.substring(0, 20)}...` : 'Not provided'}
-              </Typography>
-            </View>
-          </View>
 
-          {user?.picture && (
-            <View style={styles.profilePictureSection}>
-              <Typography variant="text-small" color="light" style={styles.profileLabel}>
-                Profile Picture
-              </Typography>
-              <Image 
-                source={{ uri: user.picture }} 
-                style={styles.profilePicture}
-              />
-            </View>
-          )}
-        </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -334,32 +279,7 @@ export default function HomeTab() {
           )}
         </View>
 
-        {/* System Status */}
-        <View style={styles.section}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-            System Status
-          </Typography>
-          
-          <View style={styles.statusGrid}>
-            <View style={styles.statusItem}>
-              <Typography variant="text-small" color="light" style={styles.statusLabel}>
-                Authentication Status
-              </Typography>
-              <Typography variant="text-default" color="green">
-                ✅ Authenticated with Backend
-              </Typography>
-            </View>
-            
-            <View style={styles.statusItem}>
-              <Typography variant="text-small" color="light" style={styles.statusLabel}>
-                Session Status
-              </Typography>
-              <Typography variant="text-default" color="green">
-                ✅ Active Session
-              </Typography>
-            </View>
-          </View>
-        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -393,25 +313,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 16,
   },
-  profileGrid: {
-    gap: 16,
-  },
-  profileItem: {
-    marginBottom: 8,
-  },
-  profileLabel: {
-    marginBottom: 4,
-  },
-  profilePictureSection: {
-    marginTop: 16,
-  },
-  profilePicture: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    marginTop: 8,
-    backgroundColor: getColor('light-gray-3'),
-  },
+
   quickActions: {
     gap: 16,
   },
@@ -475,13 +377,5 @@ const styles = StyleSheet.create({
   routineActionButton: {
     flex: 1,
   },
-  statusGrid: {
-    gap: 16,
-  },
-  statusItem: {
-    marginBottom: 8,
-  },
-  statusLabel: {
-    marginBottom: 4,
-  },
+
 }); 
