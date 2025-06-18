@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Build artifacts
+server
+main
+
+# Logs
+*.log
+
+# Scripts and tools
+scripts/
+venv/
+
+# Dependencies
+node_modules/ 

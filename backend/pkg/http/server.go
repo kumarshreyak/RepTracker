@@ -238,6 +238,10 @@ func NewServer(userService *services.UserService, exerciseService *services.Exer
 func (s *Server) Start(port string) error {
 	r := mux.NewRouter()
 
+	// Health check endpoint
+	r.HandleFunc("/health", s.handleHealthCheck).Methods("GET")
+	r.HandleFunc("/", s.handleHealthCheck).Methods("GET") // Root endpoint for basic checks
+
 	// API routes
 	api := r.PathPrefix("/api").Subrouter()
 
@@ -360,6 +364,29 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 
 	log.Printf("✅ Google auth response sent successfully")
+}
+
+func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	// Basic health check - verify database connection
+	ctx := context.Background()
+	if err := s.db.Client.Ping(ctx, nil); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "unhealthy",
+			"error":   "database connection failed",
+			"service": "gymlog-backend",
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    "healthy",
+		"service":   "gymlog-backend",
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+		"version":   "1.0.0",
+	})
 }
 
 func (s *Server) handleValidateSession(w http.ResponseWriter, r *http.Request) {
