@@ -267,7 +267,7 @@ export default function CreateRoutineRoute() {
               Set {setIndex + 1}
             </Typography>
             <Typography variant="text-small" color="light">
-              {set.reps} reps @ {set.weight}lbs
+              {set.reps} reps @ {set.weight}kg
             </Typography>
           </View>
         ))}

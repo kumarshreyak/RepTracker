@@ -167,6 +167,16 @@ export default function ExerciseSearchRoute() {
     }
   };
 
+  const handleBackToSearch = () => {
+    setSelectedExercise(null);
+    setNumberOfSets("3");
+    setSets([
+      { reps: "10", weight: "" },
+      { reps: "10", weight: "" },
+      { reps: "10", weight: "" },
+    ]);
+  };
+
   if (!user) {
     router.replace('/');
     return null;
@@ -186,9 +196,6 @@ export default function ExerciseSearchRoute() {
       </Typography>
       <Typography variant="text-small" color="light" style={styles.exerciseDetails}>
         {exercise.muscle_group} • {exercise.equipment} • {exercise.difficulty}
-      </Typography>
-      <Typography variant="text-small" color="light" style={styles.exerciseDescription}>
-        {exercise.description}
       </Typography>
     </TouchableOpacity>
   );
@@ -213,7 +220,7 @@ export default function ExerciseSearchRoute() {
         </View>
         <View style={styles.setInputContainer}>
           <Typography variant="text-small" color="dark" style={styles.inputLabel}>
-            Weight (lbs) *
+            Weight (kg) *
           </Typography>
           <TextInput
             value={set.weight}
@@ -239,81 +246,81 @@ export default function ExerciseSearchRoute() {
             Add Exercise
           </Typography>
           <Typography variant="text-default" color="light">
-            Search and select exercises for your routine
+            {selectedExercise ? 'Configure your exercise sets' : 'Search and select exercises for your routine'}
           </Typography>
         </View>
 
-        {/* Search Section */}
-        <View style={styles.card}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-            Search Exercises
-          </Typography>
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search by name, muscle group, or equipment..."
-            style={styles.searchInput}
-            placeholderTextColor={getColor('light')}
-          />
-        </View>
-
-        {/* Exercise List */}
-        <View style={styles.card}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-            Exercise Library
-          </Typography>
-
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={getColor('blue-bright')} />
-              <Typography variant="text-default" color="light" style={styles.loadingText}>
-                Loading exercises...
+        {/* Mode 1: Search Mode - Only show when no exercise is selected */}
+        {!selectedExercise && (
+          <>
+            {/* Search Section */}
+            <View style={styles.section}>
+              <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
+                Search Exercises
               </Typography>
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search by name, muscle group, or equipment..."
+                style={styles.searchInput}
+                placeholderTextColor={getColor('light')}
+              />
             </View>
-          ) : exercises.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Typography variant="text-default" color="light" style={styles.emptyStateTitle}>
-                No exercises found
+
+            {/* Exercise List */}
+            <View style={styles.section}>
+              <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
+                Exercise Library
               </Typography>
-              {searchQuery && (
-                <Typography variant="text-small" color="light" style={styles.emptyStateSubtitle}>
-                  Try a different search term
-                </Typography>
+
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={getColor('blue-bright')} />
+                  <Typography variant="text-default" color="light" style={styles.loadingText}>
+                    Loading exercises...
+                  </Typography>
+                </View>
+              ) : exercises.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Typography variant="text-default" color="light" style={styles.emptyStateTitle}>
+                    No exercises found
+                  </Typography>
+                  {searchQuery && (
+                    <Typography variant="text-small" color="light" style={styles.emptyStateSubtitle}>
+                      Try a different search term
+                    </Typography>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.exerciseList}>
+                  {exercises.map(renderExerciseItem)}
+                </View>
               )}
             </View>
-          ) : (
-            <ScrollView style={styles.exerciseList} nestedScrollEnabled>
-              {exercises.map(renderExerciseItem)}
-            </ScrollView>
-          )}
-        </View>
+          </>
+        )}
 
-        {/* Exercise Details & Configuration */}
+        {/* Mode 2: Exercise Configuration Mode - Only show when exercise is selected */}
         {selectedExercise && (
-          <View style={styles.card}>
-            <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-              Exercise Details
-            </Typography>
-
-            {/* Exercise Info */}
-            <View style={styles.exerciseDetailsSection}>
-              <Typography variant="text-default" color="dark" style={styles.selectedExerciseName}>
-                {selectedExercise.name}
-              </Typography>
-              <View style={styles.exerciseMetadata}>
-                <Typography variant="text-small" color="light">
-                  <Typography variant="text-small" color="dark" style={styles.metadataLabel}>Muscle:</Typography> {selectedExercise.muscle_group}
+          <View style={styles.section}>
+            {/* Selected Exercise Header with Cross Button */}
+            <View style={styles.selectedExerciseHeader}>
+              <View style={styles.selectedExerciseInfo}>
+                <Typography variant="heading-small" color="dark" style={styles.selectedExerciseName}>
+                  {selectedExercise.name}
                 </Typography>
-                <Typography variant="text-small" color="light">
-                  <Typography variant="text-small" color="dark" style={styles.metadataLabel}>Equipment:</Typography> {selectedExercise.equipment}
-                </Typography>
-                <Typography variant="text-small" color="light">
-                  <Typography variant="text-small" color="dark" style={styles.metadataLabel}>Difficulty:</Typography> {selectedExercise.difficulty}
+                <Typography variant="text-small" color="light" style={styles.selectedExerciseDetails}>
+                  {selectedExercise.muscle_group} • {selectedExercise.equipment} • {selectedExercise.difficulty}
                 </Typography>
               </View>
-              <Typography variant="text-small" color="light" style={styles.selectedExerciseDescription}>
-                {selectedExercise.description}
-              </Typography>
+              <TouchableOpacity
+                style={styles.crossButton}
+                onPress={handleBackToSearch}
+              >
+                <Typography variant="text-default" color="light" style={styles.crossButtonText}>
+                  ✕
+                </Typography>
+              </TouchableOpacity>
             </View>
 
             {/* Set Configuration */}
@@ -337,9 +344,9 @@ export default function ExerciseSearchRoute() {
               </View>
 
               {/* Individual Sets */}
-              <ScrollView style={styles.setsContainer} nestedScrollEnabled>
+              <View style={styles.setsContainer}>
                 {sets.map(renderSetConfiguration)}
-              </ScrollView>
+              </View>
 
               {!isFormValid() && selectedExercise && (
                 <View style={styles.validationError}>
@@ -383,17 +390,9 @@ const styles = StyleSheet.create({
   title: {
     marginVertical: 16,
   },
-  card: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
     marginBottom: 16,
@@ -427,7 +426,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   exerciseList: {
-    maxHeight: 300,
   },
   exerciseItem: {
     padding: 16,
@@ -448,15 +446,8 @@ const styles = StyleSheet.create({
   exerciseDetails: {
     marginBottom: 8,
   },
-  exerciseDescription: {
-    lineHeight: 16,
-  },
   exerciseDetailsSection: {
     marginBottom: 24,
-  },
-  selectedExerciseName: {
-    fontWeight: '500',
-    marginBottom: 12,
   },
   exerciseMetadata: {
     marginBottom: 12,
@@ -465,11 +456,7 @@ const styles = StyleSheet.create({
   metadataLabel: {
     fontWeight: '500',
   },
-  selectedExerciseDescription: {
-    lineHeight: 18,
-  },
   setConfiguration: {
-    marginTop: 24,
   },
   configTitle: {
     fontWeight: '500',
@@ -492,7 +479,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   setsContainer: {
-    maxHeight: 300,
   },
   setCard: {
     padding: 12,
@@ -533,5 +519,27 @@ const styles = StyleSheet.create({
   },
   addButton: {
     marginTop: 24,
+  },
+  selectedExerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  selectedExerciseInfo: {
+    flex: 1,
+  },
+  selectedExerciseName: {
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  selectedExerciseDetails: {
+    marginBottom: 8,
+  },
+  crossButton: {
+    padding: 8,
+  },
+  crossButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

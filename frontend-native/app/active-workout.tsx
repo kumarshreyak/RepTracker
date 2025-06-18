@@ -529,7 +529,7 @@ export default function ActiveWorkoutScreen() {
                       </Typography>
                       <Typography variant="text-small" color="light">
                         {set.reps} reps
-                        {set.weight > 0 && ` • ${set.weight}lbs`}
+                        {set.weight > 0 && ` • ${set.weight}kg`}
                         {set.durationSeconds && set.durationSeconds > 0 && ` • ${Math.floor(set.durationSeconds / 60)}:${(set.durationSeconds % 60).toString().padStart(2, '0')}`}
                         {set.notes && ` • ${set.notes}`}
                       </Typography>
