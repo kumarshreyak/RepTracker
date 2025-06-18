@@ -77,16 +77,13 @@ This guide covers deploying the GymLog backend to Google Cloud Platform using Cl
    ./deploy.sh production YOUR_GCP_PROJECT_ID
    ```
 
-2. **Set environment variables in Cloud Run:**
-   ```bash
-   gcloud run services update gymlog-backend \
-     --set-env-vars MONGODB_URI="your-mongodb-uri" \
-     --set-env-vars DB_NAME="gymlog" \
-     --set-env-vars JWT_SECRET="your-production-jwt-secret" \
-     --set-env-vars GOOGLE_CLIENT_ID="your-google-client-id" \
-     --set-env-vars GOOGLE_CLIENT_SECRET="your-google-client-secret" \
-     --region us-central1
-   ```
+2. **Secrets are automatically configured via Secret Manager:**
+   The deployment script automatically uses secrets from Google Secret Manager:
+   - `MONGODB_URI` from `mongodb-uri` secret
+   - `DB_NAME` from `db-name` secret
+   - `JWT_SECRET` from `jwt-secret` secret
+   
+   No manual environment variable setup needed!
 
 ### Option 2: Cloud Build (CI/CD)
 
@@ -122,17 +119,72 @@ This guide covers deploying the GymLog backend to Google Cloud Platform using Cl
      --max-instances 10
    ```
 
+## Secret Manager Setup
+
+### Prerequisites
+
+1. **Enable Secret Manager API:**
+   ```bash
+   gcloud services enable secretmanager.googleapis.com
+   ```
+
+2. **Grant Cloud Build access to secrets:**
+   ```bash
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+     --member="serviceAccount:YOUR_PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
+     --role="roles/secretmanager.secretAccessor"
+   ```
+
+### Creating Secrets
+
+1. **MongoDB Atlas URI:**
+   ```bash
+   echo "mongodb+srv://username:password@cluster.mongodb.net/" | \
+   gcloud secrets create mongodb-uri --data-file=-
+   ```
+
+2. **Database Name:**
+   ```bash
+   echo "gymlog" | gcloud secrets create db-name --data-file=-
+   ```
+
+3. **JWT Secret (auto-generated):**
+   ```bash
+   openssl rand -base64 32 | gcloud secrets create jwt-secret --data-file=-
+   ```
+
+### Updating Secrets
+
+To update any secret with a new value:
+```bash
+echo "new-value" | gcloud secrets versions add SECRET_NAME --data-file=-
+```
+
+### Verifying Secrets
+
+List all secrets:
+```bash
+gcloud secrets list
+```
+
+View secret metadata (not the actual value):
+```bash
+gcloud secrets describe SECRET_NAME
+```
+
 ## Environment Variables Configuration
 
-### Required Variables
+### Required Variables (via Secret Manager)
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `MONGODB_URI` | MongoDB connection string | `mongodb+srv://user:pass@cluster.net/` |
-| `DB_NAME` | Database name | `gymlog` |
-| `JWT_SECRET` | JWT signing secret | `your-secure-secret-32chars+` |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxx.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | `GOCSPX-xxx` |
+| Variable | Description | Secret Name | Example |
+|----------|-------------|-------------|---------|
+| `MONGODB_URI` | MongoDB connection string | `mongodb-uri` | `mongodb+srv://user:pass@cluster.net/` |
+| `DB_NAME` | Database name | `db-name` | `gymlog` |
+| `JWT_SECRET` | JWT signing secret | `jwt-secret` | `auto-generated-32-char-string` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `google-client-id` | `xxx.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | `google-client-secret` | `GOCSPX-xxx` |
+
+**Note:** These variables are automatically injected from Google Secret Manager during deployment.
 
 ### Optional Variables
 

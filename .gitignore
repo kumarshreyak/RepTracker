@@ -37,3 +37,4 @@ next-env.d.ts
 gymlog-release-key.keystore
 backend/server
 backend/main
+backend/env.template

@@ -42,6 +42,22 @@ steps:
       - '10'
       - '--set-env-vars'
       - 'ENV=production'
+      - '--update-secrets'
+      - 'MONGODB_URI=mongodb-uri:latest,DB_NAME=db-name:latest,JWT_SECRET=jwt-secret:latest'
+    secretEnv: 
+      - 'MONGODB_URI'
+      - 'DB_NAME' 
+      - 'JWT_SECRET'
+
+# Configure secret access for the build
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/mongodb-uri/versions/latest
+      env: 'MONGODB_URI'
+    - versionName: projects/$PROJECT_ID/secrets/db-name/versions/latest
+      env: 'DB_NAME'
+    - versionName: projects/$PROJECT_ID/secrets/jwt-secret/versions/latest
+      env: 'JWT_SECRET'
 
 images:
   - 'gcr.io/$PROJECT_ID/gymlog-backend:$COMMIT_SHA'
