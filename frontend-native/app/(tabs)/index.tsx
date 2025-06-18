@@ -92,9 +92,8 @@ export default function HomeTab() {
     }, [user?.id])
   );
 
-  const handleSignOut = async () => {
-    await authService.signOut();
-    router.replace('/');
+  const handleSignOut = () => {
+    router.replace('/sign-in');
   };
 
   const handleCreateRoutine = () => {

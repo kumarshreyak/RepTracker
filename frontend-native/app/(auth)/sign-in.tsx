@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -23,6 +23,21 @@ const GoogleIcon = () => (
 
 export default function SignInRoute() {
   const [isLoading, setIsLoading] = useState(false);
+
+  // Reset auth service and clear local data when sign-in page loads
+  useEffect(() => {
+    const resetAuthState = async () => {
+      try {
+        await authService.signOut();
+        // Clear any other local data/cache here if needed
+        console.log('Auth state reset on sign-in page load');
+      } catch (error) {
+        console.error('Error resetting auth state:', error);
+      }
+    };
+
+    resetAuthState();
+  }, []);
 
   const handleGoogleSignIn = async () => {
     try {

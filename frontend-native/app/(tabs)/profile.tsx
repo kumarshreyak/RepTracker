@@ -15,9 +15,8 @@ import { authService } from '../../src/auth/AuthService';
 export default function ProfileTab() {
   const { user } = useAuth();
 
-  const handleSignOut = async () => {
-    await authService.signOut();
-    router.replace('/');
+  const handleSignOut = () => {
+    router.replace('/sign-in');
   };
 
   if (!user) {
