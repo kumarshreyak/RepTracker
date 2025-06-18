@@ -343,7 +343,7 @@ func (s *WorkoutSessionService) ListWorkoutSessions(ctx context.Context, req *pb
 		// For simplicity, we're not implementing pagination here
 	}
 
-	opts := options.Find().SetLimit(pageSize).SetSkip(skip)
+	opts := options.Find().SetLimit(pageSize).SetSkip(skip).SetSort(bson.D{{"created_at", -1}})
 	cursor, err := s.sessionColl.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to list workout sessions")

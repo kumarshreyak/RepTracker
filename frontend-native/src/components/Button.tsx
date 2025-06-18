@@ -5,7 +5,7 @@ import { getColor } from './Colors';
 
 export interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'default' | 'primary' | 'danger' | 'secondary' | 'text';
+  variant?: 'default' | 'primary' | 'danger' | 'secondary' | 'text' | 'success';
   size?: 'small' | 'default' | 'large' | 'xlarge';
   icon?: React.ReactNode;
   iconOnly?: boolean;
@@ -91,6 +91,11 @@ export const Button: React.FC<ButtonProps> = ({
       borderColor: 'transparent',
       textColor: getColor('blue-bright'),
     },
+    success: {
+      backgroundColor: getColor('green-bright'),
+      borderColor: getColor('green-bright'),
+      textColor: getColor('white'),
+    },
   };
 
   const currentSize = sizeConfig[size];
@@ -132,7 +137,7 @@ export const Button: React.FC<ButtonProps> = ({
       {!iconOnly && (
         <Typography 
           variant={textVariant} 
-          color={variant === 'primary' || variant === 'danger' ? 'white' : 
+          color={variant === 'primary' || variant === 'danger' || variant === 'success' ? 'white' : 
                  variant === 'text' ? 'blue-bright' : 'dark'}
           style={{ fontWeight: '500' }}
         >

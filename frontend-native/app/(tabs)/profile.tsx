@@ -32,9 +32,7 @@ export default function ProfileTab() {
           <Typography variant="heading-large" color="dark" style={styles.title}>
             Profile
           </Typography>
-          <Typography variant="text-default" color="light">
-            Manage your account and preferences
-          </Typography>
+        
         </View>
 
         {/* User Profile Card */}
@@ -54,82 +52,16 @@ export default function ProfileTab() {
           </View>
         </View>
 
-        {/* Profile Details */}
-        <View style={styles.section}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-            Account Information
-          </Typography>
-          
-          <View style={styles.profileDetails}>
-            <View style={styles.detailItem}>
-              <Typography variant="text-small" color="light" style={styles.detailLabel}>
-                Name
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user.name || 'Not provided'}
-              </Typography>
-            </View>
-            
-            <View style={styles.detailItem}>
-              <Typography variant="text-small" color="light" style={styles.detailLabel}>
-                Email
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user.email || 'Not provided'}
-              </Typography>
-            </View>
-            
-            <View style={styles.detailItem}>
-              <Typography variant="text-small" color="light" style={styles.detailLabel}>
-                User ID
-              </Typography>
-              <Typography variant="text-default" color="dark">
-                {user.id || 'Not provided'}
-              </Typography>
-            </View>
-          </View>
-        </View>
-
-        {/* Actions */}
-        <View style={styles.section}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-            Actions
-          </Typography>
-          
-          <View style={styles.actions}>
-            <Button
-              variant="secondary"
-              size="large"
-              style={styles.actionButton}
-              onPress={() => {
-                // TODO: Implement settings screen
-                console.log('Navigate to settings');
-              }}
-            >
-              Settings
-            </Button>
-            
-            <Button
-              variant="secondary"
-              size="large"
-              style={styles.actionButton}
-              onPress={() => {
-                // TODO: Implement help screen
-                console.log('Navigate to help');
-              }}
-            >
-              Help & Support
-            </Button>
-            
-            <Button
-              variant="danger"
-              size="large"
-              style={styles.actionButton}
-              onPress={handleSignOut}
-            >
-              Sign Out
-            </Button>
-          </View>
+        {/* Sign Out */}
+        <View style={styles.signOutSection}>
+          <Button
+            variant="danger"
+            size="large"
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+          >
+            Sign Out
+          </Button>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -176,19 +108,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 16,
   },
-  profileDetails: {
-    gap: 16,
+  signOutSection: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
-  detailItem: {
-    marginBottom: 8,
-  },
-  detailLabel: {
-    marginBottom: 4,
-  },
-  actions: {
-    gap: 12,
-  },
-  actionButton: {
+  signOutButton: {
     width: '100%',
   },
 }); 

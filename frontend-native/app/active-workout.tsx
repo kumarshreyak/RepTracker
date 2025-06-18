@@ -489,7 +489,7 @@ export default function ActiveWorkoutScreen() {
           {activeWorkout.exercises.map((exercise, exerciseIndex) => (
             <View key={exerciseIndex} style={[
               styles.exerciseCard,
-              exercise.completed && styles.exerciseCardCompleted
+              exercise.completed && styles.exerciseCard
             ]}>
               {/* Exercise Header */}
               <View style={styles.exerciseHeader}>
@@ -504,7 +504,7 @@ export default function ActiveWorkoutScreen() {
                   )}
                 </View>
                 <Button
-                  variant={exercise.completed ? "primary" : "secondary"}
+                  variant={exercise.completed ? "success" : "secondary"}
                   size="small"
                   onPress={() => toggleExerciseComplete(exerciseIndex)}
                 >
@@ -521,7 +521,7 @@ export default function ActiveWorkoutScreen() {
                 {exercise.sets.map((set, setIndex) => (
                   <View key={setIndex} style={[
                     styles.setRow,
-                    set.completed && styles.setRowCompleted
+                    set.completed && styles.setRow
                   ]}>
                     <View style={styles.setInfo}>
                       <Typography variant="text-small" color="dark" style={styles.setNumber}>
@@ -530,12 +530,11 @@ export default function ActiveWorkoutScreen() {
                       <Typography variant="text-small" color="light">
                         {set.reps} reps
                         {set.weight > 0 && ` • ${set.weight}kg`}
-                        {set.durationSeconds && set.durationSeconds > 0 && ` • ${Math.floor(set.durationSeconds / 60)}:${(set.durationSeconds % 60).toString().padStart(2, '0')}`}
                         {set.notes && ` • ${set.notes}`}
                       </Typography>
                     </View>
                     <Button
-                      variant={set.completed ? "primary" : "text"}
+                      variant={set.completed ? "success" : "text"}
                       size="small"
                       onPress={() => toggleSetComplete(exerciseIndex, setIndex)}
                     >
