@@ -8,8 +8,8 @@ set -e
 # Configuration
 ENVIRONMENT=${1:-production}
 PROJECT_ID=${2:-your-gcp-project-id}
-REGION="us-central1"
-SERVICE_NAME="gymlog-backend"
+REGION="asia-south1"
+SERVICE_NAME="gymlog"
 IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
 echo "🚀 Deploying GymLog Backend to Google Cloud Run"
