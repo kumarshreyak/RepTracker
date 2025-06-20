@@ -107,6 +107,40 @@ Before writing any code that involves colors, styling, or UI components:
 - **Card pattern**: `backgroundColor: getColor('backgroundPrimary'), borderColor: getColor('borderOpaque')`
 - **Avoid**: Using legacy colors like `surface`, `background`, `border-light`
 
+### Data Models & Naming Conventions
+**CRITICAL: Always use camelCase naming for all data models and interfaces**
+
+#### **Naming Convention Rules:**
+- ✅ **ALWAYS use camelCase**: `muscleGroup`, `exerciseId`, `workoutSession`, `userId`
+- ❌ **NEVER use snake_case**: No `muscle_group`, `exercise_id`, `workout_session`, `user_id`
+- ❌ **NEVER use kebab-case**: No `muscle-group`, `exercise-id`, `workout-session`, `user-id`
+- ✅ **Interface properties**: `{ id: string; name: string; muscleGroup: string; }`
+- ✅ **API responses**: Convert snake_case from backend to camelCase in frontend
+- ✅ **Local variables**: All variables, functions, and object properties use camelCase
+
+#### **Examples:**
+```typescript
+// ✅ CORRECT - camelCase naming
+interface Exercise {
+  id: string;
+  name: string;
+  muscleGroup: string;  // NOT muscle_group
+  equipmentType: string; // NOT equipment_type
+}
+
+// ✅ CORRECT - camelCase usage
+const exerciseData = {
+  muscleGroup: exercise.muscleGroup,
+  workoutDate: new Date(),
+};
+
+// ❌ INCORRECT - snake_case naming
+interface Exercise {
+  muscle_group: string; // Wrong!
+  equipment_type: string; // Wrong!
+}
+```
+
 ### General Rules
 1. **Never use custom CSS colors** - always use the predefined Uber Base semantic color system
 2. **Always reference COLOR_SYSTEM.md and TYPOGRAPHY_SYSTEM.md** - check the complete documentation for proper usage
@@ -119,6 +153,7 @@ Before writing any code that involves colors, styling, or UI components:
 9. **Always establish clear hierarchy** - use Typography variants to create proper visual hierarchy
 10. **Never hardcode typography styles** - let the Typography component handle all font properties
 11. **Use ColorDemo component** - reference `<ColorDemo />` to see all available semantic colors
+12. **ALWAYS use camelCase naming** - for all data models, interfaces, properties, and variables
 
 ### File Structure
 - Components should be organized in `/frontend-native/src/components/`

@@ -21,15 +21,15 @@ interface WorkoutSet {
 interface RoutineExercise {
   id: string;
   name: string;
-  muscle_group: string;
+  muscleGroup: string;
   sets: WorkoutSet[];
 }
 
 // Mock data for recently used exercises - in real app, this would come from user history
 const RECENT_EXERCISES: RoutineExercise[] = [
-  { id: '1', name: 'Push-ups', muscle_group: 'Chest', sets: [{ reps: 10, weight: 0 }, { reps: 10, weight: 0 }, { reps: 10, weight: 0 }] },
-  { id: '2', name: 'Squats', muscle_group: 'Legs', sets: [{ reps: 12, weight: 0 }, { reps: 12, weight: 0 }, { reps: 12, weight: 0 }] },
-  { id: '3', name: 'Pull-ups', muscle_group: 'Back', sets: [{ reps: 8, weight: 0 }, { reps: 8, weight: 0 }, { reps: 8, weight: 0 }] },
+  { id: '1', name: 'Push-ups', muscleGroup: 'Chest', sets: [{ reps: 10, weight: 0 }, { reps: 10, weight: 0 }, { reps: 10, weight: 0 }] },
+  { id: '2', name: 'Squats', muscleGroup: 'Legs', sets: [{ reps: 12, weight: 0 }, { reps: 12, weight: 0 }, { reps: 12, weight: 0 }] },
+  { id: '3', name: 'Pull-ups', muscleGroup: 'Back', sets: [{ reps: 8, weight: 0 }, { reps: 8, weight: 0 }, { reps: 8, weight: 0 }] },
 ];
 
 export default function CreateRoutineRoute() {
@@ -255,7 +255,7 @@ export default function CreateRoutineRoute() {
         <View style={styles.exerciseMetaRow}>
           <View style={styles.metaPill}>
             <Typography variant="paragraph-xsmall" color="contentSecondary">
-              {exercise.muscle_group}
+              {exercise.muscleGroup}
             </Typography>
           </View>
           <Typography variant="paragraph-xsmall" color="contentTertiary">

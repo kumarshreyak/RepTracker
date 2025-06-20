@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Typography, Button } from '../src/components';
@@ -20,7 +22,7 @@ interface Exercise {
   id: string;
   name: string;
   description: string;
-  muscle_group: string;
+  muscleGroup: string;
   equipment: string;
   difficulty: string;
   instructions: string[];
@@ -39,7 +41,7 @@ interface WorkoutSetInput {
 interface RoutineExercise {
   id: string;
   name: string;
-  muscle_group: string;
+  muscleGroup: string;
   sets: WorkoutSet[];
 }
 
@@ -103,13 +105,18 @@ export default function ExerciseSearchRoute() {
     setSets(newSets);
   };
 
+  const copySetToAll = (sourceIndex: number) => {
+    const sourceSet = sets[sourceIndex];
+    const newSets = sets.map(() => ({ ...sourceSet }));
+    setSets(newSets);
+  };
+
   const isFormValid = () => {
     return selectedExercise && 
            sets.length > 0 && 
            sets.every(set => {
              const reps = parseFloat(set.reps) || 0;
-             const weight = parseFloat(set.weight) || 0;
-             return reps > 0 && weight > 0;
+             return reps > 0;
            });
   };
 
@@ -125,7 +132,7 @@ export default function ExerciseSearchRoute() {
     const exerciseData: RoutineExercise = {
       id: selectedExercise.id,
       name: selectedExercise.name,
-      muscle_group: selectedExercise.muscle_group,
+      muscleGroup: selectedExercise.muscleGroup,
       sets: convertedSets,
     };
     
@@ -182,182 +189,192 @@ export default function ExerciseSearchRoute() {
     return null;
   }
 
-  const renderExerciseItem = (exercise: Exercise) => (
-    <TouchableOpacity
-      key={exercise.id}
-      style={[
-        styles.exerciseItem,
-        selectedExercise?.id === exercise.id && styles.exerciseItemSelected
-      ]}
-      onPress={() => setSelectedExercise(exercise)}
-    >
-      <Typography variant="label-medium" color="contentPrimary" style={styles.exerciseName}>
-        {exercise.name}
-      </Typography>
-      <Typography variant="paragraph-small" color="contentSecondary" style={styles.exerciseDetails}>
-        {exercise.muscle_group} • {exercise.equipment} • {exercise.difficulty}
-      </Typography>
-    </TouchableOpacity>
-  );
-
-  const renderSetConfiguration = (set: WorkoutSetInput, index: number) => (
-    <View key={index} style={styles.setCard}>
-      <Typography variant="paragraph-small" color="contentPrimary" style={styles.setTitle}>
-        Set {index + 1}
-      </Typography>
-      <View style={styles.setInputs}>
-        <View style={styles.setInputContainer}>
-          <Typography variant="paragraph-small" color="contentPrimary" style={styles.inputLabel}>
-            Reps *
-          </Typography>
-          <TextInput
-            value={set.reps}
-            onChangeText={(text) => updateSet(index, 'reps', text)}
-            keyboardType="numeric"
-            style={styles.setInput}
-            placeholderTextColor={getColor('contentSecondary')}
-          />
-        </View>
-        <View style={styles.setInputContainer}>
-          <Typography variant="paragraph-small" color="contentPrimary" style={styles.inputLabel}>
-            Weight (kg) *
-          </Typography>
-          <TextInput
-            value={set.weight}
-            onChangeText={(text) => updateSet(index, 'weight', text)}
-            keyboardType="numeric"
-            style={styles.setInput}
-            placeholderTextColor={getColor('contentSecondary')}
-          />
-        </View>
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Typography variant="label-medium" color="contentSecondary">←</Typography>
+        </TouchableOpacity>
+        <Typography variant="label-medium" color="contentPrimary">
+          Add Exercise
+        </Typography>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Page Header */}
-        <View style={styles.header}>
-          <Button variant="text" size="default" onPress={() => router.back()}>
-            ← Back to Create Routine
-          </Button>
-          <Typography variant="heading-xxlarge" color="contentPrimary" style={styles.title}>
-            Add Exercise
-          </Typography>
-          <Typography variant="paragraph-medium" color="contentSecondary">
-            {selectedExercise ? 'Configure your exercise sets' : 'Search and select exercises for your routine'}
-          </Typography>
-        </View>
-
-        {/* Mode 1: Search Mode - Only show when no exercise is selected */}
+        {/* Search Bar - Only visible when no exercise is selected */}
         {!selectedExercise && (
-          <>
-            {/* Search Section */}
-            <View style={styles.section}>
-              <Typography variant="heading-small" color="contentPrimary" style={styles.sectionTitle}>
-                Search Exercises
-              </Typography>
-              <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search by name, muscle group, or equipment..."
-                style={styles.searchInput}
-                placeholderTextColor={getColor('contentSecondary')}
-              />
-            </View>
-
-            {/* Exercise List */}
-            <View style={styles.section}>
-              <Typography variant="heading-small" color="contentPrimary" style={styles.sectionTitle}>
-                Exercise Library
-              </Typography>
-
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={getColor('accent')} />
-                  <Typography variant="paragraph-medium" color="contentSecondary" style={styles.loadingText}>
-                    Loading exercises...
-                  </Typography>
-                </View>
-              ) : exercises.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Typography variant="paragraph-medium" color="contentSecondary" style={styles.emptyStateTitle}>
-                    No exercises found
-                  </Typography>
-                  {searchQuery && (
-                    <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateSubtitle}>
-                      Try a different search term
-                    </Typography>
-                  )}
-                </View>
-              ) : (
-                <View style={styles.exerciseList}>
-                  {exercises.map(renderExerciseItem)}
-                </View>
-              )}
-            </View>
-          </>
+          <View style={styles.searchContainer}>
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search exercises..."
+              style={styles.searchInput}
+              placeholderTextColor={getColor('contentTertiary')}
+            />
+          </View>
         )}
 
-        {/* Mode 2: Exercise Configuration Mode - Only show when exercise is selected */}
+        {/* Selected Exercise Chip */}
         {selectedExercise && (
-          <View style={styles.section}>
-            {/* Selected Exercise Header with Cross Button */}
-            <View style={styles.selectedExerciseHeader}>
-              <View style={styles.selectedExerciseInfo}>
-                <Typography variant="heading-small" color="contentPrimary" style={styles.selectedExerciseName}>
+          <TouchableOpacity style={styles.selectedChip} onPress={handleBackToSearch}>
+            <View style={styles.chipContent}>
+              <View style={styles.chipText}>
+                <Typography variant="label-medium" color="contentPrimary">
                   {selectedExercise.name}
                 </Typography>
-                <Typography variant="paragraph-small" color="contentSecondary" style={styles.selectedExerciseDetails}>
-                  {selectedExercise.muscle_group} • {selectedExercise.equipment} • {selectedExercise.difficulty}
+                <Typography variant="paragraph-xsmall" color="contentSecondary">
+                  {selectedExercise.muscleGroup}
                 </Typography>
               </View>
+              <MaterialIcons 
+                name="close" 
+                size={20} 
+                color={getColor('contentSecondary')} 
+              />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Exercise List - Compact grid view when searching */}
+        {!selectedExercise && !loading && exercises.length > 0 && (
+          <View style={styles.exerciseGrid}>
+            {exercises.map((exercise) => (
               <TouchableOpacity
-                style={styles.crossButton}
-                onPress={handleBackToSearch}
+                key={exercise.id}
+                style={styles.exerciseGridItem}
+                onPress={() => setSelectedExercise(exercise)}
               >
-                <Typography variant="paragraph-medium" color="contentSecondary" style={styles.crossButtonText}>
-                  ✕
+                <Typography 
+                  variant="label-small" 
+                  color="contentPrimary"
+                  style={styles.exerciseName}
+                >
+                  {exercise.name}
+                </Typography>
+                <Typography 
+                  variant="paragraph-xsmall" 
+                  color="contentTertiary"
+                >
+                  {exercise.muscleGroup}
                 </Typography>
               </TouchableOpacity>
-            </View>
+            ))}
+          </View>
+        )}
 
-            {/* Set Configuration */}
-            <View style={styles.setConfiguration}>
-              <Typography variant="label-medium" color="contentPrimary" style={styles.configTitle}>
-                Configure Sets
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={getColor('accent')} />
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!selectedExercise && !loading && exercises.length === 0 && searchQuery && (
+          <View style={styles.centerContainer}>
+            <Typography variant="paragraph-medium" color="contentTertiary">
+              No results
+            </Typography>
+          </View>
+        )}
+
+        {/* Sets Configuration - Streamlined */}
+        {selectedExercise && (
+          <View style={styles.configSection}>
+            {/* Quick Set Selector */}
+            <View style={styles.setSelector}>
+              <Typography variant="label-small" color="contentPrimary">
+                Sets
               </Typography>
-              
-              {/* Number of Sets */}
-              <View style={styles.numberOfSetsContainer}>
-                <Typography variant="paragraph-small" color="contentPrimary" style={styles.inputLabel}>
-                  Number of Sets *
-                </Typography>
+              <View style={styles.setButtons}>
+                {[1, 2, 3, 4, 5].map((num) => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[
+                      styles.setButton,
+                      parseInt(numberOfSets) === num && styles.setButtonActive
+                    ]}
+                    onPress={() => setNumberOfSets(num.toString())}
+                  >
+                    <Typography 
+                      variant="label-small" 
+                      color={parseInt(numberOfSets) === num ? 'contentOnColor' : 'contentPrimary'}
+                    >
+                      {num}
+                    </Typography>
+                  </TouchableOpacity>
+                ))}
                 <TextInput
                   value={numberOfSets}
                   onChangeText={setNumberOfSets}
                   keyboardType="numeric"
-                  style={styles.numberOfSetsInput}
-                  placeholderTextColor={getColor('contentSecondary')}
+                  style={styles.customSetInput}
+                  placeholder="..."
+                  placeholderTextColor={getColor('contentTertiary')}
                 />
               </View>
-
-              {/* Individual Sets */}
-              <View style={styles.setsContainer}>
-                {sets.map(renderSetConfiguration)}
-              </View>
-
-              {!isFormValid() && selectedExercise && (
-                <View style={styles.validationError}>
-                  <Typography variant="paragraph-small" color="contentNegative">
-                    All fields are required. Please ensure all sets have reps greater than 0 and weight greater than 0.
-                  </Typography>
-                </View>
-              )}
             </View>
 
-            {/* Add Button */}
+            {/* Compact Sets Input */}
+            <View style={styles.setsInputContainer}>
+              {sets.map((set, index) => (
+                <View key={index} style={styles.setRow}>
+                  <Typography 
+                    variant="label-xsmall" 
+                    color="contentSecondary"
+                    style={styles.setNumber}
+                  >
+                    {index + 1}
+                  </Typography>
+                  
+                  <View style={styles.setInputGroup}>
+                    <TextInput
+                      value={set.reps}
+                      onChangeText={(text) => updateSet(index, 'reps', text)}
+                      keyboardType="numeric"
+                      placeholder="Reps"
+                      style={[
+                        styles.compactInput,
+                        !set.reps && styles.inputError
+                      ]}
+                      placeholderTextColor={getColor('contentTertiary')}
+                    />
+                    
+                    <Typography variant="label-xsmall" color="contentTertiary">×</Typography>
+                    
+                    <TextInput
+                      value={set.weight}
+                      onChangeText={(text) => updateSet(index, 'weight', text)}
+                      keyboardType="numeric"
+                      placeholder="Weight"
+                      style={styles.compactInput}
+                      placeholderTextColor={getColor('contentTertiary')}
+                    />
+                    
+                    <Typography variant="label-xsmall" color="contentTertiary">kg</Typography>
+                  </View>
+                  
+                  {/* Action area - always present for uniform spacing */}
+                  <View style={styles.actionArea}>
+                    {index === 0 && sets.length > 1 ? (
+                      <TouchableOpacity
+                        style={styles.copyButton}
+                        onPress={() => copySetToAll(index)}
+                      >
+                        <MaterialIcons 
+                          name="content-copy" 
+                          size={20} 
+                          color={getColor('contentSecondary')} 
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Action Button */}
             <Button
               variant="primary"
               size="large"
@@ -374,164 +391,171 @@ export default function ExerciseSearchRoute() {
   );
 }
 
+const { width } = Dimensions.get('window');
+const gridItemWidth = (width - 48) / 2; // 2 columns with padding
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: getColor('backgroundSecondary'),
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: getColor('backgroundPrimary'),
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderTransparent'),
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerSpacer: {
+    width: 40, // Balance the header
   },
   scrollView: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  title: {
-    marginVertical: 16,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    marginBottom: 16,
+  searchContainer: {
+    margin: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: getColor('borderTransparent'),
   },
   searchInput: {
-    borderWidth: 1,
-    borderColor: getColor('borderOpaque'),
-    borderRadius: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
     color: getColor('contentPrimary'),
+  },
+
+  selectedChip: {
+    marginHorizontal: 16,
+    padding: 12,
     backgroundColor: getColor('backgroundPrimary'),
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  loadingText: {
-    marginTop: 16,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  emptyStateTitle: {
-    textAlign: 'center',
-  },
-  emptyStateSubtitle: {
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  exerciseList: {
-  },
-  exerciseItem: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: getColor('borderOpaque'),
     borderRadius: 8,
-    marginBottom: 12,
-    backgroundColor: getColor('backgroundPrimary'),
+    borderWidth: 1,
+    borderColor: getColor('borderSelected'),
   },
-  exerciseItemSelected: {
-    borderColor: getColor('accent'),
+  chipContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  chipText: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exerciseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  exerciseGridItem: {
+    width: gridItemWidth,
+    padding: 12,
     backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: getColor('borderTransparent'),
   },
   exerciseName: {
     marginBottom: 4,
   },
-  exerciseDetails: {
-    marginBottom: 8,
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
   },
-  exerciseDetailsSection: {
+  configSection: {
+    padding: 16,
+  },
+  setSelector: {
     marginBottom: 24,
   },
-  exerciseMetadata: {
-    marginBottom: 12,
-    gap: 4,
-  },
-  metadataLabel: {},
-  setConfiguration: {
-  },
-  configTitle: {
-    marginBottom: 16,
-  },
-  numberOfSetsContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    marginBottom: 8,
-  },
-  numberOfSetsInput: {
-    borderWidth: 1,
-    borderColor: getColor('borderOpaque'),
-    borderRadius: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    color: getColor('contentPrimary'),
-    backgroundColor: getColor('backgroundPrimary'),
-  },
-  setsContainer: {
-  },
-  setCard: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: getColor('borderOpaque'),
-    borderRadius: 8,
-    marginBottom: 12,
-    backgroundColor: getColor('backgroundPrimary'),
-  },
-  setTitle: {
-    marginBottom: 12,
-  },
-  setInputs: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  setInputContainer: {
-    flex: 1,
-  },
-  setInput: {
-    borderWidth: 1,
-    borderColor: getColor('borderOpaque'),
-    borderRadius: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 14,
-    color: getColor('contentPrimary'),
-    backgroundColor: getColor('backgroundPrimary'),
-  },
-  validationError: {
-    padding: 12,
-    backgroundColor: getColor('backgroundPrimary'),
-    borderWidth: 1,
-    borderColor: getColor('negative'),
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  addButton: {
-    marginTop: 24,
-  },
-  selectedExerciseHeader: {
+  setButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 8,
+    marginTop: 8,
   },
-  selectedExerciseInfo: {
+  setButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderWidth: 1,
+    borderColor: getColor('borderOpaque'),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setButtonActive: {
+    backgroundColor: getColor('backgroundAccent'),
+    borderColor: getColor('backgroundAccent'),
+  },
+  customSetInput: {
+    width: 50,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderWidth: 1,
+    borderColor: getColor('borderOpaque'),
+    paddingHorizontal: 8,
+    fontSize: 14,
+    color: getColor('contentPrimary'),
+    textAlign: 'center',
+  },
+  setsInputContainer: {
+    gap: 12,
+  },
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  setNumber: {
+    width: 20,
+    textAlign: 'center',
+  },
+  setInputGroup: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  selectedExerciseName: {
-    marginBottom: 4,
+  compactInput: {
+    flex: 1,
+    fontSize: 16,
+    color: getColor('contentPrimary'),
+    textAlign: 'center',
+    paddingVertical: 4,
   },
-  selectedExerciseDetails: {
-    marginBottom: 8,
+  inputError: {
+    color: getColor('contentNegative'),
   },
-  crossButton: {
+  addButton: {
+    marginTop: 32,
+  },
+  actionArea: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copyButton: {
     padding: 8,
-  },
-  crossButtonText: {
   },
 }); 
