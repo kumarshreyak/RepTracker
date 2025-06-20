@@ -6,6 +6,8 @@ import {
   Image,
   ScrollView,
   Alert,
+  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Typography, Button } from '../../src/components';
@@ -74,7 +76,7 @@ export default function HomeTab() {
   const [workoutsLoading, setWorkoutsLoading] = useState(false);
   const [workoutsError, setWorkoutsError] = useState<string | null>(null);
   const [hasMoreWorkouts, setHasMoreWorkouts] = useState(true);
-  const [workoutsPageSize, setWorkoutsPageSize] = useState(3);
+  const [workoutsPageSize, setWorkoutsPageSize] = useState(5);
 
   const fetchRoutines = async () => {
     console.log('[fetchRoutines] Starting fetch routine...');
@@ -124,7 +126,7 @@ export default function HomeTab() {
     }
   };
 
-  const fetchPastWorkouts = async (pageSize: number = 3, reset: boolean = false) => {
+  const fetchPastWorkouts = async (pageSize: number = 5, reset: boolean = false) => {
     console.log('[fetchPastWorkouts] Starting fetch past workouts...');
     console.log('[fetchPastWorkouts] User ID:', user?.id);
     console.log('[fetchPastWorkouts] Page size:', pageSize);
@@ -182,7 +184,7 @@ export default function HomeTab() {
   useEffect(() => {
     if (user?.id) {
       fetchRoutines();
-      fetchPastWorkouts(3, true); // Initial load with 3 workouts
+      fetchPastWorkouts(5, true); // Initial load with 5 workouts
     }
   }, [user?.id]);
 
@@ -191,28 +193,14 @@ export default function HomeTab() {
     React.useCallback(() => {
       if (user?.id) {
         fetchRoutines();
-        fetchPastWorkouts(3, true); // Reset to initial load
-        setWorkoutsPageSize(3); // Reset page size
+        fetchPastWorkouts(5, true); // Reset to initial load
+        setWorkoutsPageSize(5); // Reset page size
       }
     }, [user?.id])
   );
 
-  const handleSignOut = () => {
-    router.replace('/sign-in');
-  };
-
   const handleCreateRoutine = () => {
     router.push('/create-routine');
-  };
-
-  const handleStartWorkout = () => {
-    // TODO: Implement start workout route
-    console.log('Navigate to start workout');
-  };
-
-  const handleExerciseLibrary = () => {
-    // TODO: Implement exercise library route
-    console.log('Navigate to exercise library');
   };
 
   const handleEditRoutine = (routineId: string) => {
@@ -245,6 +233,22 @@ export default function HomeTab() {
     return `${remainingSeconds}s`;
   };
 
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Today';
+    if (diffDays === 2) return 'Yesterday';
+    if (diffDays <= 7) return `${diffDays - 1}d ago`;
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   const getCompletedExercisesCount = (exercises: WorkoutSessionExercise[]): number => {
     return exercises.filter(ex => ex.completed).length;
   };
@@ -254,78 +258,52 @@ export default function HomeTab() {
     return null;
   }
 
-  const renderRoutineCard = (routine: Routine) => (
-    <View key={routine.id} style={styles.routineCard}>
-      <View style={styles.routineInfo}>
-                  <Typography variant="label-medium" color="contentPrimary" style={styles.routineName}>
+  const renderRoutineCard = (routine: Routine, index: number) => (
+    <Pressable 
+      key={routine.id} 
+      style={styles.routineCard}
+      onPress={() => handleStartRoutineWorkout(routine.id)}
+    >
+      <View style={styles.routineCardContent}>
+        <Typography variant="label-medium" color="contentPrimary" style={styles.routineName}>
           {routine.name}
         </Typography>
-        <Typography variant="paragraph-small" color="contentSecondary" style={styles.routineDescription}>
-          {routine.description}
-        </Typography>
-        <Typography variant="paragraph-small" color="contentSecondary" style={styles.routineMeta}>
-          {routine.exercises?.length || 0} exercises • Created {new Date(routine.createdAt).toLocaleDateString()}
+        <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.routineExerciseCount}>
+          {routine.exercises?.length || 0} exercises
         </Typography>
       </View>
       
-      <View style={styles.routineActions}>
-        <Button 
-          variant="primary" 
-          size="small" 
-          style={styles.routineActionButton}
-          onPress={() => handleStartRoutineWorkout(routine.id)}
-        >
-          Start Workout
-        </Button>
-        <Button 
-          variant="text" 
-          size="small"
-          onPress={() => handleEditRoutine(routine.id)}
-        >
-          Edit
-        </Button>
+      <View style={styles.playButton}>
+        <Typography variant="heading-small" color="contentOnColor" style={styles.playIcon}>
+          ▶
+        </Typography>
       </View>
-    </View>
+    </Pressable>
   );
 
-  const renderWorkoutSessionCard = (session: WorkoutSession) => {
+  const renderWorkoutChip = (session: WorkoutSession) => {
     const completedExercises = getCompletedExercisesCount(session.exercises);
     const totalExercises = session.exercises.length;
     const completionPercentage = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
     
     return (
-      <View key={session.id} style={styles.workoutCard}>
-        <View style={styles.workoutInfo}>
-          <Typography variant="label-medium" color="contentPrimary" style={styles.workoutName}>
-            {session.name}
+      <View key={session.id} style={styles.workoutChip}>
+        <View style={styles.workoutChipContent}>
+          <Typography variant="heading-xsmall" color="contentPrimary" style={styles.workoutChipName}>
+            {session.name.replace(/ - \d+\/\d+\/\d+/, '')}
           </Typography>
-          <Typography variant="paragraph-small" color="contentSecondary" style={styles.workoutDate}>
-            {session.finishedAt ? new Date(session.finishedAt).toLocaleDateString() : new Date(session.startedAt).toLocaleDateString()}
+          <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.workoutChipMeta}>
+            {formatDate(session.finishedAt || session.startedAt)} • {formatDuration(session.durationSeconds)}
           </Typography>
-          
-          <View style={styles.workoutStats}>
-            <Typography variant="paragraph-small" color="contentSecondary">
-              {completedExercises}/{totalExercises} exercises completed
-            </Typography>
-            <Typography variant="paragraph-small" color="contentSecondary">
-              Duration: {formatDuration(session.durationSeconds)}
-            </Typography>
-          </View>
-          
-          {/* Progress bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${completionPercentage}%` }
-                ]} 
-              />
-            </View>
-            <Typography variant="paragraph-small" color="contentSecondary">
-              {Math.round(completionPercentage)}%
-            </Typography>
-          </View>
+        </View>
+        
+        <View style={styles.workoutProgressBar}>
+          <View 
+            style={[
+              styles.workoutProgressFill, 
+              { width: `${completionPercentage}%` }
+            ]} 
+          />
         </View>
       </View>
     );
@@ -333,179 +311,112 @@ export default function HomeTab() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* App Bar */}
+      <View style={styles.appBar}>
+        <Typography variant="heading-medium" color="contentPrimary">
+          GymLog
+        </Typography>
+      </View>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View>
-                          <Typography variant="heading-large" color="contentPrimary" style={styles.welcomeTitle}>
-              Welcome to GymLog
-            </Typography>
-            <Typography variant="paragraph-medium" color="contentSecondary">
-              Track your workouts and progress
-            </Typography>
-            </View>
-            <Button
-              variant="secondary"
-              size="default"
-              onPress={handleSignOut}
-            >
-              Sign Out
-            </Button>
-          </View>
-        </View>
-
-
-
-        {/* Quick Actions */}
+        {/* Section A - My Routines */}
         <View style={styles.section}>
-          <Typography variant="heading-medium" color="contentPrimary" style={styles.sectionTitle}>
-            Quick Actions
-          </Typography>
-          
-          <View style={styles.quickActions}>
-            <Button
-              variant="primary"
-              size="large"
-              style={styles.quickActionButton}
-              onPress={handleCreateRoutine}
-            >
-              Create Routine
-            </Button>
-            <Button 
-              variant="secondary" 
-              size="large" 
-              style={styles.quickActionButton}
-              onPress={handleStartWorkout}
-            >
-              Start Workout
-            </Button>
-            <Button
-              variant="secondary"
-              size="large"
-              style={styles.quickActionButton}
-              onPress={handleExerciseLibrary}
-            >
-              Exercise Library
-            </Button>
-          </View>
-        </View>
-
-        {/* My Routines */}
-        <View style={styles.section}>
-          <View style={styles.routinesHeader}>
-            <Typography variant="heading-medium" color="contentPrimary">
+          <View style={styles.sectionHeader}>
+            <Typography variant="heading-small" color="contentPrimary">
               My Routines
             </Typography>
             <Button
-              variant="text"
-              size="default"
+              variant="primary"
+              size="small"
               onPress={handleCreateRoutine}
             >
-              Create New
+              Create
             </Button>
           </View>
 
           {loading ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="contentSecondary">
-                Loading routines...
+              <Typography variant="paragraph-small" color="contentSecondary">
+                Loading...
               </Typography>
             </View>
           ) : error ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="contentNegative">
+              <Typography variant="paragraph-small" color="contentNegative">
                 {error}
               </Typography>
-              <Button 
-                variant="text" 
-                size="small" 
-                style={styles.retryButton}
-                onPress={fetchRoutines}
-              >
-                Try Again
-              </Button>
             </View>
           ) : routines.length === 0 ? (
             <View style={styles.emptyState}>
-              <Typography variant="paragraph-medium" color="contentSecondary" style={styles.emptyStateTitle}>
-                No routines created yet
-              </Typography>
-              <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateSubtitle}>
-                Create your first workout routine to get started
+              <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateText}>
+                No routines yet
               </Typography>
               <Button 
                 variant="primary" 
-                size="default"
+                size="small"
                 style={styles.emptyStateButton}
                 onPress={handleCreateRoutine}
               >
-                Create Your First Routine
+                Create First Routine
               </Button>
             </View>
           ) : (
-            <View style={styles.routinesList}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.routinesCarousel}
+              contentContainerStyle={styles.routinesCarouselContent}
+            >
               {routines.map(renderRoutineCard)}
-            </View>
+            </ScrollView>
           )}
         </View>
 
-        {/* Past Workouts */}
+        {/* Section B - Past Workouts */}
         <View style={styles.section}>
-          <Typography variant="heading-medium" color="contentPrimary" style={styles.sectionTitle}>
+          <Typography variant="heading-small" color="contentPrimary" style={styles.sectionTitle}>
             Past Workouts
           </Typography>
 
           {workoutsLoading && pastWorkouts.length === 0 ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="contentSecondary">
-                Loading past workouts...
+              <Typography variant="paragraph-small" color="contentSecondary">
+                Loading...
               </Typography>
             </View>
           ) : workoutsError ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="contentNegative">
+              <Typography variant="paragraph-small" color="contentNegative">
                 {workoutsError}
               </Typography>
-              <Button 
-                variant="text" 
-                size="small" 
-                style={styles.retryButton}
-                onPress={() => fetchPastWorkouts(3, true)}
-              >
-                Try Again
-              </Button>
             </View>
           ) : pastWorkouts.length === 0 ? (
             <View style={styles.emptyState}>
-              <Typography variant="paragraph-medium" color="contentSecondary" style={styles.emptyStateTitle}>
-                No past workouts yet
-              </Typography>
-              <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateSubtitle}>
-                Complete your first workout to see it here
+              <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateText}>
+                No workouts completed yet
               </Typography>
             </View>
           ) : (
             <View style={styles.workoutsList}>
-              {pastWorkouts.map(renderWorkoutSessionCard)}
+              {pastWorkouts.map(renderWorkoutChip)}
               
               {hasMoreWorkouts && (
-                <Button 
-                  variant="text" 
-                  size="default"
+                <TouchableOpacity 
                   style={styles.viewMoreButton}
                   onPress={handleViewMoreWorkouts}
                   disabled={workoutsLoading}
                 >
-                  {workoutsLoading ? 'Loading...' : 'View More'}
-                </Button>
+                  <Typography variant="paragraph-small" color="contentSecondary">
+                    {workoutsLoading ? 'Loading...' : 'View More'}
+                  </Typography>
+                </TouchableOpacity>
               )}
             </View>
           )}
         </View>
-
-
       </ScrollView>
+
+
     </SafeAreaView>
   );
 }
@@ -515,136 +426,136 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: getColor('backgroundSecondary'),
   },
+  
+  // App Bar
+  appBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderOpaque'),
+  },
+
+
   scrollView: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+
+  // Sections
+  section: {
+    paddingTop: 24,
+    paddingBottom: 8,
   },
-  headerContent: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  welcomeTitle: {
-    marginBottom: 8,
-  },
-  section: {
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   sectionTitle: {
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
 
-  quickActions: {
-    gap: 16,
+  // Routines Carousel
+  routinesCarousel: {
+    paddingLeft: 16,
   },
-  quickActionButton: {
-    width: '100%',
-  },
-  routinesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  centerContent: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  retryButton: {
-    marginTop: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyStateTitle: {
-    marginBottom: 16,
-  },
-  emptyStateSubtitle: {
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  emptyStateButton: {
-    minWidth: 200,
-  },
-  routinesList: {
+  routinesCarouselContent: {
+    paddingRight: 16,
   },
   routineCard: {
-    padding: 16,
+    width: 200,
+    height: 120,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: getColor('borderOpaque'),
-    borderRadius: 8,
-    backgroundColor: getColor('backgroundPrimary'),
-    marginBottom: 12,
+    marginRight: 12,
+    padding: 16,
+    justifyContent: 'space-between',
   },
-  routineInfo: {
-    marginBottom: 12,
+  routineCardContent: {
+    flex: 1,
   },
   routineName: {
     marginBottom: 4,
   },
-  routineDescription: {
-    marginBottom: 8,
-  },
-  routineMeta: {
+  routineExerciseCount: {
     marginBottom: 0,
   },
-  routineActions: {
-    flexDirection: 'row',
-    gap: 8,
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: getColor('backgroundAccent'),
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
   },
-  routineActionButton: {
-    flex: 1,
+  playIcon: {
+    marginLeft: 2, // Optical centering for play icon
   },
 
-  // Past workouts styles
+  // Past Workouts List
   workoutsList: {
+    paddingHorizontal: 16,
   },
-  workoutCard: {
-    padding: 16,
+  workoutChip: {
+    backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: getColor('borderOpaque'),
-    borderRadius: 8,
-    backgroundColor: getColor('backgroundPrimary'),
+    padding: 16,
+    marginBottom: 8,
+  },
+  workoutChipContent: {
     marginBottom: 12,
   },
-  workoutInfo: {
-  },
-  workoutName: {
+  workoutChipName: {
     marginBottom: 4,
   },
-  workoutDate: {
-    marginBottom: 12,
+  workoutChipMeta: {
+    marginBottom: 0,
   },
-  workoutStats: {
-    marginBottom: 12,
-    gap: 4,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  progressBar: {
-    flex: 1,
-    height: 8,
+  workoutProgressBar: {
+    height: 4,
     backgroundColor: getColor('borderOpaque'),
-    borderRadius: 4,
+    borderRadius: 2,
     overflow: 'hidden',
   },
-  progressFill: {
+  workoutProgressFill: {
     height: '100%',
     backgroundColor: getColor('accent'),
-    borderRadius: 4,
+    borderRadius: 2,
+  },
+
+  // States
+  centerContent: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  emptyStateText: {
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  emptyStateButton: {
+    minWidth: 180,
   },
   viewMoreButton: {
-    marginTop: 16,
-    alignSelf: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
   },
+
 
 }); 

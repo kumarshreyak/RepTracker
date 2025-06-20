@@ -164,4 +164,56 @@ export const EditIcon: React.FC<{ color?: string; size?: number }> = ({
       borderRadius: 2,
     }} />
   );
+};
+
+// Rect Primary Button - Based on Uber Design System
+export interface RectPrimaryButtonProps {
+  children: React.ReactNode;
+  onPress?: () => void;
+  disabled?: boolean;
+  style?: ViewStyle;
+  icon?: React.ReactNode;
+}
+
+export const RectPrimaryButton: React.FC<RectPrimaryButtonProps> = ({
+  children,
+  onPress,
+  disabled = false,
+  style = {},
+  icon,
+}) => {
+  const buttonStyle: ViewStyle = {
+    backgroundColor: getColor('primaryA'), // Black background as shown in Uber design
+    borderRadius: 0, // Rectangular shape with sharp corners
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    opacity: disabled ? 0.5 : 1,
+    minHeight: 48, // Consistent minimum height for touch targets
+    ...style,
+  };
+
+  return (
+    <TouchableOpacity 
+      style={buttonStyle}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.8}
+    >
+      {icon && (
+        <View style={{ width: 16, height: 16 }}>
+          {icon}
+        </View>
+      )}
+      <Typography 
+        variant="label-medium" 
+        color="contentOnColor"
+      >
+        {children}
+      </Typography>
+    </TouchableOpacity>
+  );
 }; 
