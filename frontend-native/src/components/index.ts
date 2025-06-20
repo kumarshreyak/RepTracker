@@ -5,4 +5,6 @@ export { default as ColorDemo } from './ColorDemo';
 export { Button, EditIcon, RectPrimaryButton } from './Button';
 export type { ButtonProps, RectPrimaryButtonProps } from './Button';
 export { Input } from './Input';
-export type { InputProps } from './Input'; 
+export type { InputProps } from './Input';
+export { NumberInput } from './NumberInput';
+export type { NumberInputProps } from './NumberInput'; 
