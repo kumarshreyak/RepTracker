@@ -3,4 +3,6 @@ export { colors, getColor, getPrimitiveColor, primitiveColors, semanticColors, s
 export type { SemanticColor, PrimitiveColorFamily, ColorShade } from './Colors';
 export { default as ColorDemo } from './ColorDemo';
 export { Button, EditIcon, RectPrimaryButton } from './Button';
-export type { ButtonProps, RectPrimaryButtonProps } from './Button'; 
+export type { ButtonProps, RectPrimaryButtonProps } from './Button';
+export { Input } from './Input';
+export type { InputProps } from './Input'; 
