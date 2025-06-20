@@ -274,7 +274,7 @@ export default function HomeTab() {
       </View>
       
       <View style={styles.playButton}>
-        <Typography variant="heading-small" color="contentOnColor" style={styles.playIcon}>
+        <Typography variant="label-medium" color="contentOnColor" style={styles.playIcon}>
           ▶
         </Typography>
       </View>
@@ -289,7 +289,7 @@ export default function HomeTab() {
     return (
       <View key={session.id} style={styles.workoutChip}>
         <View style={styles.workoutChipContent}>
-          <Typography variant="heading-xsmall" color="contentPrimary" style={styles.workoutChipName}>
+          <Typography variant="label-xsmall" color="contentPrimary" style={styles.workoutChipName}>
             {session.name.replace(/ - \d+\/\d+\/\d+/, '')}
           </Typography>
           <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.workoutChipMeta}>
@@ -313,7 +313,7 @@ export default function HomeTab() {
     <SafeAreaView style={styles.container}>
       {/* App Bar */}
       <View style={styles.appBar}>
-        <Typography variant="heading-medium" color="contentPrimary">
+        <Typography variant="heading-xsmall" color="contentPrimary">
           GymLog
         </Typography>
       </View>
@@ -322,7 +322,7 @@ export default function HomeTab() {
         {/* Section A - My Routines */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Typography variant="heading-small" color="contentPrimary">
+            <Typography variant="label-medium" color="contentPrimary">
               My Routines
             </Typography>
             <Button
@@ -374,7 +374,7 @@ export default function HomeTab() {
 
         {/* Section B - Past Workouts */}
         <View style={styles.section}>
-          <Typography variant="heading-small" color="contentPrimary" style={styles.sectionTitle}>
+          <Typography variant="label-medium" color="contentPrimary" style={styles.sectionTitle}>
             Past Workouts
           </Typography>
 
@@ -424,7 +424,7 @@ export default function HomeTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('backgroundSecondary'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   
   // App Bar
