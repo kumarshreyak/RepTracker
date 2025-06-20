@@ -423,7 +423,7 @@ export default function ActiveWorkoutScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <Typography variant="paragraph-medium" color="text-secondary">
+          <Typography variant="paragraph-medium" color="contentSecondary">
             Loading workout...
           </Typography>
         </View>
@@ -435,7 +435,7 @@ export default function ActiveWorkoutScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <Typography variant="paragraph-medium" color="danger" style={styles.errorText}>
+          <Typography variant="paragraph-medium" color="contentNegative" style={styles.errorText}>
             {error || 'Failed to load workout'}
           </Typography>
           <Button variant="primary" size="default" onPress={() => router.back()}>
@@ -456,16 +456,16 @@ export default function ActiveWorkoutScreen() {
       {/* Header with Timer */}
       <View style={styles.headerCard}>
         <View style={styles.timerSection}>
-          <Typography variant="heading-large" color="text-primary" style={styles.timerText}>
+          <Typography variant="heading-large" color="contentPrimary" style={styles.timerText}>
             {formatTime(elapsedTime)}
           </Typography>
-          <Typography variant="paragraph-medium" color="text-secondary">
+          <Typography variant="paragraph-medium" color="contentSecondary">
             Workout Duration
           </Typography>
         </View>
         
         <View style={styles.progressSection}>
-          <Typography variant="paragraph-small" color="text-secondary">
+          <Typography variant="paragraph-small" color="contentSecondary">
             {completedExercises}/{totalExercises} exercises • {completedSets}/{totalSets} sets
           </Typography>
         </View>
@@ -473,11 +473,11 @@ export default function ActiveWorkoutScreen() {
 
       {/* Workout Info */}
       <View style={styles.card}>
-        <Typography variant="heading-medium" color="text-primary" style={styles.workoutTitle}>
+        <Typography variant="heading-medium" color="contentPrimary" style={styles.workoutTitle}>
           {activeWorkout.routineName}
         </Typography>
         {activeWorkout.routineDescription && (
-          <Typography variant="paragraph-medium" color="text-secondary" style={styles.workoutDescription}>
+          <Typography variant="paragraph-medium" color="contentSecondary" style={styles.workoutDescription}>
             {activeWorkout.routineDescription}
           </Typography>
         )}
@@ -494,11 +494,11 @@ export default function ActiveWorkoutScreen() {
               {/* Exercise Header */}
               <View style={styles.exerciseHeader}>
                 <View style={styles.exerciseInfo}>
-                  <Typography variant="label-medium" color="text-primary" style={styles.exerciseName}>
+                  <Typography variant="label-medium" color="contentPrimary" style={styles.exerciseName}>
                     {exercise.exercise?.name || `Exercise ${exerciseIndex + 1}`}
                   </Typography>
                   {exercise.exercise?.muscleGroup && (
-                    <Typography variant="paragraph-small" color="text-secondary">
+                    <Typography variant="paragraph-small" color="contentSecondary">
                       {exercise.exercise.muscleGroup}
                     </Typography>
                   )}
@@ -514,7 +514,7 @@ export default function ActiveWorkoutScreen() {
 
               {/* Sets List */}
               <View style={styles.setsSection}>
-                <Typography variant="paragraph-small" color="text-secondary" style={styles.setsHeader}>
+                <Typography variant="paragraph-small" color="contentSecondary" style={styles.setsHeader}>
                   Sets ({exercise.sets.filter(set => set.completed).length}/{exercise.sets.length} completed)
                 </Typography>
                 
@@ -524,10 +524,10 @@ export default function ActiveWorkoutScreen() {
                     set.completed && styles.setRow
                   ]}>
                     <View style={styles.setInfo}>
-                      <Typography variant="paragraph-small" color="text-primary" style={styles.setNumber}>
+                      <Typography variant="paragraph-small" color="contentPrimary" style={styles.setNumber}>
                         Set {setIndex + 1}
                       </Typography>
-                      <Typography variant="paragraph-small" color="text-secondary">
+                      <Typography variant="paragraph-small" color="contentSecondary">
                         {set.reps} reps
                         {set.weight > 0 && ` • ${set.weight}kg`}
                         {set.notes && ` • ${set.notes}`}
@@ -546,7 +546,7 @@ export default function ActiveWorkoutScreen() {
 
               {exercise.notes && (
                 <View style={styles.exerciseNotes}>
-                  <Typography variant="paragraph-small" color="text-secondary">
+                  <Typography variant="paragraph-small" color="contentSecondary">
                     Notes: {exercise.notes}
                   </Typography>
                 </View>
@@ -583,7 +583,7 @@ export default function ActiveWorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('background'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   centerContent: {
     flex: 1,
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   headerCard: {
-    backgroundColor: getColor('surface'),
+    backgroundColor: getColor('backgroundPrimary'),
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
@@ -616,8 +616,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   timerText: {
-    fontSize: 56,
-    fontWeight: 'bold',
     fontFamily: 'monospace',
     marginBottom: 12,
     lineHeight: 64,
@@ -627,7 +625,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: getColor('surface'),
+    backgroundColor: getColor('backgroundPrimary'),
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 8,
@@ -652,12 +650,12 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // Space for bottom actions
   },
   exerciseCard: {
-    backgroundColor: getColor('surface'),
+    backgroundColor: getColor('backgroundPrimary'),
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: getColor('border-light'),
+    borderColor: getColor('borderOpaque'),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -665,8 +663,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   exerciseCardCompleted: {
-    borderColor: getColor('success'),
-    backgroundColor: getColor('success'),
+    borderColor: getColor('positive'),
+    backgroundColor: getColor('positive'),
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -679,7 +677,6 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   exerciseName: {
-    fontWeight: '600',
     marginBottom: 4,
   },
   setsSection: {
@@ -687,7 +684,6 @@ const styles = StyleSheet.create({
   },
   setsHeader: {
     marginBottom: 12,
-    fontWeight: '500',
   },
   setRow: {
     flexDirection: 'row',
@@ -696,39 +692,38 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: getColor('background'),
+    backgroundColor: getColor('backgroundPrimary'),
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: getColor('border-light'),
+    borderColor: getColor('borderOpaque'),
   },
   setRowCompleted: {
-    backgroundColor: getColor('success'),
-    borderColor: getColor('success'),
+    backgroundColor: getColor('positive'),
+    borderColor: getColor('positive'),
   },
   setInfo: {
     flex: 1,
   },
   setNumber: {
-    fontWeight: '500',
     marginBottom: 2,
   },
   exerciseNotes: {
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: getColor('border-light'),
+    borderTopColor: getColor('borderOpaque'),
   },
   bottomActions: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: getColor('surface'),
+    backgroundColor: getColor('backgroundPrimary'),
     flexDirection: 'row',
     padding: 16,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: getColor('border-light'),
+    borderTopColor: getColor('borderOpaque'),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

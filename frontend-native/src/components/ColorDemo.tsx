@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   colorName: {
     textAlign: 'center',
-    fontWeight: '500',
+
     marginBottom: 2,
   },
   colorValue: {

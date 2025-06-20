@@ -14,10 +14,10 @@ import { authService } from '../../src/auth/AuthService';
 // Google Icon SVG component
 const GoogleIcon = () => (
   <View style={styles.googleIcon}>
-              <View style={[styles.iconPath, { backgroundColor: getColor('primary') }]} />
-          <View style={[styles.iconPath, { backgroundColor: getColor('danger') }]} />
+              <View style={[styles.iconPath, { backgroundColor: getColor('accent') }]} />
+          <View style={[styles.iconPath, { backgroundColor: getColor('negative') }]} />
     <View style={[styles.iconPath, { backgroundColor: getColor('warning') }]} />
-    <View style={[styles.iconPath, { backgroundColor: getColor('success') }]} />
+    <View style={[styles.iconPath, { backgroundColor: getColor('positive') }]} />
   </View>
 );
 
@@ -64,10 +64,10 @@ export default function SignInRoute() {
       <View style={styles.content}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <Typography variant="heading-large" color="text-primary" style={styles.title}>
+            <Typography variant="heading-large" color="contentPrimary" style={styles.title}>
               Welcome to GymLog
             </Typography>
-            <Typography variant="paragraph-medium" color="text-secondary" style={styles.subtitle}>
+            <Typography variant="paragraph-medium" color="contentSecondary" style={styles.subtitle}>
               Track your workouts and progress
             </Typography>
           </View>
@@ -86,7 +86,7 @@ export default function SignInRoute() {
           </View>
 
           <View style={styles.footer}>
-            <Typography variant="paragraph-small" color="text-secondary" style={styles.termsText}>
+            <Typography variant="paragraph-small" color="contentSecondary" style={styles.termsText}>
               By signing in, you agree to our Terms of Service and Privacy Policy
             </Typography>
           </View>

@@ -243,10 +243,10 @@ export default function CreateRoutineRoute() {
     <View key={`${exercise.id}-${index}`} style={styles.exerciseCard}>
       <View style={styles.exerciseHeader}>
         <View style={styles.exerciseInfo}>
-          <Typography variant="label-medium" color="text-primary" style={styles.exerciseName}>
+          <Typography variant="label-medium" color="contentPrimary" style={styles.exerciseName}>
             {exercise.name}
           </Typography>
-          <Typography variant="paragraph-small" color="text-secondary">
+          <Typography variant="paragraph-small" color="contentSecondary">
             {exercise.muscle_group} • {exercise.sets.length} sets
           </Typography>
         </View>
@@ -263,10 +263,10 @@ export default function CreateRoutineRoute() {
       <View style={styles.setsContainer}>
         {exercise.sets.map((set, setIndex) => (
           <View key={setIndex} style={styles.setCard}>
-            <Typography variant="label-small" color="text-primary" style={styles.setTitle}>
+            <Typography variant="label-small" color="contentPrimary" style={styles.setTitle}>
               Set {setIndex + 1}
             </Typography>
-            <Typography variant="paragraph-small" color="text-secondary">
+            <Typography variant="paragraph-small" color="contentSecondary">
               {set.reps} reps @ {set.weight}kg
             </Typography>
           </View>
@@ -283,21 +283,21 @@ export default function CreateRoutineRoute() {
           <Button variant="text" size="default" onPress={() => router.back()}>
             ← Back to Home
           </Button>
-          <Typography variant="heading-xxlarge" color="text-primary" style={styles.title}>
+          <Typography variant="heading-xxlarge" color="contentPrimary" style={styles.title}>
             Create Routine
           </Typography>
-          <Typography variant="paragraph-medium" color="text-secondary">
+          <Typography variant="paragraph-medium" color="contentSecondary">
             Build your workout routine by adding exercises
           </Typography>
         </View>
 
         {/* Routine Details */}
         <View style={styles.section}>
-          <Typography variant="heading-small" color="text-primary" style={styles.sectionTitle}>
+          <Typography variant="heading-small" color="contentPrimary" style={styles.sectionTitle}>
             Routine Details
           </Typography>
           <View style={styles.inputContainer}>
-            <Typography variant="label-small" color="text-primary" style={styles.inputLabel}>
+            <Typography variant="label-small" color="contentPrimary" style={styles.inputLabel}>
               Routine Name *
             </Typography>
             <TextInput
@@ -305,7 +305,7 @@ export default function CreateRoutineRoute() {
               onChangeText={setRoutineName}
               placeholder="Enter routine name"
               style={styles.textInput}
-              placeholderTextColor={getColor('text-secondary')}
+              placeholderTextColor={getColor('contentSecondary')}
             />
           </View>
         </View>
@@ -313,7 +313,7 @@ export default function CreateRoutineRoute() {
         {/* Exercises Section */}
         <View style={styles.section}>
           <View style={styles.exercisesHeader}>
-            <Typography variant="heading-small" color="text-primary">
+            <Typography variant="heading-small" color="contentPrimary">
               Exercises ({exercises.length})
             </Typography>
             <View style={styles.exercisesActions}>
@@ -330,10 +330,10 @@ export default function CreateRoutineRoute() {
 
           {exercises.length === 0 ? (
             <View style={styles.emptyState}>
-              <Typography variant="paragraph-medium" color="text-secondary" style={styles.emptyStateTitle}>
+              <Typography variant="paragraph-medium" color="contentSecondary" style={styles.emptyStateTitle}>
                 No exercises added yet
               </Typography>
-              <Typography variant="paragraph-small" color="text-secondary">
+              <Typography variant="paragraph-small" color="contentSecondary">
                 Click "Add Exercise" to start building your routine
               </Typography>
             </View>
@@ -372,7 +372,7 @@ export default function CreateRoutineRoute() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('background'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   scrollView: {
     flex: 1,
@@ -400,13 +400,12 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: getColor('border-light'),
+    borderColor: getColor('borderOpaque'),
     borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    fontSize: 16,
-    color: getColor('text-primary'),
-    backgroundColor: getColor('surface'),
+    color: getColor('contentPrimary'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   exercisesHeader: {
     flexDirection: 'row',
@@ -435,9 +434,9 @@ const styles = StyleSheet.create({
   exerciseCard: {
     padding: 16,
     borderWidth: 1,
-    borderColor: getColor('border-light'),
+    borderColor: getColor('borderOpaque'),
     borderRadius: 8,
-    backgroundColor: getColor('surface'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -448,9 +447,7 @@ const styles = StyleSheet.create({
   exerciseInfo: {
     flex: 1,
   },
-  exerciseName: {
-    fontWeight: '500',
-    marginBottom: 4,
+  exerciseName: {marginBottom: 4,
   },
   setsContainer: {
     flexDirection: 'row',
@@ -460,13 +457,11 @@ const styles = StyleSheet.create({
   setCard: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: getColor('background'),
+    backgroundColor: getColor('backgroundPrimary'),
     borderRadius: 8,
     minWidth: 100,
   },
-  setTitle: {
-    fontWeight: '500',
-    marginBottom: 2,
+  setTitle: {marginBottom: 2,
   },
   actionButtons: {
     flexDirection: 'row',

@@ -24,33 +24,29 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   onPress,
 }) => {
-  // Size configurations
+  // Size configurations - using proper spacing values
   const sizeConfig = {
     small: {
       paddingVertical: 6,
       paddingHorizontal: 10,
-      fontSize: 11,
       iconSize: 12,
       gap: 6,
     },
     default: {
       paddingVertical: 8,
       paddingHorizontal: 12,
-      fontSize: 13,
       iconSize: 14,
       gap: 8,
     },
     large: {
       paddingVertical: 10,
       paddingHorizontal: 16,
-      fontSize: 15,
       iconSize: 16,
       gap: 10,
     },
     xlarge: {
       paddingVertical: 12,
       paddingHorizontal: 20,
-      fontSize: 17,
       iconSize: 20,
       gap: 12,
     },
@@ -64,37 +60,37 @@ export const Button: React.FC<ButtonProps> = ({
     xlarge: { padding: 12 },
   };
 
-  // Variant styles using new semantic colors
+  // Variant styles using semantic colors
   const variantStyles = {
     default: {
-      backgroundColor: getColor('background'),
-      borderColor: getColor('border-medium'),
-      textColor: getColor('text-primary'),
+      backgroundColor: getColor('backgroundPrimary'),
+      borderColor: getColor('borderOpaque'),
+      textColor: getColor('contentPrimary'),
     },
     primary: {
-      backgroundColor: getColor('primary'),
-      borderColor: getColor('primary'),
-      textColor: getColor('text-inverse'),
+      backgroundColor: getColor('backgroundAccent'),
+      borderColor: getColor('backgroundAccent'),
+      textColor: getColor('contentOnColor'),
     },
     danger: {
-      backgroundColor: getColor('danger'),
-      borderColor: getColor('danger'),
-      textColor: getColor('text-inverse'),
+      backgroundColor: getColor('backgroundNegative'),
+      borderColor: getColor('backgroundNegative'),
+      textColor: getColor('contentOnColor'),
     },
     secondary: {
-      backgroundColor: getColor('surface'),
-      borderColor: getColor('border-medium'),
-      textColor: getColor('text-primary'),
+      backgroundColor: getColor('backgroundSecondary'),
+      borderColor: getColor('borderOpaque'),
+      textColor: getColor('contentPrimary'),
     },
     text: {
       backgroundColor: 'transparent',
       borderColor: 'transparent',
-      textColor: getColor('primary'),
+      textColor: getColor('contentAccent'),
     },
     success: {
-      backgroundColor: getColor('success'),
-      borderColor: getColor('success'),
-      textColor: getColor('text-inverse'),
+      backgroundColor: getColor('backgroundPositive'),
+      borderColor: getColor('backgroundPositive'),
+      textColor: getColor('contentOnColor'),
     },
   };
 
@@ -118,16 +114,17 @@ export const Button: React.FC<ButtonProps> = ({
     ...style,
   };
 
+  // Map button sizes to Typography variants
   const textVariant = size === 'small' ? 'label-xsmall' : 
-                      size === 'large' ? 'label-large' :
-                      size === 'xlarge' ? 'label-large' : 'label-medium';
+                      size === 'large' ? 'label-medium' :
+                      size === 'xlarge' ? 'label-large' : 'label-small';
 
-  // Determine text color based on variant
+  // Determine text color based on variant using semantic colors
   const textColor = variant === 'primary' || variant === 'danger' || variant === 'success' 
-    ? 'text-inverse' 
+    ? 'contentOnColor' 
     : variant === 'text' 
-    ? 'primary' 
-    : 'text-primary';
+    ? 'contentAccent' 
+    : 'contentPrimary';
 
   return (
     <TouchableOpacity 
@@ -145,7 +142,6 @@ export const Button: React.FC<ButtonProps> = ({
         <Typography 
           variant={textVariant} 
           color={textColor}
-          style={{ fontWeight: '500' }}
         >
           {children}
         </Typography>
@@ -164,7 +160,7 @@ export const EditIcon: React.FC<{ color?: string; size?: number }> = ({
     <View style={{
       width: size,
       height: size,
-      backgroundColor: color === 'currentColor' ? getColor('text-primary') : color,
+      backgroundColor: color === 'currentColor' ? getColor('contentPrimary') : color,
       borderRadius: 2,
     }} />
   );

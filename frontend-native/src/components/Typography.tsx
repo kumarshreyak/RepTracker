@@ -37,7 +37,7 @@ interface TypographyProps {
 export const Typography: React.FC<TypographyProps> = ({ 
   children, 
   variant = 'paragraph-medium', 
-  color = 'text-primary',
+  color = 'contentPrimary',
   style = {}
 }) => {
   const variantStyles: Record<TypographyVariant, TextStyle> = {

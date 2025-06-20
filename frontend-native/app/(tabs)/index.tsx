@@ -257,13 +257,13 @@ export default function HomeTab() {
   const renderRoutineCard = (routine: Routine) => (
     <View key={routine.id} style={styles.routineCard}>
       <View style={styles.routineInfo}>
-        <Typography variant="label-medium" color="text-primary" style={styles.routineName}>
+                  <Typography variant="label-medium" color="contentPrimary" style={styles.routineName}>
           {routine.name}
         </Typography>
-        <Typography variant="paragraph-small" color="text-secondary" style={styles.routineDescription}>
+        <Typography variant="paragraph-small" color="contentSecondary" style={styles.routineDescription}>
           {routine.description}
         </Typography>
-        <Typography variant="paragraph-small" color="text-secondary" style={styles.routineMeta}>
+        <Typography variant="paragraph-small" color="contentSecondary" style={styles.routineMeta}>
           {routine.exercises?.length || 0} exercises • Created {new Date(routine.createdAt).toLocaleDateString()}
         </Typography>
       </View>
@@ -296,18 +296,18 @@ export default function HomeTab() {
     return (
       <View key={session.id} style={styles.workoutCard}>
         <View style={styles.workoutInfo}>
-          <Typography variant="label-medium" color="text-primary" style={styles.workoutName}>
+          <Typography variant="label-medium" color="contentPrimary" style={styles.workoutName}>
             {session.name}
           </Typography>
-          <Typography variant="paragraph-small" color="text-secondary" style={styles.workoutDate}>
+          <Typography variant="paragraph-small" color="contentSecondary" style={styles.workoutDate}>
             {session.finishedAt ? new Date(session.finishedAt).toLocaleDateString() : new Date(session.startedAt).toLocaleDateString()}
           </Typography>
           
           <View style={styles.workoutStats}>
-            <Typography variant="paragraph-small" color="text-secondary">
+            <Typography variant="paragraph-small" color="contentSecondary">
               {completedExercises}/{totalExercises} exercises completed
             </Typography>
-            <Typography variant="paragraph-small" color="text-secondary">
+            <Typography variant="paragraph-small" color="contentSecondary">
               Duration: {formatDuration(session.durationSeconds)}
             </Typography>
           </View>
@@ -322,7 +322,7 @@ export default function HomeTab() {
                 ]} 
               />
             </View>
-            <Typography variant="paragraph-small" color="text-secondary">
+            <Typography variant="paragraph-small" color="contentSecondary">
               {Math.round(completionPercentage)}%
             </Typography>
           </View>
@@ -338,10 +338,10 @@ export default function HomeTab() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View>
-                          <Typography variant="heading-large" color="text-primary" style={styles.welcomeTitle}>
+                          <Typography variant="heading-large" color="contentPrimary" style={styles.welcomeTitle}>
               Welcome to GymLog
             </Typography>
-            <Typography variant="paragraph-medium" color="text-secondary">
+            <Typography variant="paragraph-medium" color="contentSecondary">
               Track your workouts and progress
             </Typography>
             </View>
@@ -359,7 +359,7 @@ export default function HomeTab() {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Typography variant="heading-medium" color="text-primary" style={styles.sectionTitle}>
+          <Typography variant="heading-medium" color="contentPrimary" style={styles.sectionTitle}>
             Quick Actions
           </Typography>
           
@@ -394,7 +394,7 @@ export default function HomeTab() {
         {/* My Routines */}
         <View style={styles.section}>
           <View style={styles.routinesHeader}>
-            <Typography variant="heading-medium" color="text-primary">
+            <Typography variant="heading-medium" color="contentPrimary">
               My Routines
             </Typography>
             <Button
@@ -408,13 +408,13 @@ export default function HomeTab() {
 
           {loading ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="text-secondary">
+              <Typography variant="paragraph-medium" color="contentSecondary">
                 Loading routines...
               </Typography>
             </View>
           ) : error ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="danger">
+              <Typography variant="paragraph-medium" color="contentNegative">
                 {error}
               </Typography>
               <Button 
@@ -428,10 +428,10 @@ export default function HomeTab() {
             </View>
           ) : routines.length === 0 ? (
             <View style={styles.emptyState}>
-              <Typography variant="paragraph-medium" color="text-secondary" style={styles.emptyStateTitle}>
+              <Typography variant="paragraph-medium" color="contentSecondary" style={styles.emptyStateTitle}>
                 No routines created yet
               </Typography>
-              <Typography variant="paragraph-small" color="text-secondary" style={styles.emptyStateSubtitle}>
+              <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateSubtitle}>
                 Create your first workout routine to get started
               </Typography>
               <Button 
@@ -452,19 +452,19 @@ export default function HomeTab() {
 
         {/* Past Workouts */}
         <View style={styles.section}>
-          <Typography variant="heading-medium" color="text-primary" style={styles.sectionTitle}>
+          <Typography variant="heading-medium" color="contentPrimary" style={styles.sectionTitle}>
             Past Workouts
           </Typography>
 
           {workoutsLoading && pastWorkouts.length === 0 ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="text-secondary">
+              <Typography variant="paragraph-medium" color="contentSecondary">
                 Loading past workouts...
               </Typography>
             </View>
           ) : workoutsError ? (
             <View style={styles.centerContent}>
-              <Typography variant="paragraph-medium" color="danger">
+              <Typography variant="paragraph-medium" color="contentNegative">
                 {workoutsError}
               </Typography>
               <Button 
@@ -478,10 +478,10 @@ export default function HomeTab() {
             </View>
           ) : pastWorkouts.length === 0 ? (
             <View style={styles.emptyState}>
-              <Typography variant="paragraph-medium" color="text-secondary" style={styles.emptyStateTitle}>
+              <Typography variant="paragraph-medium" color="contentSecondary" style={styles.emptyStateTitle}>
                 No past workouts yet
               </Typography>
-              <Typography variant="paragraph-small" color="text-secondary" style={styles.emptyStateSubtitle}>
+              <Typography variant="paragraph-small" color="contentSecondary" style={styles.emptyStateSubtitle}>
                 Complete your first workout to see it here
               </Typography>
             </View>
@@ -586,7 +586,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   routineName: {
-    fontWeight: '500',
     marginBottom: 4,
   },
   routineDescription: {
@@ -617,7 +616,6 @@ const styles = StyleSheet.create({
   workoutInfo: {
   },
   workoutName: {
-    fontWeight: '500',
     marginBottom: 4,
   },
   workoutDate: {

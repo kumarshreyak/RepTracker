@@ -22,13 +22,42 @@ Before writing any code that involves colors, styling, or UI components:
 ## Design System
 **ALWAYS use the Uber Base design system components and styling:**
 
-### Typography
-- Use `Typography` component from `@/components` for all text elements
-- **Paragraph variants** (Uber Move Text 400 - Regular): `paragraph-large`, `paragraph-medium`, `paragraph-small`, `paragraph-xsmall`
-- **Label variants** (Uber Move Text 500 - Medium): `label-large`, `label-medium`, `label-small`, `label-xsmall`
-- **Heading variants** (Uber Move 700 - Bold): `heading-xxlarge`, `heading-xlarge`, `heading-large`, `heading-medium`, `heading-small`, `heading-xsmall`
-- **Display variants** (Uber Move 700 - Bold): `display-large`, `display-medium`, `display-small`, `display-xsmall`
-- **Use ONLY semantic content colors**: `contentPrimary`, `contentSecondary`, `contentTertiary`, `contentInversePrimary`, `contentOnColor`
+### Typography - Uber Base Design System
+**CRITICAL: Always follow the complete typography system documented in `@TYPOGRAPHY_SYSTEM.md`**
+
+#### **Four-Category Typography Architecture:**
+1. **Display** (Hero & Large Promotional): `display-large`, `display-medium`, `display-small`, `display-xsmall`
+2. **Headings** (Section & Content Hierarchy): `heading-xxlarge`, `heading-xlarge`, `heading-large`, `heading-medium`, `heading-small`, `heading-xsmall` 
+3. **Labels** (UI Elements & Actions): `label-large`, `label-medium`, `label-small`, `label-xsmall`
+4. **Paragraphs** (Body & Reading Content): `paragraph-large`, `paragraph-medium`, `paragraph-small`, `paragraph-xsmall`
+
+#### **Typography Usage Rules:**
+- ✅ **ALWAYS use Typography component**: `<Typography variant="heading-large" color="contentPrimary">Title</Typography>`
+- ✅ **Page titles**: `heading-xlarge` or `heading-large` + `contentPrimary`
+- ✅ **Section headers**: `heading-medium` or `heading-small` + `contentPrimary`
+- ✅ **Body text**: `paragraph-medium` + `contentSecondary`
+- ✅ **Button text**: `label-medium` or `label-small` (handled by Button component)
+- ✅ **Form labels**: `label-small` + `contentPrimary`
+- ✅ **Captions/meta**: `paragraph-xsmall` + `contentTertiary`
+
+#### **Typography Strict Rules:**
+- ❌ **NEVER use basic HTML elements**: No `<h1>`, `<h2>`, `<p>`, `<span>`, etc.
+- ❌ **NEVER hardcode typography styles**: No `fontSize`, `fontWeight`, `lineHeight` in StyleSheet
+- ❌ **NEVER use legacy colors**: No `text-primary`, `text-secondary` - use semantic colors only
+- ❌ **NEVER skip hierarchy levels**: Don't jump from `heading-large` to `heading-xsmall`
+- ❌ **NEVER mix categories incorrectly**: Don't use `paragraph-*` for buttons or `label-*` for body text
+- ✅ **ALWAYS use semantic content colors**: `contentPrimary`, `contentSecondary`, `contentTertiary`, `contentInversePrimary`, `contentOnColor`
+
+#### **Quick Typography Reference:**
+- **App/page titles**: `heading-xlarge` + `contentPrimary`
+- **Card/section titles**: `heading-small` + `contentPrimary`  
+- **List item titles**: `heading-xsmall` + `contentPrimary`
+- **Primary body text**: `paragraph-medium` + `contentSecondary`
+- **Secondary descriptions**: `paragraph-small` + `contentSecondary`
+- **Button text**: Handled automatically by Button component
+- **Form field labels**: `label-small` + `contentPrimary`
+- **Error messages**: `paragraph-xsmall` + `contentNegative`
+- **Success messages**: `paragraph-xsmall` + `contentPositive`
 
 ### Buttons
 - Use `Button` component from `@/components` for all interactive buttons
@@ -80,14 +109,16 @@ Before writing any code that involves colors, styling, or UI components:
 
 ### General Rules
 1. **Never use custom CSS colors** - always use the predefined Uber Base semantic color system
-2. **Always reference COLOR_SYSTEM.md** - check the complete documentation for proper color usage
-3. **Never use basic HTML elements** like `<h1>`, `<h2>`, `<p>`, `<button>` - always use the corresponding design system components
+2. **Always reference COLOR_SYSTEM.md and TYPOGRAPHY_SYSTEM.md** - check the complete documentation for proper usage
+3. **Never use basic HTML elements** like `<h1>`, `<h2>`, `<p>`, `<button>`, `<span>` - always use the corresponding design system components
 4. **Import components from `@/components`** - `Typography`, `Button`, `getColor`, `ColorDemo`, etc.
-5. **Maintain visual consistency** - all UI should look cohesive using the same design language
+5. **Maintain visual consistency** - all UI should look cohesive using the same design language and typography hierarchy
 6. **Use proper semantic structure** while maintaining visual design system
 7. **Follow Base design system spacing and sizing patterns**
 8. **Keep text minimal** - users don't like to read. Use concise, actionable copy. Prioritize clarity over verbosity.
-9. **Use ColorDemo component** - reference `<ColorDemo />` to see all available semantic colors
+9. **Always establish clear hierarchy** - use Typography variants to create proper visual hierarchy
+10. **Never hardcode typography styles** - let the Typography component handle all font properties
+11. **Use ColorDemo component** - reference `<ColorDemo />` to see all available semantic colors
 
 ### File Structure
 - Components should be organized in `/frontend-native/src/components/`
@@ -96,7 +127,8 @@ Before writing any code that involves colors, styling, or UI components:
 
 ### Documentation References
 - **COLOR_SYSTEM.md**: Complete semantic color system documentation with examples and best practices
+- **TYPOGRAPHY_SYSTEM.md**: Complete typography system documentation with hierarchy guidelines and usage patterns
 - **ColorDemo component**: Interactive showcase of all available semantic colors
 - **Colors.ts**: Implementation of the three-layer semantic color architecture
 
-**Remember: Every piece of UI should feel like it belongs to the same design system. When in doubt, check COLOR_SYSTEM.md for proper semantic color usage and use the ColorDemo component to see all available colors.** 
+**Remember: Every piece of UI should feel like it belongs to the same design system. When in doubt, check COLOR_SYSTEM.md for proper semantic color usage, TYPOGRAPHY_SYSTEM.md for typography guidelines, and use the ColorDemo component to see all available colors.** 

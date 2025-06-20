@@ -29,7 +29,7 @@ export default function ProfileTab() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Typography variant="heading-large" color="text-primary" style={styles.title}>
+          <Typography variant="heading-large" color="contentPrimary" style={styles.title}>
             Profile
           </Typography>
         
@@ -42,10 +42,10 @@ export default function ProfileTab() {
               <Image source={{ uri: user.picture }} style={styles.avatar} />
             )}
             <View style={styles.userInfo}>
-              <Typography variant="heading-medium" color="text-primary" style={styles.userName}>
+              <Typography variant="heading-medium" color="contentPrimary" style={styles.userName}>
                 {user.name}
               </Typography>
-              <Typography variant="paragraph-medium" color="text-secondary">
+              <Typography variant="paragraph-medium" color="contentSecondary">
                 {user.email}
               </Typography>
             </View>
