@@ -29,7 +29,7 @@ export default function ProfileTab() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Typography variant="heading-large" color="dark" style={styles.title}>
+          <Typography variant="heading-large" color="text-primary" style={styles.title}>
             Profile
           </Typography>
         
@@ -42,10 +42,10 @@ export default function ProfileTab() {
               <Image source={{ uri: user.picture }} style={styles.avatar} />
             )}
             <View style={styles.userInfo}>
-              <Typography variant="heading-default" color="dark" style={styles.userName}>
+              <Typography variant="heading-medium" color="text-primary" style={styles.userName}>
                 {user.name}
               </Typography>
-              <Typography variant="text-default" color="light">
+              <Typography variant="paragraph-medium" color="text-secondary">
                 {user.email}
               </Typography>
             </View>
@@ -71,7 +71,7 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('backgroundSecondary'),
   },
   scrollView: {
     flex: 1,
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     marginRight: 16,
-    backgroundColor: getColor('light-gray-3'),
+    backgroundColor: getColor('backgroundTertiary'),
   },
   userInfo: {
     flex: 1,

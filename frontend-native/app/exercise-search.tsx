@@ -191,10 +191,10 @@ export default function ExerciseSearchRoute() {
       ]}
       onPress={() => setSelectedExercise(exercise)}
     >
-      <Typography variant="text-default" color="dark" style={styles.exerciseName}>
+      <Typography variant="label-medium" color="text-primary" style={styles.exerciseName}>
         {exercise.name}
       </Typography>
-      <Typography variant="text-small" color="light" style={styles.exerciseDetails}>
+      <Typography variant="paragraph-small" color="text-secondary" style={styles.exerciseDetails}>
         {exercise.muscle_group} • {exercise.equipment} • {exercise.difficulty}
       </Typography>
     </TouchableOpacity>
@@ -202,12 +202,12 @@ export default function ExerciseSearchRoute() {
 
   const renderSetConfiguration = (set: WorkoutSetInput, index: number) => (
     <View key={index} style={styles.setCard}>
-      <Typography variant="text-small" color="dark" style={styles.setTitle}>
+      <Typography variant="paragraph-small" color="text-primary" style={styles.setTitle}>
         Set {index + 1}
       </Typography>
       <View style={styles.setInputs}>
         <View style={styles.setInputContainer}>
-          <Typography variant="text-small" color="dark" style={styles.inputLabel}>
+          <Typography variant="paragraph-small" color="text-primary" style={styles.inputLabel}>
             Reps *
           </Typography>
           <TextInput
@@ -215,11 +215,11 @@ export default function ExerciseSearchRoute() {
             onChangeText={(text) => updateSet(index, 'reps', text)}
             keyboardType="numeric"
             style={styles.setInput}
-            placeholderTextColor={getColor('light')}
+            placeholderTextColor={getColor('text-secondary')}
           />
         </View>
         <View style={styles.setInputContainer}>
-          <Typography variant="text-small" color="dark" style={styles.inputLabel}>
+          <Typography variant="paragraph-small" color="text-primary" style={styles.inputLabel}>
             Weight (kg) *
           </Typography>
           <TextInput
@@ -227,7 +227,7 @@ export default function ExerciseSearchRoute() {
             onChangeText={(text) => updateSet(index, 'weight', text)}
             keyboardType="numeric"
             style={styles.setInput}
-            placeholderTextColor={getColor('light')}
+            placeholderTextColor={getColor('text-secondary')}
           />
         </View>
       </View>
@@ -242,10 +242,10 @@ export default function ExerciseSearchRoute() {
           <Button variant="text" size="default" onPress={() => router.back()}>
             ← Back to Create Routine
           </Button>
-          <Typography variant="heading-xxlarge" color="dark" style={styles.title}>
+          <Typography variant="heading-xxlarge" color="text-primary" style={styles.title}>
             Add Exercise
           </Typography>
-          <Typography variant="text-default" color="light">
+          <Typography variant="paragraph-medium" color="text-secondary">
             {selectedExercise ? 'Configure your exercise sets' : 'Search and select exercises for your routine'}
           </Typography>
         </View>
@@ -255,7 +255,7 @@ export default function ExerciseSearchRoute() {
           <>
             {/* Search Section */}
             <View style={styles.section}>
-              <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
+              <Typography variant="heading-small" color="text-primary" style={styles.sectionTitle}>
                 Search Exercises
               </Typography>
               <TextInput
@@ -263,30 +263,30 @@ export default function ExerciseSearchRoute() {
                 onChangeText={setSearchQuery}
                 placeholder="Search by name, muscle group, or equipment..."
                 style={styles.searchInput}
-                placeholderTextColor={getColor('light')}
+                placeholderTextColor={getColor('text-secondary')}
               />
             </View>
 
             {/* Exercise List */}
             <View style={styles.section}>
-              <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
+              <Typography variant="heading-small" color="text-primary" style={styles.sectionTitle}>
                 Exercise Library
               </Typography>
 
               {loading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={getColor('blue-bright')} />
-                  <Typography variant="text-default" color="light" style={styles.loadingText}>
+                  <ActivityIndicator size="large" color={getColor('primary')} />
+                  <Typography variant="paragraph-medium" color="text-secondary" style={styles.loadingText}>
                     Loading exercises...
                   </Typography>
                 </View>
               ) : exercises.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Typography variant="text-default" color="light" style={styles.emptyStateTitle}>
+                  <Typography variant="paragraph-medium" color="text-secondary" style={styles.emptyStateTitle}>
                     No exercises found
                   </Typography>
                   {searchQuery && (
-                    <Typography variant="text-small" color="light" style={styles.emptyStateSubtitle}>
+                    <Typography variant="paragraph-small" color="text-secondary" style={styles.emptyStateSubtitle}>
                       Try a different search term
                     </Typography>
                   )}
@@ -306,10 +306,10 @@ export default function ExerciseSearchRoute() {
             {/* Selected Exercise Header with Cross Button */}
             <View style={styles.selectedExerciseHeader}>
               <View style={styles.selectedExerciseInfo}>
-                <Typography variant="heading-small" color="dark" style={styles.selectedExerciseName}>
+                <Typography variant="heading-small" color="text-primary" style={styles.selectedExerciseName}>
                   {selectedExercise.name}
                 </Typography>
-                <Typography variant="text-small" color="light" style={styles.selectedExerciseDetails}>
+                <Typography variant="paragraph-small" color="text-secondary" style={styles.selectedExerciseDetails}>
                   {selectedExercise.muscle_group} • {selectedExercise.equipment} • {selectedExercise.difficulty}
                 </Typography>
               </View>
@@ -317,7 +317,7 @@ export default function ExerciseSearchRoute() {
                 style={styles.crossButton}
                 onPress={handleBackToSearch}
               >
-                <Typography variant="text-default" color="light" style={styles.crossButtonText}>
+                <Typography variant="paragraph-medium" color="text-secondary" style={styles.crossButtonText}>
                   ✕
                 </Typography>
               </TouchableOpacity>
@@ -325,13 +325,13 @@ export default function ExerciseSearchRoute() {
 
             {/* Set Configuration */}
             <View style={styles.setConfiguration}>
-              <Typography variant="text-default" color="dark" style={styles.configTitle}>
+              <Typography variant="label-medium" color="text-primary" style={styles.configTitle}>
                 Configure Sets
               </Typography>
               
               {/* Number of Sets */}
               <View style={styles.numberOfSetsContainer}>
-                <Typography variant="text-small" color="dark" style={styles.inputLabel}>
+                <Typography variant="paragraph-small" color="text-primary" style={styles.inputLabel}>
                   Number of Sets *
                 </Typography>
                 <TextInput
@@ -339,7 +339,7 @@ export default function ExerciseSearchRoute() {
                   onChangeText={setNumberOfSets}
                   keyboardType="numeric"
                   style={styles.numberOfSetsInput}
-                  placeholderTextColor={getColor('light')}
+                  placeholderTextColor={getColor('text-secondary')}
                 />
               </View>
 
@@ -350,7 +350,7 @@ export default function ExerciseSearchRoute() {
 
               {!isFormValid() && selectedExercise && (
                 <View style={styles.validationError}>
-                  <Typography variant="text-small" color="red">
+                  <Typography variant="paragraph-small" color="danger">
                     All fields are required. Please ensure all sets have reps greater than 0 and weight greater than 0.
                   </Typography>
                 </View>
@@ -377,7 +377,7 @@ export default function ExerciseSearchRoute() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('background'),
   },
   scrollView: {
     flex: 1,
@@ -399,13 +399,13 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 16,
-    color: getColor('dark'),
-    backgroundColor: 'white',
+    color: getColor('text-primary'),
+    backgroundColor: getColor('surface'),
   },
   loadingContainer: {
     alignItems: 'center',
@@ -430,14 +430,14 @@ const styles = StyleSheet.create({
   exerciseItem: {
     padding: 16,
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: 'white',
+    backgroundColor: getColor('surface'),
   },
   exerciseItemSelected: {
-    borderColor: getColor('blue-bright'),
-    backgroundColor: getColor('blue-light-2'),
+    borderColor: getColor('primary'),
+    backgroundColor: getColor('surface'),
   },
   exerciseName: {
     fontWeight: '500',
@@ -470,23 +470,23 @@ const styles = StyleSheet.create({
   },
   numberOfSetsInput: {
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 16,
-    color: getColor('dark'),
-    backgroundColor: 'white',
+    color: getColor('text-primary'),
+    backgroundColor: getColor('surface'),
   },
   setsContainer: {
   },
   setCard: {
     padding: 12,
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('background'),
   },
   setTitle: {
     fontWeight: '500',
@@ -501,19 +501,19 @@ const styles = StyleSheet.create({
   },
   setInput: {
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 3,
     paddingHorizontal: 8,
     paddingVertical: 6,
     fontSize: 14,
-    color: getColor('dark'),
-    backgroundColor: 'white',
+    color: getColor('text-primary'),
+    backgroundColor: getColor('surface'),
   },
   validationError: {
     padding: 12,
-    backgroundColor: getColor('red-light-2'),
+    backgroundColor: getColor('surface'),
     borderWidth: 1,
-    borderColor: getColor('red-light-1'),
+    borderColor: getColor('danger'),
     borderRadius: 8,
     marginTop: 16,
   },

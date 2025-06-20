@@ -1,135 +1,160 @@
 import React from 'react';
 import { Text, TextStyle } from 'react-native';
-import { AppColor, getColor } from './Colors';
+import { SemanticColor, getColor } from './Colors';
+
+// New Uber Base Design System Typography Variants
+export type TypographyVariant = 
+  // Paragraph variants (Uber Move Text 400 - Regular)
+  | 'paragraph-large'
+  | 'paragraph-medium'
+  | 'paragraph-small'
+  | 'paragraph-xsmall'
+  // Label variants (Uber Move Text 500 - Medium)
+  | 'label-large'
+  | 'label-medium'
+  | 'label-small'
+  | 'label-xsmall'
+  // Heading variants (Uber Move 700 - Bold)
+  | 'heading-xxlarge'
+  | 'heading-xlarge'
+  | 'heading-large'
+  | 'heading-medium'
+  | 'heading-small'
+  | 'heading-xsmall'
+  // Display variants (Uber Move 700 - Bold)
+  | 'display-large'
+  | 'display-medium'
+  | 'display-small'
+  | 'display-xsmall';
 
 interface TypographyProps {
   children: React.ReactNode;
-  variant?: 
-    | 'text-small' 
-    | 'text-default' 
-    | 'text-large' 
-    | 'text-xlarge'
-    | 'text-small-paragraph'
-    | 'text-default-paragraph'
-    | 'text-large-paragraph'
-    | 'text-xlarge-paragraph'
-    | 'heading-xsmall'
-    | 'heading-small'
-    | 'heading-default'
-    | 'heading-large'
-    | 'heading-xlarge'
-    | 'heading-xxlarge'
-    | 'heading-xsmall-caps'
-    | 'heading-small-caps'
-    | 'heading-default-caps';
-  color?: AppColor;
+  variant?: TypographyVariant;
+  color?: SemanticColor;
   style?: TextStyle;
 }
 
 export const Typography: React.FC<TypographyProps> = ({ 
   children, 
-  variant = 'text-default', 
-  color = 'dark',
+  variant = 'paragraph-medium', 
+  color = 'text-primary',
   style = {}
 }) => {
-  const variantStyles: Record<string, TextStyle> = {
-    // Text variants
-    'text-small': {
-      fontSize: 11,
-      lineHeight: 16,
-      fontWeight: '400',
-    },
-    'text-default': {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '400',
-    },
-    'text-large': {
-      fontSize: 15,
-      lineHeight: 20,
-      fontWeight: '400',
-    },
-    'text-xlarge': {
-      fontSize: 17,
-      lineHeight: 24,
-      fontWeight: '400',
-    },
-    
-    // Paragraph variants
-    'text-small-paragraph': {
-      fontSize: 11,
-      lineHeight: 16,
-      fontWeight: '400',
-    },
-    'text-default-paragraph': {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '400',
-    },
-    'text-large-paragraph': {
-      fontSize: 15,
-      lineHeight: 20,
-      fontWeight: '400',
-    },
-    'text-xlarge-paragraph': {
-      fontSize: 17,
-      lineHeight: 24,
-      fontWeight: '400',
-    },
-    
-    // Heading variants
-    'heading-xsmall': {
-      fontSize: 11,
-      lineHeight: 16,
-      fontWeight: '600',
-    },
-    'heading-small': {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '600',
-    },
-    'heading-default': {
-      fontSize: 15,
-      lineHeight: 20,
-      fontWeight: '600',
-    },
-    'heading-large': {
-      fontSize: 17,
-      lineHeight: 24,
-      fontWeight: '600',
-    },
-    'heading-xlarge': {
-      fontSize: 21,
+  const variantStyles: Record<TypographyVariant, TextStyle> = {
+    // Paragraph variants - Uber Move Text Regular (400)
+    'paragraph-large': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 18,
       lineHeight: 28,
+      fontWeight: '400',
+    },
+    'paragraph-medium': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: '400',
+    },
+    'paragraph-small': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: '400',
+    },
+    'paragraph-xsmall': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 12,
+      lineHeight: 20,
+      fontWeight: '400',
+    },
+    
+    // Label variants - Uber Move Text Medium (500)
+    'label-large': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 18,
+      lineHeight: 24,
+      fontWeight: '500',
+    },
+    'label-medium': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 16,
+      lineHeight: 20,
+      fontWeight: '500',
+    },
+    'label-small': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 14,
+      lineHeight: 16,
+      fontWeight: '500',
+    },
+    'label-xsmall': {
+      fontFamily: 'Uber Move Text',
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '500',
+    },
+    
+    // Heading variants - Uber Move Bold (700)
+    'heading-xxlarge': {
+      fontFamily: 'Uber Move',
+      fontSize: 40,
+      lineHeight: 52,
       fontWeight: '700',
     },
-    'heading-xxlarge': {
+    'heading-xlarge': {
+      fontFamily: 'Uber Move',
+      fontSize: 36,
+      lineHeight: 44,
+      fontWeight: '700',
+    },
+    'heading-large': {
+      fontFamily: 'Uber Move',
+      fontSize: 32,
+      lineHeight: 40,
+      fontWeight: '700',
+    },
+    'heading-medium': {
+      fontFamily: 'Uber Move',
       fontSize: 28,
       lineHeight: 36,
       fontWeight: '700',
     },
+    'heading-small': {
+      fontFamily: 'Uber Move',
+      fontSize: 24,
+      lineHeight: 32,
+      fontWeight: '700',
+    },
+    'heading-xsmall': {
+      fontFamily: 'Uber Move',
+      fontSize: 20,
+      lineHeight: 28,
+      fontWeight: '700',
+    },
     
-    // All caps heading variants
-    'heading-xsmall-caps': {
-      fontSize: 11,
-      lineHeight: 16,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    // Display variants - Uber Move Bold (700)
+    'display-large': {
+      fontFamily: 'Uber Move',
+      fontSize: 96,
+      lineHeight: 112,
+      fontWeight: '700',
     },
-    'heading-small-caps': {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    'display-medium': {
+      fontFamily: 'Uber Move',
+      fontSize: 52,
+      lineHeight: 64,
+      fontWeight: '700',
     },
-    'heading-default-caps': {
-      fontSize: 15,
-      lineHeight: 20,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    'display-small': {
+      fontFamily: 'Uber Move',
+      fontSize: 44,
+      lineHeight: 52,
+      fontWeight: '700',
+    },
+    'display-xsmall': {
+      fontFamily: 'Uber Move',
+      fontSize: 36,
+      lineHeight: 44,
+      fontWeight: '700',
     },
   };
 

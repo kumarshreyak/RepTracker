@@ -243,10 +243,10 @@ export default function CreateRoutineRoute() {
     <View key={`${exercise.id}-${index}`} style={styles.exerciseCard}>
       <View style={styles.exerciseHeader}>
         <View style={styles.exerciseInfo}>
-          <Typography variant="text-default" color="dark" style={styles.exerciseName}>
+          <Typography variant="label-medium" color="text-primary" style={styles.exerciseName}>
             {exercise.name}
           </Typography>
-          <Typography variant="text-small" color="light">
+          <Typography variant="paragraph-small" color="text-secondary">
             {exercise.muscle_group} • {exercise.sets.length} sets
           </Typography>
         </View>
@@ -263,10 +263,10 @@ export default function CreateRoutineRoute() {
       <View style={styles.setsContainer}>
         {exercise.sets.map((set, setIndex) => (
           <View key={setIndex} style={styles.setCard}>
-            <Typography variant="text-small" color="dark" style={styles.setTitle}>
+            <Typography variant="label-small" color="text-primary" style={styles.setTitle}>
               Set {setIndex + 1}
             </Typography>
-            <Typography variant="text-small" color="light">
+            <Typography variant="paragraph-small" color="text-secondary">
               {set.reps} reps @ {set.weight}kg
             </Typography>
           </View>
@@ -283,21 +283,21 @@ export default function CreateRoutineRoute() {
           <Button variant="text" size="default" onPress={() => router.back()}>
             ← Back to Home
           </Button>
-          <Typography variant="heading-xxlarge" color="dark" style={styles.title}>
+          <Typography variant="heading-xxlarge" color="text-primary" style={styles.title}>
             Create Routine
           </Typography>
-          <Typography variant="text-default" color="light">
+          <Typography variant="paragraph-medium" color="text-secondary">
             Build your workout routine by adding exercises
           </Typography>
         </View>
 
         {/* Routine Details */}
         <View style={styles.section}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
+          <Typography variant="heading-small" color="text-primary" style={styles.sectionTitle}>
             Routine Details
           </Typography>
           <View style={styles.inputContainer}>
-            <Typography variant="text-small" color="dark" style={styles.inputLabel}>
+            <Typography variant="label-small" color="text-primary" style={styles.inputLabel}>
               Routine Name *
             </Typography>
             <TextInput
@@ -305,7 +305,7 @@ export default function CreateRoutineRoute() {
               onChangeText={setRoutineName}
               placeholder="Enter routine name"
               style={styles.textInput}
-              placeholderTextColor={getColor('light')}
+              placeholderTextColor={getColor('text-secondary')}
             />
           </View>
         </View>
@@ -313,7 +313,7 @@ export default function CreateRoutineRoute() {
         {/* Exercises Section */}
         <View style={styles.section}>
           <View style={styles.exercisesHeader}>
-            <Typography variant="heading-small" color="dark">
+            <Typography variant="heading-small" color="text-primary">
               Exercises ({exercises.length})
             </Typography>
             <View style={styles.exercisesActions}>
@@ -330,10 +330,10 @@ export default function CreateRoutineRoute() {
 
           {exercises.length === 0 ? (
             <View style={styles.emptyState}>
-              <Typography variant="text-default" color="light" style={styles.emptyStateTitle}>
+              <Typography variant="paragraph-medium" color="text-secondary" style={styles.emptyStateTitle}>
                 No exercises added yet
               </Typography>
-              <Typography variant="text-small" color="light">
+              <Typography variant="paragraph-small" color="text-secondary">
                 Click "Add Exercise" to start building your routine
               </Typography>
             </View>
@@ -372,7 +372,7 @@ export default function CreateRoutineRoute() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('background'),
   },
   scrollView: {
     flex: 1,
@@ -400,13 +400,13 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 16,
-    color: getColor('dark'),
-    backgroundColor: 'white',
+    color: getColor('text-primary'),
+    backgroundColor: getColor('surface'),
   },
   exercisesHeader: {
     flexDirection: 'row',
@@ -435,9 +435,9 @@ const styles = StyleSheet.create({
   exerciseCard: {
     padding: 16,
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('border-light'),
     borderRadius: 8,
-    backgroundColor: 'white',
+    backgroundColor: getColor('surface'),
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   setCard: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('background'),
     borderRadius: 8,
     minWidth: 100,
   },

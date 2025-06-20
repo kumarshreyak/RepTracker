@@ -14,10 +14,10 @@ import { authService } from '../../src/auth/AuthService';
 // Google Icon SVG component
 const GoogleIcon = () => (
   <View style={styles.googleIcon}>
-    <View style={[styles.iconPath, { backgroundColor: getColor('blue') }]} />
-    <View style={[styles.iconPath, { backgroundColor: getColor('red') }]} />
-    <View style={[styles.iconPath, { backgroundColor: getColor('yellow') }]} />
-    <View style={[styles.iconPath, { backgroundColor: getColor('green') }]} />
+              <View style={[styles.iconPath, { backgroundColor: getColor('primary') }]} />
+          <View style={[styles.iconPath, { backgroundColor: getColor('danger') }]} />
+    <View style={[styles.iconPath, { backgroundColor: getColor('warning') }]} />
+    <View style={[styles.iconPath, { backgroundColor: getColor('success') }]} />
   </View>
 );
 
@@ -64,10 +64,10 @@ export default function SignInRoute() {
       <View style={styles.content}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <Typography variant="heading-large" color="dark" style={styles.title}>
+            <Typography variant="heading-large" color="text-primary" style={styles.title}>
               Welcome to GymLog
             </Typography>
-            <Typography variant="text-default" color="light" style={styles.subtitle}>
+            <Typography variant="paragraph-medium" color="text-secondary" style={styles.subtitle}>
               Track your workouts and progress
             </Typography>
           </View>
@@ -86,7 +86,7 @@ export default function SignInRoute() {
           </View>
 
           <View style={styles.footer}>
-            <Typography variant="text-small" color="light" style={styles.termsText}>
+            <Typography variant="paragraph-small" color="text-secondary" style={styles.termsText}>
               By signing in, you agree to our Terms of Service and Privacy Policy
             </Typography>
           </View>
@@ -99,7 +99,7 @@ export default function SignInRoute() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('backgroundSecondary'),
   },
   content: {
     flex: 1,
@@ -108,10 +108,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   card: {
-    backgroundColor: getColor('white'),
+    backgroundColor: getColor('backgroundPrimary'),
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    borderColor: getColor('borderOpaque'),
     padding: 32,
     width: '100%',
     maxWidth: 384,

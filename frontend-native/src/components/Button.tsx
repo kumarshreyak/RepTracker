@@ -64,37 +64,37 @@ export const Button: React.FC<ButtonProps> = ({
     xlarge: { padding: 12 },
   };
 
-  // Variant styles
+  // Variant styles using new semantic colors
   const variantStyles = {
     default: {
-      backgroundColor: getColor('light-gray-2'),
-      borderColor: getColor('light-gray-4'),
-      textColor: getColor('dark'),
+      backgroundColor: getColor('background'),
+      borderColor: getColor('border-medium'),
+      textColor: getColor('text-primary'),
     },
     primary: {
-      backgroundColor: getColor('blue-bright'),
-      borderColor: getColor('blue-bright'),
-      textColor: getColor('white'),
+      backgroundColor: getColor('primary'),
+      borderColor: getColor('primary'),
+      textColor: getColor('text-inverse'),
     },
     danger: {
-      backgroundColor: getColor('red'),
-      borderColor: getColor('red'),
-      textColor: getColor('white'),
+      backgroundColor: getColor('danger'),
+      borderColor: getColor('danger'),
+      textColor: getColor('text-inverse'),
     },
     secondary: {
-      backgroundColor: getColor('white'),
-      borderColor: getColor('light-gray-4'),
-      textColor: getColor('dark'),
+      backgroundColor: getColor('surface'),
+      borderColor: getColor('border-medium'),
+      textColor: getColor('text-primary'),
     },
     text: {
       backgroundColor: 'transparent',
       borderColor: 'transparent',
-      textColor: getColor('blue-bright'),
+      textColor: getColor('primary'),
     },
     success: {
-      backgroundColor: getColor('green-bright'),
-      borderColor: getColor('green-bright'),
-      textColor: getColor('white'),
+      backgroundColor: getColor('success'),
+      borderColor: getColor('success'),
+      textColor: getColor('text-inverse'),
     },
   };
 
@@ -118,9 +118,16 @@ export const Button: React.FC<ButtonProps> = ({
     ...style,
   };
 
-  const textVariant = size === 'small' ? 'text-small' : 
-                      size === 'large' ? 'text-large' :
-                      size === 'xlarge' ? 'text-xlarge' : 'text-default';
+  const textVariant = size === 'small' ? 'label-xsmall' : 
+                      size === 'large' ? 'label-large' :
+                      size === 'xlarge' ? 'label-large' : 'label-medium';
+
+  // Determine text color based on variant
+  const textColor = variant === 'primary' || variant === 'danger' || variant === 'success' 
+    ? 'text-inverse' 
+    : variant === 'text' 
+    ? 'primary' 
+    : 'text-primary';
 
   return (
     <TouchableOpacity 
@@ -137,8 +144,7 @@ export const Button: React.FC<ButtonProps> = ({
       {!iconOnly && (
         <Typography 
           variant={textVariant} 
-          color={variant === 'primary' || variant === 'danger' || variant === 'success' ? 'white' : 
-                 variant === 'text' ? 'blue-bright' : 'dark'}
+          color={textColor}
           style={{ fontWeight: '500' }}
         >
           {children}
@@ -158,7 +164,7 @@ export const EditIcon: React.FC<{ color?: string; size?: number }> = ({
     <View style={{
       width: size,
       height: size,
-      backgroundColor: color === 'currentColor' ? getColor('dark') : color,
+      backgroundColor: color === 'currentColor' ? getColor('text-primary') : color,
       borderRadius: 2,
     }} />
   );

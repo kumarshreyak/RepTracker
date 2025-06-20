@@ -12,7 +12,7 @@ export default function Index() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={getColor('blue-bright')} />
+        <ActivityIndicator size="large" color={getColor('primary')} />
         <StatusBar style="auto" />
       </View>
     );
@@ -29,7 +29,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('background'),
     alignItems: 'center',
     justifyContent: 'center',
   },
