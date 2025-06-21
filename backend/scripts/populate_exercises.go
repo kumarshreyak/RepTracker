@@ -21,12 +21,12 @@ type JSONExercise struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
-	MuscleGroup  string   `json:"muscleGroup"`
+	MuscleGroup  string   `json:"muscle_group"`
 	Equipment    string   `json:"equipment"`
 	Difficulty   string   `json:"difficulty"`
 	Instructions []string `json:"instructions"`
-	CreatedAt    string   `json:"createdAt"`
-	UpdatedAt    string   `json:"updatedAt"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
 }
 
 func main() {
