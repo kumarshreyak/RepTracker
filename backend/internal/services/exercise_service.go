@@ -51,11 +51,12 @@ func (s *ExerciseService) initializeExercises() {
 	now := time.Now()
 	sampleExercises := []models.Exercise{
 		{
-			Name:        "Push-ups",
-			Description: "A classic upper body exercise that works the chest, shoulders, and triceps.",
-			MuscleGroup: "Chest",
-			Equipment:   "Bodyweight",
-			Difficulty:  "Beginner",
+			Name:             "Push-ups",
+			Description:      "A classic upper body exercise that works the chest, shoulders, and triceps.",
+			Category:         string(models.CategoryCalisthenics),
+			Equipment:        []string{string(models.EquipmentNone)},
+			PrimaryMuscles:   []string{string(models.MuscleChest)},
+			SecondaryMuscles: []string{string(models.MuscleTriceps), string(models.MuscleShoulders)},
 			Instructions: []string{
 				"Start in plank position with hands under shoulders",
 				"Lower your body until chest nearly touches floor",
@@ -66,11 +67,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Squats",
-			Description: "A fundamental lower body exercise targeting the quadriceps, glutes, and hamstrings.",
-			MuscleGroup: "Legs",
-			Equipment:   "Bodyweight",
-			Difficulty:  "Beginner",
+			Name:             "Squats",
+			Description:      "A fundamental lower body exercise targeting the quadriceps, glutes, and hamstrings.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentNone)},
+			PrimaryMuscles:   []string{string(models.MuscleQuads)},
+			SecondaryMuscles: []string{string(models.MuscleGlutes), string(models.MuscleHamstrings)},
 			Instructions: []string{
 				"Stand with feet shoulder-width apart",
 				"Lower your body as if sitting back into a chair",
@@ -81,11 +83,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Bench Press",
-			Description: "A compound exercise for building chest, shoulder, and tricep strength.",
-			MuscleGroup: "Chest",
-			Equipment:   "Barbell",
-			Difficulty:  "Intermediate",
+			Name:             "Bench Press",
+			Description:      "A compound exercise for building chest, shoulder, and tricep strength.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentBarbell), string(models.EquipmentBench)},
+			PrimaryMuscles:   []string{string(models.MuscleChest)},
+			SecondaryMuscles: []string{string(models.MuscleTriceps), string(models.MuscleShoulders)},
 			Instructions: []string{
 				"Lie on bench with feet flat on floor",
 				"Grip barbell slightly wider than shoulder width",
@@ -96,11 +99,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Deadlifts",
-			Description: "A compound movement that works the entire posterior chain.",
-			MuscleGroup: "Back",
-			Equipment:   "Barbell",
-			Difficulty:  "Advanced",
+			Name:             "Deadlifts",
+			Description:      "A compound movement that works the entire posterior chain.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentBarbell)},
+			PrimaryMuscles:   []string{string(models.MuscleGlutes), string(models.MuscleHamstrings)},
+			SecondaryMuscles: []string{string(models.MuscleLowerBack), string(models.MuscleTraps), string(models.MuscleQuads)},
 			Instructions: []string{
 				"Stand with feet hip-width apart, bar over mid-foot",
 				"Hinge at hips and knees to grab bar",
@@ -111,11 +115,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Pull-ups",
-			Description: "An upper body exercise that primarily targets the latissimus dorsi.",
-			MuscleGroup: "Back",
-			Equipment:   "Pull-up Bar",
-			Difficulty:  "Intermediate",
+			Name:             "Pull-ups",
+			Description:      "An upper body exercise that primarily targets the latissimus dorsi.",
+			Category:         string(models.CategoryCalisthenics),
+			Equipment:        []string{string(models.EquipmentPullUpBar)},
+			PrimaryMuscles:   []string{string(models.MuscleLats)},
+			SecondaryMuscles: []string{string(models.MuscleBiceps), string(models.MuscleRhomboids)},
 			Instructions: []string{
 				"Hang from bar with palms facing away",
 				"Pull your body up until chin clears bar",
@@ -126,11 +131,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Shoulder Press",
-			Description: "An overhead pressing movement for shoulder and tricep development.",
-			MuscleGroup: "Shoulders",
-			Equipment:   "Dumbbells",
-			Difficulty:  "Intermediate",
+			Name:             "Shoulder Press",
+			Description:      "An overhead pressing movement for shoulder and tricep development.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentDumbbell)},
+			PrimaryMuscles:   []string{string(models.MuscleShoulders)},
+			SecondaryMuscles: []string{string(models.MuscleTriceps)},
 			Instructions: []string{
 				"Stand with feet shoulder-width apart",
 				"Hold dumbbells at shoulder height",
@@ -141,11 +147,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Bicep Curls",
-			Description: "An isolation exercise targeting the biceps brachii.",
-			MuscleGroup: "Arms",
-			Equipment:   "Dumbbells",
-			Difficulty:  "Beginner",
+			Name:             "Bicep Curls",
+			Description:      "An isolation exercise targeting the biceps brachii.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentDumbbell)},
+			PrimaryMuscles:   []string{string(models.MuscleBiceps)},
+			SecondaryMuscles: []string{},
 			Instructions: []string{
 				"Stand with dumbbells at your sides",
 				"Keep elbows close to your body",
@@ -156,11 +163,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Planks",
-			Description: "An isometric core exercise for building abdominal strength.",
-			MuscleGroup: "Core",
-			Equipment:   "Bodyweight",
-			Difficulty:  "Beginner",
+			Name:             "Planks",
+			Description:      "An isometric core exercise for building abdominal strength.",
+			Category:         string(models.CategoryCalisthenics),
+			Equipment:        []string{string(models.EquipmentNone)},
+			PrimaryMuscles:   []string{string(models.MuscleAbs)},
+			SecondaryMuscles: []string{string(models.MuscleObliques)},
 			Instructions: []string{
 				"Start in push-up position",
 				"Lower to forearms, keeping body straight",
@@ -171,11 +179,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Lunges",
-			Description: "A unilateral leg exercise that targets quads, glutes, and hamstrings.",
-			MuscleGroup: "Legs",
-			Equipment:   "Bodyweight",
-			Difficulty:  "Beginner",
+			Name:             "Lunges",
+			Description:      "A unilateral leg exercise that targets quads, glutes, and hamstrings.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentNone)},
+			PrimaryMuscles:   []string{string(models.MuscleQuads)},
+			SecondaryMuscles: []string{string(models.MuscleGlutes), string(models.MuscleHamstrings)},
 			Instructions: []string{
 				"Stand with feet hip-width apart",
 				"Step forward with one leg, lowering hips",
@@ -186,11 +195,12 @@ func (s *ExerciseService) initializeExercises() {
 			UpdatedAt: now,
 		},
 		{
-			Name:        "Rows",
-			Description: "A pulling exercise that targets the back muscles and biceps.",
-			MuscleGroup: "Back",
-			Equipment:   "Cable Machine",
-			Difficulty:  "Intermediate",
+			Name:             "Rows",
+			Description:      "A pulling exercise that targets the back muscles and biceps.",
+			Category:         string(models.CategoryStrength),
+			Equipment:        []string{string(models.EquipmentCable)},
+			PrimaryMuscles:   []string{string(models.MuscleLats), string(models.MuscleRhomboids)},
+			SecondaryMuscles: []string{string(models.MuscleBiceps), string(models.MuscleTraps)},
 			Instructions: []string{
 				"Sit with feet on platform, knees slightly bent",
 				"Grip handle with both hands",
@@ -218,14 +228,18 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, req *pb.CreateExer
 
 	now := time.Now()
 	exercise := models.Exercise{
-		Name:         req.Name,
-		Description:  req.Description,
-		MuscleGroup:  req.MuscleGroup,
-		Equipment:    req.Equipment,
-		Difficulty:   req.Difficulty,
-		Instructions: req.Instructions,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		Name:             req.Name,
+		Description:      req.Description,
+		Category:         req.Category,
+		Equipment:        req.Equipment,
+		PrimaryMuscles:   req.PrimaryMuscles,
+		SecondaryMuscles: req.SecondaryMuscles,
+		Instructions:     req.Instructions,
+		Video:            req.Video,
+		VariationsOn:     req.VariationsOn,
+		VariationOn:      req.VariationOn,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	result, err := s.exerciseColl.InsertOne(ctx, exercise)
@@ -263,7 +277,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, req *pb.UpdateExer
 	}
 
 	update := bson.M{
-		"updated_at": time.Now(),
+		"updatedAt": time.Now(),
 	}
 
 	if req.Name != "" {
@@ -272,17 +286,29 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, req *pb.UpdateExer
 	if req.Description != "" {
 		update["description"] = req.Description
 	}
-	if req.MuscleGroup != "" {
-		update["muscle_group"] = req.MuscleGroup
+	if req.Category != "" {
+		update["category"] = req.Category
 	}
-	if req.Equipment != "" {
+	if len(req.Equipment) > 0 {
 		update["equipment"] = req.Equipment
 	}
-	if req.Difficulty != "" {
-		update["difficulty"] = req.Difficulty
+	if len(req.PrimaryMuscles) > 0 {
+		update["primaryMuscles"] = req.PrimaryMuscles
+	}
+	if len(req.SecondaryMuscles) > 0 {
+		update["secondaryMuscles"] = req.SecondaryMuscles
 	}
 	if len(req.Instructions) > 0 {
 		update["instructions"] = req.Instructions
+	}
+	if req.Video != "" {
+		update["video"] = req.Video
+	}
+	if len(req.VariationsOn) > 0 {
+		update["variationsOn"] = req.VariationsOn
+	}
+	if len(req.VariationOn) > 0 {
+		update["variationOn"] = req.VariationOn
 	}
 
 	result, err := s.exerciseColl.UpdateOne(
@@ -357,18 +383,26 @@ func (s *ExerciseService) ListExercises(ctx context.Context, req *pb.ListExercis
 			filter["$or"] = []bson.M{
 				{"name": searchRegex},
 				{"description": searchRegex},
-				{"muscle_group": searchRegex},
+				{"category": searchRegex},
+				{"primaryMuscles": searchRegex},
+				{"secondaryMuscles": searchRegex},
 				{"equipment": searchRegex},
 			}
 		}
 	}
 
 	// Apply filters
-	if req.MuscleGroup != "" {
-		filter["muscle_group"] = bson.M{"$regex": req.MuscleGroup, "$options": "i"}
+	if len(req.Categories) > 0 {
+		filter["category"] = bson.M{"$in": req.Categories}
 	}
-	if req.Equipment != "" {
-		filter["equipment"] = bson.M{"$regex": req.Equipment, "$options": "i"}
+	if len(req.Equipment) > 0 {
+		filter["equipment"] = bson.M{"$in": req.Equipment}
+	}
+	if len(req.PrimaryMuscles) > 0 {
+		filter["primaryMuscles"] = bson.M{"$in": req.PrimaryMuscles}
+	}
+	if len(req.SecondaryMuscles) > 0 {
+		filter["secondaryMuscles"] = bson.M{"$in": req.SecondaryMuscles}
 	}
 
 	// Apply pagination
@@ -607,14 +641,18 @@ func (s *ExerciseService) getDefaultQuickAddExercises(ctx context.Context, limit
 // modelToProto converts an exercise model to protobuf exercise
 func (s *ExerciseService) modelToProto(exercise *models.Exercise) *pb.Exercise {
 	return &pb.Exercise{
-		Id:           exercise.ID.Hex(),
-		Name:         exercise.Name,
-		Description:  exercise.Description,
-		MuscleGroup:  exercise.MuscleGroup,
-		Equipment:    exercise.Equipment,
-		Difficulty:   exercise.Difficulty,
-		Instructions: exercise.Instructions,
-		CreatedAt:    timestamppb.New(exercise.CreatedAt),
-		UpdatedAt:    timestamppb.New(exercise.UpdatedAt),
+		Id:               exercise.ID.Hex(),
+		Name:             exercise.Name,
+		Description:      exercise.Description,
+		Category:         exercise.Category,
+		Equipment:        exercise.Equipment,
+		PrimaryMuscles:   exercise.PrimaryMuscles,
+		SecondaryMuscles: exercise.SecondaryMuscles,
+		Instructions:     exercise.Instructions,
+		Video:            exercise.Video,
+		VariationsOn:     exercise.VariationsOn,
+		VariationOn:      exercise.VariationOn,
+		CreatedAt:        timestamppb.New(exercise.CreatedAt),
+		UpdatedAt:        timestamppb.New(exercise.UpdatedAt),
 	}
 }

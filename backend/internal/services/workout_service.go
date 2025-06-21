@@ -293,7 +293,7 @@ func (s *WorkoutService) ListWorkouts(ctx context.Context, req *pb.ListWorkoutsR
 		// For simplicity, we're not implementing pagination here
 	}
 
-	opts := options.Find().SetLimit(pageSize).SetSkip(skip)
+	opts := options.Find().SetLimit(pageSize).SetSkip(skip).SetSort(bson.D{{"updated_at", -1}})
 	cursor, err := s.workoutColl.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to list workouts")

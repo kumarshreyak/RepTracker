@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Vibration,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -17,33 +18,7 @@ import { Typography, Button } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { User } from '../src/auth/AuthService';
-
-interface Exercise {
-  id: string;
-  name: string;
-  description: string;
-  muscleGroup: string;
-  equipment: string;
-  difficulty: string;
-  instructions: string[];
-}
-
-interface WorkoutSet {
-  reps: number;
-  weight: number;
-}
-
-interface WorkoutSetInput {
-  reps: string;
-  weight: string;
-}
-
-interface RoutineExercise {
-  id: string;
-  name: string;
-  muscleGroup: string;
-  sets: WorkoutSet[];
-}
+import { Exercise, RoutineExercise, WorkoutSet, WorkoutSetInput } from '@/types/exercise';
 
 export default function ExerciseSearchRoute() {
   const { user } = useAuth();
@@ -132,7 +107,8 @@ export default function ExerciseSearchRoute() {
     const exerciseData: RoutineExercise = {
       id: selectedExercise.id,
       name: selectedExercise.name,
-      muscleGroup: selectedExercise.muscleGroup,
+      primaryMuscles: selectedExercise.primaryMuscles,
+      secondaryMuscles: selectedExercise.secondaryMuscles,
       sets: convertedSets,
     };
     
@@ -224,7 +200,7 @@ export default function ExerciseSearchRoute() {
                   {selectedExercise.name}
                 </Typography>
                 <Typography variant="paragraph-xsmall" color="contentSecondary">
-                  {selectedExercise.muscleGroup}
+                  {selectedExercise.primaryMuscles?.join(", ") || "No muscle groups"}
                 </Typography>
               </View>
               <MaterialIcons 
@@ -256,7 +232,7 @@ export default function ExerciseSearchRoute() {
                   variant="paragraph-xsmall" 
                   color="contentTertiary"
                 >
-                  {exercise.muscleGroup}
+                  {exercise.primaryMuscles?.join(", ") || "No muscle groups"}
                 </Typography>
               </TouchableOpacity>
             ))}

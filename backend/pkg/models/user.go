@@ -26,15 +26,19 @@ type Session struct {
 }
 
 type Exercise struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name         string             `bson:"name" json:"name"`
-	Description  string             `bson:"description" json:"description"`
-	MuscleGroup  string             `bson:"muscle_group" json:"muscleGroup"`
-	Equipment    string             `bson:"equipment" json:"equipment"`
-	Difficulty   string             `bson:"difficulty" json:"difficulty"`
-	Instructions []string           `bson:"instructions" json:"instructions"`
-	CreatedAt    time.Time          `bson:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time          `bson:"updated_at" json:"updatedAt"`
+	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name             string             `bson:"name" json:"name"`
+	Description      string             `bson:"description" json:"description"`
+	Category         string             `bson:"category" json:"category"`
+	Equipment        []string           `bson:"equipment" json:"equipment"`
+	PrimaryMuscles   []string           `bson:"primaryMuscles" json:"primaryMuscles"`
+	SecondaryMuscles []string           `bson:"secondaryMuscles" json:"secondaryMuscles"`
+	Instructions     []string           `bson:"instructions" json:"instructions"`
+	Video            string             `bson:"video,omitempty" json:"video,omitempty"`
+	VariationsOn     []string           `bson:"variationsOn,omitempty" json:"variationsOn,omitempty"`
+	VariationOn      []string           `bson:"variationOn,omitempty" json:"variationOn,omitempty"`
+	CreatedAt        time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt        time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type WorkoutSet struct {

@@ -7,49 +7,21 @@ import {
   Alert,
   Vibration,
   TouchableOpacity,
+  Dimensions,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Typography, Button, NumberInput } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Exercise, WorkoutSet, WorkoutExercise, ActiveWorkout } from '@/types/exercise';
 
-interface WorkoutSet {
-  reps: number;
-  weight: number;
-  durationSeconds?: number;
-  distance?: number;
-  notes?: string;
-  completed?: boolean;
-}
-
-interface WorkoutExercise {
-  exerciseId: string;
-  exercise?: {
-    id: string;
-    name: string;
-    description: string;
-    muscleGroup: string;
-    equipment: string;
-    difficulty: string;
-    instructions: string[];
-  };
-  sets: WorkoutSet[];
-  notes?: string;
-  restSeconds?: number;
-  completed?: boolean;
-}
-
-interface ActiveWorkout {
-  id?: string;
-  sessionId?: string;
-  routineId: string;
-  routineName: string;
-  routineDescription?: string;
-  exercises: WorkoutExercise[];
-  startedAt: Date;
-  notes?: string;
-}
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_WIDTH = 260;
+const CARD_MARGIN = 10;
+const CARD_TOTAL_WIDTH = CARD_WIDTH + (CARD_MARGIN * 2);
 
 export default function ActiveWorkoutScreen() {
   const { user } = useAuth();
@@ -69,6 +41,7 @@ export default function ActiveWorkoutScreen() {
   
   // UI state
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const setsScrollRef = useRef<ScrollView>(null);
 
@@ -102,8 +75,42 @@ export default function ActiveWorkoutScreen() {
   useEffect(() => {
     if (setsScrollRef.current) {
       setsScrollRef.current.scrollTo({ x: 0, animated: true });
+      setCurrentSetIndex(0);
     }
   }, [currentExerciseIndex]);
+
+  const scrollToNextSetOrExercise = () => {
+    if (!activeWorkout) return;
+
+    const currentExercise = activeWorkout.exercises[currentExerciseIndex];
+    const isLastSet = currentSetIndex >= currentExercise.sets.length - 1;
+    const isLastExercise = currentExerciseIndex >= activeWorkout.exercises.length - 1;
+
+    if (isLastSet && !isLastExercise) {
+      // Move to next exercise
+      setCurrentExerciseIndex(prev => prev + 1);
+      // setCurrentSetIndex(0) will be handled by the useEffect above
+    } else if (!isLastSet) {
+      // Move to next set in current exercise
+      const nextSetIndex = currentSetIndex + 1;
+      setCurrentSetIndex(nextSetIndex);
+      
+      // Scroll to the next set
+      if (setsScrollRef.current) {
+        const scrollX = nextSetIndex * CARD_TOTAL_WIDTH;
+        setsScrollRef.current.scrollTo({ x: scrollX, animated: true });
+      }
+    }
+    // If it's the last set of the last exercise, don't auto-scroll
+  };
+
+  const handleScroll = (event: any) => {
+    const scrollX = event.nativeEvent.contentOffset.x;
+    const newSetIndex = Math.round(scrollX / CARD_TOTAL_WIDTH);
+    if (newSetIndex !== currentSetIndex && newSetIndex >= 0) {
+      setCurrentSetIndex(newSetIndex);
+    }
+  };
 
   const fetchRoutineAndStartWorkout = async () => {
     try {
@@ -208,6 +215,13 @@ export default function ActiveWorkoutScreen() {
     });
 
     Vibration.vibrate(newCompletedState ? [0, 100, 50, 100] : 50);
+
+    // Auto-scroll to next set/exercise when completing a set
+    if (newCompletedState && setIndex === currentSetIndex) {
+      setTimeout(() => {
+        scrollToNextSetOrExercise();
+      }, 300); // Small delay to let the completion animation finish
+    }
 
     try {
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
@@ -428,7 +442,7 @@ export default function ActiveWorkoutScreen() {
               {currentExercise.exercise?.name || `Exercise ${currentExerciseIndex + 1}`}
             </Typography>
             <Typography variant="paragraph-xsmall" color="contentTertiary">
-              {currentExercise.exercise?.muscleGroup || ''}
+              {currentExercise.exercise?.primaryMuscles?.join(", ") || ''}
             </Typography>
           </View>
           
@@ -454,13 +468,22 @@ export default function ActiveWorkoutScreen() {
           </View>
         </View>
 
-        {/* Active Sets - Card Based, Editable */}
+        {/* Active Sets - Carousel Based, Editable */}
         <ScrollView 
           ref={setsScrollRef}
           horizontal 
           showsHorizontalScrollIndicator={false}
           style={styles.setsScroller}
-          contentContainerStyle={styles.setsScrollContent}
+          contentContainerStyle={[
+            styles.setsScrollContent,
+            { paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2 }
+          ]}
+          snapToInterval={CARD_TOTAL_WIDTH}
+          decelerationRate="fast"
+          snapToAlignment="start"
+          pagingEnabled={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         >
           {currentExercise.sets.map((set, setIndex) => (
             <View key={setIndex} style={styles.setCard}>
@@ -672,18 +695,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   
-  // Sets Scroller - Card Based
+  // Sets Scroller - Carousel Based
   setsScroller: {
     height: 300, // Fixed height to prevent unnecessary expansion
   },
   setsScrollContent: {
-    paddingHorizontal: 0,
+    // Padding is now dynamically set based on screen width
   },
   setCard: {
-    width: 260,
+    width: CARD_WIDTH,
+    height: 260, // Fixed height for consistent card sizing
+    marginHorizontal: CARD_MARGIN, // Space between cards for carousel effect
     paddingHorizontal: 20,
     paddingVertical: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: getColor('borderOpaque'),
+    borderRadius: 8,
+    backgroundColor: getColor('backgroundPrimary'),
   },
   setLabel: {
     marginBottom: 24,
