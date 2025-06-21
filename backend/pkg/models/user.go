@@ -29,12 +29,12 @@ type Exercise struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name         string             `bson:"name" json:"name"`
 	Description  string             `bson:"description" json:"description"`
-	MuscleGroup  string             `bson:"muscle_group" json:"muscle_group"`
+	MuscleGroup  string             `bson:"muscle_group" json:"muscleGroup"`
 	Equipment    string             `bson:"equipment" json:"equipment"`
 	Difficulty   string             `bson:"difficulty" json:"difficulty"`
 	Instructions []string           `bson:"instructions" json:"instructions"`
-	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt    time.Time          `bson:"updated_at" json:"updated_at"`
+	CreatedAt    time.Time          `bson:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time          `bson:"updated_at" json:"updatedAt"`
 }
 
 type WorkoutSet struct {
