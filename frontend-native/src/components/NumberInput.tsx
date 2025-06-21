@@ -11,8 +11,8 @@ import { Typography } from './Typography';
 import { SemanticColor, getColor } from './Colors';
 
 export interface NumberInputProps {
-  /** The current numeric value */
-  value: number;
+  /** The current numeric value (will default to 0 if undefined) */
+  value: number | undefined;
   /** Callback fired when the value changes */
   onValueChange: (value: number) => void;
   /** Optional unit label displayed below the value (e.g., "kg", "reps", "lbs") */
@@ -111,21 +111,24 @@ export const NumberInput: React.FC<NumberInputProps> = ({
   autoFocus = true,
   selectTextOnFocus = true,
 }) => {
+  // Ensure value is never undefined
+  const safeValue = value ?? 0;
+  
   const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(value.toString());
+  const [inputValue, setInputValue] = useState(safeValue.toString());
   const inputRef = useRef<TextInput>(null);
 
   // Update input value when prop value changes
   useEffect(() => {
     if (!isEditing) {
-      setInputValue(value.toString());
+      setInputValue(safeValue.toString());
     }
-  }, [value, isEditing]);
+  }, [safeValue, isEditing]);
 
   const handlePress = () => {
     if (disabled) return;
     setIsEditing(true);
-    setInputValue(value.toString());
+    setInputValue(safeValue.toString());
   };
 
   const handleSubmit = () => {
@@ -272,7 +275,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
             color={disabled ? 'contentStateDisabled' : valueColor}
             style={valueStyle}
           >
-            {value.toString()}
+            {safeValue.toString()}
           </Typography>
         )}
       </Pressable>

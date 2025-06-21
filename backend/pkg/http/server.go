@@ -83,6 +83,10 @@ type ListExercisesResponse struct {
 	NextPageToken string             `json:"nextPageToken,omitempty"`
 }
 
+type QuickAddExercisesResponse struct {
+	Exercises []ExerciseResponse `json:"exercises"`
+}
+
 // Workout HTTP types
 type WorkoutSetResponse struct {
 	Reps            int32   `json:"reps"`
@@ -250,7 +254,8 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/auth/validate", s.handleValidateSession).Methods("GET")
 	api.HandleFunc("/auth/logout", s.handleLogout).Methods("POST")
 
-	// Exercise routes
+	// Exercise routes - specific routes must come before parameterized routes
+	api.HandleFunc("/exercises/quick-add", s.handleGetQuickAddExercises).Methods("GET")
 	api.HandleFunc("/exercises", s.handleListExercises).Methods("GET")
 	api.HandleFunc("/exercises", s.handleCreateExercise).Methods("POST")
 	api.HandleFunc("/exercises/{id}", s.handleGetExercise).Methods("GET")
@@ -649,6 +654,51 @@ func (s *Server) handleDeleteExercise(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleGetQuickAddExercises(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🏋️ handleGetQuickAddExercises: Request received - Method: %s, URL: %s", r.Method, r.URL.String())
+
+	ctx := context.Background()
+
+	// Parse query parameters
+	userID := r.URL.Query().Get("userId")
+	limit := int32(5) // default
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.ParseInt(l, 10, 32); err == nil {
+			limit = int32(parsed)
+		}
+	}
+
+	log.Printf("🏋️ handleGetQuickAddExercises: Parsed parameters - userID: %s, limit: %d", userID, limit)
+
+	req := &pb.GetQuickAddExercisesRequest{
+		UserId: userID,
+		Limit:  limit,
+	}
+
+	log.Printf("🏋️ handleGetQuickAddExercises: Calling gRPC service")
+	resp, err := s.exerciseService.GetQuickAddExercises(ctx, req)
+	if err != nil {
+		log.Printf("❌ handleGetQuickAddExercises: gRPC service error: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to get quick add exercises: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("🏋️ handleGetQuickAddExercises: gRPC service returned %d exercises", len(resp.Exercises))
+
+	exercises := make([]ExerciseResponse, len(resp.Exercises))
+	for i, ex := range resp.Exercises {
+		exercises[i] = exerciseToResponse(ex)
+	}
+
+	response := QuickAddExercisesResponse{
+		Exercises: exercises,
+	}
+
+	log.Printf("🏋️ handleGetQuickAddExercises: Sending response with %d exercises", len(exercises))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // Helper function for workout session protobuf conversion

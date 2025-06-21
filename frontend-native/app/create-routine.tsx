@@ -25,20 +25,16 @@ interface RoutineExercise {
   sets: WorkoutSet[];
 }
 
-// Mock data for recently used exercises - in real app, this would come from user history
-const RECENT_EXERCISES: RoutineExercise[] = [
-  { id: '1', name: 'Push-ups', muscleGroup: 'Chest', sets: [{ reps: 10, weight: 0 }, { reps: 10, weight: 0 }, { reps: 10, weight: 0 }] },
-  { id: '2', name: 'Squats', muscleGroup: 'Legs', sets: [{ reps: 12, weight: 0 }, { reps: 12, weight: 0 }, { reps: 12, weight: 0 }] },
-  { id: '3', name: 'Pull-ups', muscleGroup: 'Back', sets: [{ reps: 8, weight: 0 }, { reps: 8, weight: 0 }, { reps: 8, weight: 0 }] },
-];
+// Quick add exercises will be fetched from the API
 
 export default function CreateRoutineRoute() {
   const { user } = useAuth();
   const [routineName, setRoutineName] = useState("");
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
+  const [quickAddExercises, setQuickAddExercises] = useState<RoutineExercise[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load exercises from AsyncStorage on mount
+  // Load exercises from AsyncStorage and fetch quick add exercises on mount
   useEffect(() => {
     const loadExercises = async () => {
       try {
@@ -53,8 +49,77 @@ export default function CreateRoutineRoute() {
       }
     };
 
+    const fetchQuickAddExercises = async () => {
+      console.log('🏋️ fetchQuickAddExercises: Starting fetch process');
+      console.log('👤 fetchQuickAddExercises: User object:', user);
+      console.log('🆔 fetchQuickAddExercises: User ID:', user?.id);
+      
+      try {
+        const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+        console.log('🌐 fetchQuickAddExercises: API_BASE_URL:', API_BASE_URL);
+        
+        const url = new URL(`${API_BASE_URL}/api/exercises/quick-add`);
+        if (user?.id) {
+          url.searchParams.append('userId', user.id);
+          console.log('✅ fetchQuickAddExercises: Added userId to URL');
+        } else {
+          console.log('⚠️ fetchQuickAddExercises: No user ID available, fetching default exercises');
+        }
+        url.searchParams.append('limit', '5');
+        
+        const finalUrl = url.toString();
+        console.log('📡 fetchQuickAddExercises: Making request to:', finalUrl);
+
+        const response = await fetch(finalUrl);
+        console.log('📥 fetchQuickAddExercises: Response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries()),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📦 fetchQuickAddExercises: Raw response data:', JSON.stringify(data, null, 2));
+          
+          if (data.exercises && Array.isArray(data.exercises)) {
+            const quickAddData = data.exercises.map((exercise: any) => ({
+              id: exercise.id,
+              name: exercise.name,
+              muscleGroup: exercise.muscleGroup,
+              sets: [
+                { reps: 10, weight: 0 },
+                { reps: 10, weight: 0 },
+                { reps: 10, weight: 0 }
+              ]
+            }));
+            console.log('🔧 fetchQuickAddExercises: Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
+            setQuickAddExercises(quickAddData);
+            console.log('✅ fetchQuickAddExercises: Successfully set quick add exercises');
+          } else {
+            console.log('⚠️ fetchQuickAddExercises: No exercises array in response or invalid format');
+            setQuickAddExercises([]);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('❌ fetchQuickAddExercises: Response not ok:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorBody: errorText,
+          });
+          setQuickAddExercises([]);
+        }
+      } catch (error) {
+        console.error('💥 fetchQuickAddExercises: Error occurred:', error);
+        console.error('💥 fetchQuickAddExercises: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        // Fallback to empty array if API fails
+        setQuickAddExercises([]);
+      }
+    };
+
     loadExercises();
-  }, []);
+    fetchQuickAddExercises();
+  }, [user?.id]);
 
   // Refresh exercises when screen comes back into focus
   useFocusEffect(
@@ -74,8 +139,76 @@ export default function CreateRoutineRoute() {
         }
       };
 
+      const fetchQuickAddExercises = async () => {
+        console.log('🔄 fetchQuickAddExercises (focus): Starting fetch process');
+        console.log('👤 fetchQuickAddExercises (focus): User object:', user);
+        console.log('🆔 fetchQuickAddExercises (focus): User ID:', user?.id);
+        
+        try {
+          const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+          console.log('🌐 fetchQuickAddExercises (focus): API_BASE_URL:', API_BASE_URL);
+          
+          const url = new URL(`${API_BASE_URL}/api/exercises/quick-add`);
+          if (user?.id) {
+            url.searchParams.append('userId', user.id);
+            console.log('✅ fetchQuickAddExercises (focus): Added userId to URL');
+          } else {
+            console.log('⚠️ fetchQuickAddExercises (focus): No user ID available, fetching default exercises');
+          }
+          url.searchParams.append('limit', '5');
+          
+          const finalUrl = url.toString();
+          console.log('📡 fetchQuickAddExercises (focus): Making request to:', finalUrl);
+
+          const response = await fetch(finalUrl);
+          console.log('📥 fetchQuickAddExercises (focus): Response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+            headers: Object.fromEntries(response.headers.entries()),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('📦 fetchQuickAddExercises (focus): Raw response data:', JSON.stringify(data, null, 2));
+            
+            if (data.exercises && Array.isArray(data.exercises)) {
+              const quickAddData = data.exercises.map((exercise: any) => ({
+                id: exercise.id,
+                name: exercise.name,
+                muscleGroup: exercise.muscleGroup,
+                sets: [
+                  { reps: 10, weight: 0 },
+                  { reps: 10, weight: 0 },
+                  { reps: 10, weight: 0 }
+                ]
+              }));
+              console.log('🔧 fetchQuickAddExercises (focus): Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
+              setQuickAddExercises(quickAddData);
+              console.log('✅ fetchQuickAddExercises (focus): Successfully set quick add exercises');
+            } else {
+              console.log('⚠️ fetchQuickAddExercises (focus): No exercises array in response or invalid format');
+              setQuickAddExercises([]);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('❌ fetchQuickAddExercises (focus): Response not ok:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorBody: errorText,
+            });
+            setQuickAddExercises([]);
+          }
+        } catch (error) {
+          console.error('💥 fetchQuickAddExercises (focus): Error occurred:', error);
+          console.error('💥 fetchQuickAddExercises (focus): Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+          setQuickAddExercises([]);
+        }
+      };
+
       loadExercises();
-    }, [])
+      fetchQuickAddExercises();
+    }, [user?.id])
   );
 
   const handleQuickAdd = async (exercise: RoutineExercise) => {
@@ -320,7 +453,7 @@ export default function CreateRoutineRoute() {
               showsHorizontalScrollIndicator={false}
               style={styles.quickAddScroll}
             >
-              {RECENT_EXERCISES.map(renderQuickAddPill)}
+              {quickAddExercises.map(renderQuickAddPill)}
             </ScrollView>
           </View>
 

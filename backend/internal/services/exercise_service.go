@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -409,6 +410,198 @@ func (s *ExerciseService) ListExercises(ctx context.Context, req *pb.ListExercis
 	}
 
 	return response, nil
+}
+
+// GetQuickAddExercises returns a list of exercises for quick adding to routines
+// Returns the last 5 exercises that were added by user in some routine or fallback to default exercises
+func (s *ExerciseService) GetQuickAddExercises(ctx context.Context, req *pb.GetQuickAddExercisesRequest) (*pb.GetQuickAddExercisesResponse, error) {
+	log.Printf("🏋️ GetQuickAddExercises: Starting - userID: %s, limit: %d", req.UserId, req.Limit)
+
+	limit := int64(req.Limit)
+	if limit <= 0 {
+		limit = 5 // Default limit
+	}
+
+	var exercises []models.Exercise
+
+	// If user_id is provided, try to get user's recent exercises from workouts
+	if req.UserId != "" {
+		log.Printf("🏋️ GetQuickAddExercises: Attempting to get user recent exercises")
+		userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+		if err == nil {
+			exercises = s.getUserRecentExercises(ctx, userObjectID, limit)
+			log.Printf("🏋️ GetQuickAddExercises: Found %d recent exercises for user", len(exercises))
+		} else {
+			log.Printf("⚠️ GetQuickAddExercises: Invalid user ID format: %v", err)
+		}
+	} else {
+		log.Printf("🏋️ GetQuickAddExercises: No user ID provided, will use default exercises")
+	}
+
+	// If we don't have enough exercises from user history, fill with default exercises
+	if int64(len(exercises)) < limit {
+		log.Printf("🏋️ GetQuickAddExercises: Need %d more exercises, getting defaults", limit-int64(len(exercises)))
+		defaultExercises := s.getDefaultQuickAddExercises(ctx, limit-int64(len(exercises)))
+		log.Printf("🏋️ GetQuickAddExercises: Found %d default exercises", len(defaultExercises))
+
+		// Merge without duplicates
+		exerciseMap := make(map[string]bool)
+		for _, ex := range exercises {
+			exerciseMap[ex.ID.Hex()] = true
+		}
+
+		for _, defaultEx := range defaultExercises {
+			if !exerciseMap[defaultEx.ID.Hex()] {
+				exercises = append(exercises, defaultEx)
+				if int64(len(exercises)) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	log.Printf("🏋️ GetQuickAddExercises: Final exercise count: %d", len(exercises))
+
+	// Convert to protobuf
+	var protoExercises []*pb.Exercise
+	for _, exercise := range exercises {
+		protoExercises = append(protoExercises, s.modelToProto(&exercise))
+	}
+
+	log.Printf("🏋️ GetQuickAddExercises: Returning %d exercises", len(protoExercises))
+	return &pb.GetQuickAddExercisesResponse{
+		Exercises: protoExercises,
+	}, nil
+}
+
+// getUserRecentExercises gets the most recently used exercises by a user from their workouts
+func (s *ExerciseService) getUserRecentExercises(ctx context.Context, userID primitive.ObjectID, limit int64) []models.Exercise {
+	// Get workouts collection
+	workoutColl := s.db.GetCollection("workouts")
+
+	// Aggregation pipeline to get recent exercises from user's workouts
+	pipeline := []bson.M{
+		// Match workouts by user
+		{"$match": bson.M{"user_id": userID}},
+		// Sort by creation date (most recent first)
+		{"$sort": bson.M{"created_at": -1}},
+		// Limit to recent workouts
+		{"$limit": 20},
+		// Unwind exercises array
+		{"$unwind": "$exercises"},
+		// Group by exercise_id to get unique exercises with their latest usage
+		{"$group": bson.M{
+			"_id":       "$exercises.exercise_id",
+			"last_used": bson.M{"$max": "$created_at"},
+		}},
+		// Sort by last used (most recent first)
+		{"$sort": bson.M{"last_used": -1}},
+		// Limit to requested number
+		{"$limit": limit},
+	}
+
+	cursor, err := workoutColl.Aggregate(ctx, pipeline)
+	if err != nil {
+		return []models.Exercise{}
+	}
+	defer cursor.Close(ctx)
+
+	var exerciseIDs []primitive.ObjectID
+	for cursor.Next(ctx) {
+		var result struct {
+			ID primitive.ObjectID `bson:"_id"`
+		}
+		if err := cursor.Decode(&result); err == nil {
+			exerciseIDs = append(exerciseIDs, result.ID)
+		}
+	}
+
+	if len(exerciseIDs) == 0 {
+		return []models.Exercise{}
+	}
+
+	// Get the actual exercise documents
+	filter := bson.M{"_id": bson.M{"$in": exerciseIDs}}
+	exerciseCursor, err := s.exerciseColl.Find(ctx, filter)
+	if err != nil {
+		return []models.Exercise{}
+	}
+	defer exerciseCursor.Close(ctx)
+
+	var exercises []models.Exercise
+	if err := exerciseCursor.All(ctx, &exercises); err != nil {
+		return []models.Exercise{}
+	}
+
+	// Sort exercises by the order they appeared in exerciseIDs (most recent first)
+	exerciseMap := make(map[primitive.ObjectID]models.Exercise)
+	for _, ex := range exercises {
+		exerciseMap[ex.ID] = ex
+	}
+
+	var sortedExercises []models.Exercise
+	for _, id := range exerciseIDs {
+		if ex, exists := exerciseMap[id]; exists {
+			sortedExercises = append(sortedExercises, ex)
+		}
+	}
+
+	return sortedExercises
+}
+
+// getDefaultQuickAddExercises returns default exercises for quick add
+func (s *ExerciseService) getDefaultQuickAddExercises(ctx context.Context, limit int64) []models.Exercise {
+	// Default exercise names in order of preference
+	defaultNames := []string{
+		"Push-ups",
+		"Squats",
+		"Bench Press",
+		"Shoulder Press",
+		"Bicep Curls",
+	}
+
+	var exercises []models.Exercise
+
+	for _, name := range defaultNames {
+		if int64(len(exercises)) >= limit {
+			break
+		}
+
+		var exercise models.Exercise
+		err := s.exerciseColl.FindOne(ctx, bson.M{"name": bson.M{"$regex": "^" + regexp.QuoteMeta(name) + "$", "$options": "i"}}).Decode(&exercise)
+		if err == nil {
+			exercises = append(exercises, exercise)
+		}
+	}
+
+	// If we still don't have enough, get any exercises up to the limit
+	if int64(len(exercises)) < limit {
+		remaining := limit - int64(len(exercises))
+
+		// Get exercise IDs we already have
+		var existingIDs []primitive.ObjectID
+		for _, ex := range exercises {
+			existingIDs = append(existingIDs, ex.ID)
+		}
+
+		filter := bson.M{}
+		if len(existingIDs) > 0 {
+			filter["_id"] = bson.M{"$nin": existingIDs}
+		}
+
+		opts := options.Find().SetLimit(remaining)
+		cursor, err := s.exerciseColl.Find(ctx, filter, opts)
+		if err == nil {
+			defer cursor.Close(ctx)
+
+			var additionalExercises []models.Exercise
+			if cursor.All(ctx, &additionalExercises) == nil {
+				exercises = append(exercises, additionalExercises...)
+			}
+		}
+	}
+
+	return exercises
 }
 
 // modelToProto converts an exercise model to protobuf exercise
