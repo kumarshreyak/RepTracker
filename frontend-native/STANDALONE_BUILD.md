@@ -91,10 +91,10 @@ xcodebuild -workspace ios/frontendnative.xcworkspace \
 xcodebuild -exportArchive \
            -archivePath ios/build/frontendnative.xcarchive \
            -exportPath ios/build/export \
-           -exportOptionsPlist ios/build/ExportOptions.plist
+           -exportOptionsPlist ios/frontendnative/ExportOptions.plist
 ```
 
-The `ExportOptions.plist` file is already configured for development distribution.
+The `ExportOptions.plist` file is already configured for development distribution and is stored in the `ios/frontendnative/` directory to prevent it from being cleared by clean commands.
 
 ## Build Configurations
 
@@ -150,13 +150,14 @@ After building, you'll have:
 ```
 frontend-native/
 ├── ios/
-│   └── build/
-│       ├── frontendnative.xcarchive     # Archive file
-│       ├── export/
-│       │   ├── frontendnative.ipa       # ← Install this on your device
-│       │   ├── DistributionSummary.plist
-│       │   └── Packaging.log
-│       └── ExportOptions.plist          # Export configuration
+│   ├── build/
+│   │   ├── frontendnative.xcarchive     # Archive file
+│   │   └── export/
+│   │       ├── frontendnative.ipa       # ← Install this on your device
+│   │       ├── DistributionSummary.plist
+│   │       └── Packaging.log
+│   └── frontendnative/
+│       └── ExportOptions.plist          # Export configuration (safe location)
 ```
 
 ## Backend Configuration
@@ -207,7 +208,7 @@ xcodebuild -workspace ios/frontendnative.xcworkspace \
 xcodebuild -exportArchive \
            -archivePath ios/build/frontendnative.xcarchive \
            -exportPath ios/build/export \
-           -exportOptionsPlist ios/build/ExportOptions.plist
+           -exportOptionsPlist ios/frontendnative/ExportOptions.plist
 
 echo "✅ Build complete! Install ios/build/export/frontendnative.ipa on your device"
 ```
