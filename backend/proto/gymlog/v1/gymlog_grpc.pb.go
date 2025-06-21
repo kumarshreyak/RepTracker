@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.3
-// source: gymlog/v1/gymlog.proto
+// source: proto/gymlog/v1/gymlog.proto
 
 package v1
 
@@ -236,15 +236,16 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "gymlog/v1/gymlog.proto",
+	Metadata: "proto/gymlog/v1/gymlog.proto",
 }
 
 const (
-	ExerciseService_CreateExercise_FullMethodName = "/gymlog.v1.ExerciseService/CreateExercise"
-	ExerciseService_GetExercise_FullMethodName    = "/gymlog.v1.ExerciseService/GetExercise"
-	ExerciseService_UpdateExercise_FullMethodName = "/gymlog.v1.ExerciseService/UpdateExercise"
-	ExerciseService_DeleteExercise_FullMethodName = "/gymlog.v1.ExerciseService/DeleteExercise"
-	ExerciseService_ListExercises_FullMethodName  = "/gymlog.v1.ExerciseService/ListExercises"
+	ExerciseService_CreateExercise_FullMethodName       = "/gymlog.v1.ExerciseService/CreateExercise"
+	ExerciseService_GetExercise_FullMethodName          = "/gymlog.v1.ExerciseService/GetExercise"
+	ExerciseService_UpdateExercise_FullMethodName       = "/gymlog.v1.ExerciseService/UpdateExercise"
+	ExerciseService_DeleteExercise_FullMethodName       = "/gymlog.v1.ExerciseService/DeleteExercise"
+	ExerciseService_ListExercises_FullMethodName        = "/gymlog.v1.ExerciseService/ListExercises"
+	ExerciseService_GetQuickAddExercises_FullMethodName = "/gymlog.v1.ExerciseService/GetQuickAddExercises"
 )
 
 // ExerciseServiceClient is the client API for ExerciseService service.
@@ -256,6 +257,7 @@ type ExerciseServiceClient interface {
 	UpdateExercise(ctx context.Context, in *UpdateExerciseRequest, opts ...grpc.CallOption) (*Exercise, error)
 	DeleteExercise(ctx context.Context, in *DeleteExerciseRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListExercises(ctx context.Context, in *ListExercisesRequest, opts ...grpc.CallOption) (*ListExercisesResponse, error)
+	GetQuickAddExercises(ctx context.Context, in *GetQuickAddExercisesRequest, opts ...grpc.CallOption) (*GetQuickAddExercisesResponse, error)
 }
 
 type exerciseServiceClient struct {
@@ -316,6 +318,16 @@ func (c *exerciseServiceClient) ListExercises(ctx context.Context, in *ListExerc
 	return out, nil
 }
 
+func (c *exerciseServiceClient) GetQuickAddExercises(ctx context.Context, in *GetQuickAddExercisesRequest, opts ...grpc.CallOption) (*GetQuickAddExercisesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetQuickAddExercisesResponse)
+	err := c.cc.Invoke(ctx, ExerciseService_GetQuickAddExercises_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ExerciseServiceServer is the server API for ExerciseService service.
 // All implementations must embed UnimplementedExerciseServiceServer
 // for forward compatibility.
@@ -325,6 +337,7 @@ type ExerciseServiceServer interface {
 	UpdateExercise(context.Context, *UpdateExerciseRequest) (*Exercise, error)
 	DeleteExercise(context.Context, *DeleteExerciseRequest) (*emptypb.Empty, error)
 	ListExercises(context.Context, *ListExercisesRequest) (*ListExercisesResponse, error)
+	GetQuickAddExercises(context.Context, *GetQuickAddExercisesRequest) (*GetQuickAddExercisesResponse, error)
 	mustEmbedUnimplementedExerciseServiceServer()
 }
 
@@ -349,6 +362,9 @@ func (UnimplementedExerciseServiceServer) DeleteExercise(context.Context, *Delet
 }
 func (UnimplementedExerciseServiceServer) ListExercises(context.Context, *ListExercisesRequest) (*ListExercisesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListExercises not implemented")
+}
+func (UnimplementedExerciseServiceServer) GetQuickAddExercises(context.Context, *GetQuickAddExercisesRequest) (*GetQuickAddExercisesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetQuickAddExercises not implemented")
 }
 func (UnimplementedExerciseServiceServer) mustEmbedUnimplementedExerciseServiceServer() {}
 func (UnimplementedExerciseServiceServer) testEmbeddedByValue()                         {}
@@ -461,6 +477,24 @@ func _ExerciseService_ListExercises_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExerciseService_GetQuickAddExercises_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetQuickAddExercisesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExerciseServiceServer).GetQuickAddExercises(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExerciseService_GetQuickAddExercises_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExerciseServiceServer).GetQuickAddExercises(ctx, req.(*GetQuickAddExercisesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ExerciseService_ServiceDesc is the grpc.ServiceDesc for ExerciseService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -488,9 +522,13 @@ var ExerciseService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ListExercises",
 			Handler:    _ExerciseService_ListExercises_Handler,
 		},
+		{
+			MethodName: "GetQuickAddExercises",
+			Handler:    _ExerciseService_GetQuickAddExercises_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "gymlog/v1/gymlog.proto",
+	Metadata: "proto/gymlog/v1/gymlog.proto",
 }
 
 const (
@@ -744,7 +782,7 @@ var WorkoutService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "gymlog/v1/gymlog.proto",
+	Metadata: "proto/gymlog/v1/gymlog.proto",
 }
 
 const (
@@ -1112,5 +1150,5 @@ var WorkoutSessionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "gymlog/v1/gymlog.proto",
+	Metadata: "proto/gymlog/v1/gymlog.proto",
 }

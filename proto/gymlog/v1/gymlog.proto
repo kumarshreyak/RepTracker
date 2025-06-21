@@ -101,6 +101,15 @@ message ListExercisesResponse {
   string next_page_token = 2;
 }
 
+message GetQuickAddExercisesRequest {
+  string user_id = 1;
+  int32 limit = 2; // default 5
+}
+
+message GetQuickAddExercisesResponse {
+  repeated Exercise exercises = 1;
+}
+
 // Workout related messages
 message WorkoutSet {
   int32 reps = 1;
@@ -291,6 +300,7 @@ service ExerciseService {
   rpc UpdateExercise(UpdateExerciseRequest) returns (Exercise);
   rpc DeleteExercise(DeleteExerciseRequest) returns (google.protobuf.Empty);
   rpc ListExercises(ListExercisesRequest) returns (ListExercisesResponse);
+  rpc GetQuickAddExercises(GetQuickAddExercisesRequest) returns (GetQuickAddExercisesResponse);
 }
 
 service WorkoutService {

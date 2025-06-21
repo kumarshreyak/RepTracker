@@ -1,51 +1,169 @@
 # GymLog Project Cursor Rules
 
-## Design System
-**ALWAYS use the Airtable design system components and styling:**
+## 🎨 CRITICAL: Uber Base Semantic Color System
+**MANDATORY: Always use the complete semantic color system documented in `@COLOR_SYSTEM.md`**
 
-### Typography
-- Use `Typography` component from `@/components` for all text elements
-- Available variants: `heading-xxlarge`, `heading-xlarge`, `heading-large`, `heading-default`, `heading-small`, `heading-xsmall`, `heading-xsmall-caps`, `heading-small-caps`, `heading-default-caps`, `text-small`, `text-default`, `text-large`, `text-xlarge`, `text-small-paragraph`, `text-default-paragraph`, `text-large-paragraph`, `text-xlarge-paragraph`
-- Available colors: `dark`, `light`, `white`, `blue`, `blue-bright`, `blue-dark-1`, `red`, `red-bright`, `red-dark-1`, `green`, `green-bright`, `green-dark-1`, `orange`, `orange-bright`, `orange-dark-1`, `purple`, `purple-bright`, `purple-dark-1`, `cyan`, `cyan-bright`, `cyan-dark-1`, `teal`, `teal-bright`, `teal-dark-1`, `yellow`, `yellow-bright`, `yellow-dark-1`, `pink`, `pink-bright`, `pink-dark-1`
+Before writing any code that involves colors, styling, or UI components:
+1. **READ COLOR_SYSTEM.md** - Review the complete documentation
+2. **Use semantic colors only** - Never use legacy colors, hex codes, or primitive colors directly
+3. **Follow the three-layer architecture**: Core Colors → Basic Semantic Colors → Semantic Extensions
+4. **Reference ColorDemo component** - Use `<ColorDemo />` to see all available colors
+
+### Quick Color Reference:
+- Page backgrounds: `getColor('backgroundSecondary')`
+- Card backgrounds: `getColor('backgroundPrimary')`
+- Card borders: `getColor('borderOpaque')`
+- Primary text: `getColor('contentPrimary')`
+- Secondary text: `getColor('contentSecondary')`
+- Accent actions: `getColor('backgroundAccent')` with `getColor('contentOnColor')`
+
+---
+
+## Design System
+**ALWAYS use the Uber Base design system components and styling:**
+
+### Typography - Uber Base Design System
+**CRITICAL: Always follow the complete typography system documented in `@TYPOGRAPHY_SYSTEM.md`**
+
+#### **Four-Category Typography Architecture:**
+1. **Display** (Hero & Large Promotional): `display-large`, `display-medium`, `display-small`, `display-xsmall`
+2. **Headings** (Section & Content Hierarchy): `heading-xxlarge`, `heading-xlarge`, `heading-large`, `heading-medium`, `heading-small`, `heading-xsmall` 
+3. **Labels** (UI Elements & Actions): `label-large`, `label-medium`, `label-small`, `label-xsmall`
+4. **Paragraphs** (Body & Reading Content): `paragraph-large`, `paragraph-medium`, `paragraph-small`, `paragraph-xsmall`
+
+#### **Typography Usage Rules:**
+- ✅ **ALWAYS use Typography component**: `<Typography variant="heading-large" color="contentPrimary">Title</Typography>`
+- ✅ **Page titles**: `heading-xlarge` or `heading-large` + `contentPrimary`
+- ✅ **Section headers**: `heading-medium` or `heading-small` + `contentPrimary`
+- ✅ **Body text**: `paragraph-medium` + `contentSecondary`
+- ✅ **Button text**: `label-medium` or `label-small` (handled by Button component)
+- ✅ **Form labels**: `label-small` + `contentPrimary`
+- ✅ **Captions/meta**: `paragraph-xsmall` + `contentTertiary`
+
+#### **Typography Strict Rules:**
+- ❌ **NEVER use basic HTML elements**: No `<h1>`, `<h2>`, `<p>`, `<span>`, etc.
+- ❌ **NEVER hardcode typography styles**: No `fontSize`, `fontWeight`, `lineHeight` in StyleSheet
+- ❌ **NEVER use legacy colors**: No `text-primary`, `text-secondary` - use semantic colors only
+- ❌ **NEVER skip hierarchy levels**: Don't jump from `heading-large` to `heading-xsmall`
+- ❌ **NEVER mix categories incorrectly**: Don't use `paragraph-*` for buttons or `label-*` for body text
+- ✅ **ALWAYS use semantic content colors**: `contentPrimary`, `contentSecondary`, `contentTertiary`, `contentInversePrimary`, `contentOnColor`
+
+#### **Quick Typography Reference:**
+- **App/page titles**: `heading-xlarge` + `contentPrimary`
+- **Card/section titles**: `heading-small` + `contentPrimary`  
+- **List item titles**: `heading-xsmall` + `contentPrimary`
+- **Primary body text**: `paragraph-medium` + `contentSecondary`
+- **Secondary descriptions**: `paragraph-small` + `contentSecondary`
+- **Button text**: Handled automatically by Button component
+- **Form field labels**: `label-small` + `contentPrimary`
+- **Error messages**: `paragraph-xsmall` + `contentNegative`
+- **Success messages**: `paragraph-xsmall` + `contentPositive`
 
 ### Buttons
 - Use `Button` component from `@/components` for all interactive buttons
-- Available variants: `default`, `primary`, `danger`, `secondary`, `text`
+- Available variants: `default`, `primary`, `danger`, `secondary`, `text`, `success`
 - Available sizes: `small`, `default`, `large`, `xlarge`
-- Support for icons and icon-only buttons with tooltips
+- Support for icons and icon-only buttons
 
-### Colors
-- Use predefined color variables defined in `globals.css`
-- Prefer using Airtable color classes: `bg-light-gray-1`, `text-dark`, `text-light`, `border-light-gray-3`, etc.
-- Use `getColorClass` utility for dynamic color application
+### Colors - Uber Base Semantic Color System
+**CRITICAL: Always follow the complete Uber Base semantic color system as documented in `@COLOR_SYSTEM.md`**
+
+#### **Three-Layer Color Architecture:**
+1. **Core Colors** (Foundation): `primaryA`, `primaryB`, `accent`, `negative`, `warning`, `positive`
+2. **Basic Semantic Colors** (Primary Usage): 
+   - Background: `backgroundPrimary`, `backgroundSecondary`, `backgroundTertiary`, `backgroundInversePrimary`, `backgroundInverseSecondary`
+   - Content: `contentPrimary`, `contentSecondary`, `contentTertiary`, `contentInversePrimary`, `contentInverseSecondary`, `contentInverseTertiary`
+   - Border: `borderOpaque`, `borderTransparent`, `borderSelected`, `borderInverseOpaque`, `borderInverseTransparent`, `borderInverseSelected`
+3. **Semantic Extensions** (Specialized): `backgroundAccent`, `backgroundNegative`, `backgroundWarning`, `backgroundPositive`, `contentOnColor`, `borderAccent`, etc.
+
+#### **Mandatory Color Usage Patterns:**
+- **Page backgrounds**: ALWAYS use `backgroundSecondary` (gray 50)
+- **Card backgrounds**: ALWAYS use `backgroundPrimary` (white)
+- **Card borders**: ALWAYS use `borderOpaque` (gray 100)
+- **Primary text**: ALWAYS use `contentPrimary` (black)
+- **Secondary text**: ALWAYS use `contentSecondary` (gray 800)
+- **Accent actions**: ALWAYS use `backgroundAccent` with `contentOnColor`
+- **Progress bars**: ALWAYS use `accent` color for fills
+
+#### **Strict Rules:**
+- ❌ **NEVER use legacy colors**: No `primary`, `text-primary`, `border-light`, `surface`, `background`, etc.
+- ❌ **NEVER use hardcoded hex colors**: No `#FFFFFF`, `#000000`, etc.
+- ❌ **NEVER use primitive colors directly**: No `primitiveColors.white`, etc.
+- ✅ **ALWAYS use semantic colors**: `getColor('backgroundPrimary')`, `getColor('contentPrimary')`, etc.
+- ✅ **ALWAYS reference COLOR_SYSTEM.md** for proper semantic color usage
 
 ### Layout & Spacing
-- Use consistent spacing with Tailwind classes
-- Prefer rounded corners with `rounded-lg` for individual items and `rounded-[3px]` for buttons (as per Airtable style)
-- Use `bg-light-gray-1` for page backgrounds
-- **Use section-based layout on plain backgrounds** - avoid cards for main content sections
-- Reserve white backgrounds with subtle shadows only for individual items within lists (e.g., routine cards, exercise items)
+- Use consistent spacing with React Native StyleSheet
+- Prefer rounded corners with `borderRadius: 3` for buttons (Base design system style)
+- Use `backgroundSecondary` semantic color for page backgrounds
+- Use section-based layout on plain backgrounds - avoid cards for main content sections
+- Reserve `backgroundPrimary` color with subtle borders only for individual items within lists
 
-### Layout Patterns
-- **Default approach**: Use section containers with `paddingHorizontal: 16` and `marginBottom: 24` on plain background
-- **Section style**: `{ paddingHorizontal: 16, marginBottom: 24 }` - no background, shadows, or borders
-- **Individual item cards**: Use white background with border/shadow only when displaying list items that need to stand out
-- **Page structure**: Header section + multiple content sections, all on light-gray-1 background
-- **Avoid**: Wrapping entire sections in white card containers - this creates unnecessary visual weight
+### Layout Patterns - Updated for Semantic Colors
+- **Default approach**: Use section containers with `paddingHorizontal: 16` and `marginBottom: 24` on `backgroundSecondary`
+- **Section style**: `{ paddingHorizontal: 16, marginBottom: 24, backgroundColor: getColor('backgroundSecondary') }`
+- **Individual item cards**: Use `backgroundPrimary` background with `borderOpaque` borders
+- **Page structure**: Header section + multiple content sections, all on `backgroundSecondary` color
+- **Card pattern**: `backgroundColor: getColor('backgroundPrimary'), borderColor: getColor('borderOpaque')`
+- **Avoid**: Using legacy colors like `surface`, `background`, `border-light`
+
+### Data Models & Naming Conventions
+**CRITICAL: Always use camelCase naming for all data models and interfaces**
+
+#### **Naming Convention Rules:**
+- ✅ **ALWAYS use camelCase**: `muscleGroup`, `exerciseId`, `workoutSession`, `userId`
+- ❌ **NEVER use snake_case**: No `muscle_group`, `exercise_id`, `workout_session`, `user_id`
+- ❌ **NEVER use kebab-case**: No `muscle-group`, `exercise-id`, `workout-session`, `user-id`
+- ✅ **Interface properties**: `{ id: string; name: string; muscleGroup: string; }`
+- ✅ **API responses**: Convert snake_case from backend to camelCase in frontend
+- ✅ **Local variables**: All variables, functions, and object properties use camelCase
+
+#### **Examples:**
+```typescript
+// ✅ CORRECT - camelCase naming
+interface Exercise {
+  id: string;
+  name: string;
+  muscleGroup: string;  // NOT muscle_group
+  equipmentType: string; // NOT equipment_type
+}
+
+// ✅ CORRECT - camelCase usage
+const exerciseData = {
+  muscleGroup: exercise.muscleGroup,
+  workoutDate: new Date(),
+};
+
+// ❌ INCORRECT - snake_case naming
+interface Exercise {
+  muscle_group: string; // Wrong!
+  equipment_type: string; // Wrong!
+}
+```
 
 ### General Rules
-1. **Never use custom CSS colors** - always use the predefined Airtable color system
-2. **Never use basic HTML elements** like `<h1>`, `<h2>`, `<p>`, `<button>` - always use the corresponding design system components
-3. **Import components from `@/components`** - `Typography`, `Button`, `ColorSwatch`, etc.
-4. **Maintain visual consistency** - all UI should look cohesive using the same design language
-5. **Use proper semantic structure** while maintaining visual design system
-6. **Follow Airtable's spacing and sizing patterns** as demonstrated in the component library
-7. **Keep text minimal** - users don't like to read. Use concise, actionable copy. Prioritize clarity over verbosity.
-8. **Use section-based layout by default** - don't wrap content sections in cards unless displaying individual items in a list
+1. **Never use custom CSS colors** - always use the predefined Uber Base semantic color system
+2. **Always reference COLOR_SYSTEM.md and TYPOGRAPHY_SYSTEM.md** - check the complete documentation for proper usage
+3. **Never use basic HTML elements** like `<h1>`, `<h2>`, `<p>`, `<button>`, `<span>` - always use the corresponding design system components
+4. **Import components from `@/components`** - `Typography`, `Button`, `getColor`, `ColorDemo`, etc.
+5. **Maintain visual consistency** - all UI should look cohesive using the same design language and typography hierarchy
+6. **Use proper semantic structure** while maintaining visual design system
+7. **Follow Base design system spacing and sizing patterns**
+8. **Keep text minimal** - users don't like to read. Use concise, actionable copy. Prioritize clarity over verbosity.
+9. **Always establish clear hierarchy** - use Typography variants to create proper visual hierarchy
+10. **Never hardcode typography styles** - let the Typography component handle all font properties
+11. **Use ColorDemo component** - reference `<ColorDemo />` to see all available semantic colors
+12. **ALWAYS use camelCase naming** - for all data models, interfaces, properties, and variables
 
 ### File Structure
-- Components should be organized in `/frontend/src/components/`
-- Import design system components at the top: `import { Typography, Button } from "@/components"`
+- Components should be organized in `/frontend-native/src/components/`
+- Import design system components: `import { Typography, Button, getColor, ColorDemo, coreColors, semanticColors, semanticExtensions } from "@/components"`
 - Keep styling consistent across all pages and components
 
-**Remember: Every piece of UI should feel like it belongs to the same design system. When in doubt, check the existing Typography.tsx and Button.tsx components for examples.** 
+### Documentation References
+- **COLOR_SYSTEM.md**: Complete semantic color system documentation with examples and best practices
+- **TYPOGRAPHY_SYSTEM.md**: Complete typography system documentation with hierarchy guidelines and usage patterns
+- **ColorDemo component**: Interactive showcase of all available semantic colors
+- **Colors.ts**: Implementation of the three-layer semantic color architecture
+
+**Remember: Every piece of UI should feel like it belongs to the same design system. When in doubt, check COLOR_SYSTEM.md for proper semantic color usage, TYPOGRAPHY_SYSTEM.md for typography guidelines, and use the ColorDemo component to see all available colors.** 

@@ -38,7 +38,12 @@
       ]
     ],
     "sdkVersion": "53.0.0",
-    "entryPoint": ".vscode/exponentIndex.js"
+    "entryPoint": ".vscode/exponentIndex.js",
+    "extra": {
+      "eas": {
+        "projectId": "160f751a-2d29-4613-a35f-917da6e034fe"
+      }
+    }
   },
   "name": "frontend-native"
 }

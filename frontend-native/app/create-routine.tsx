@@ -4,15 +4,14 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TextInput,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Typography, Button } from '../src/components';
+import { Typography, Button, Input } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
-import { authService, User } from '../src/auth/AuthService';
 
 interface WorkoutSet {
   reps: number;
@@ -22,17 +21,20 @@ interface WorkoutSet {
 interface RoutineExercise {
   id: string;
   name: string;
-  muscle_group: string;
+  muscleGroup: string;
   sets: WorkoutSet[];
 }
+
+// Quick add exercises will be fetched from the API
 
 export default function CreateRoutineRoute() {
   const { user } = useAuth();
   const [routineName, setRoutineName] = useState("");
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
+  const [quickAddExercises, setQuickAddExercises] = useState<RoutineExercise[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load exercises from AsyncStorage on mount
+  // Load exercises from AsyncStorage and fetch quick add exercises on mount
   useEffect(() => {
     const loadExercises = async () => {
       try {
@@ -47,8 +49,77 @@ export default function CreateRoutineRoute() {
       }
     };
 
+    const fetchQuickAddExercises = async () => {
+      console.log('🏋️ fetchQuickAddExercises: Starting fetch process');
+      console.log('👤 fetchQuickAddExercises: User object:', user);
+      console.log('🆔 fetchQuickAddExercises: User ID:', user?.id);
+      
+      try {
+        const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+        console.log('🌐 fetchQuickAddExercises: API_BASE_URL:', API_BASE_URL);
+        
+        const url = new URL(`${API_BASE_URL}/api/exercises/quick-add`);
+        if (user?.id) {
+          url.searchParams.append('userId', user.id);
+          console.log('✅ fetchQuickAddExercises: Added userId to URL');
+        } else {
+          console.log('⚠️ fetchQuickAddExercises: No user ID available, fetching default exercises');
+        }
+        url.searchParams.append('limit', '5');
+        
+        const finalUrl = url.toString();
+        console.log('📡 fetchQuickAddExercises: Making request to:', finalUrl);
+
+        const response = await fetch(finalUrl);
+        console.log('📥 fetchQuickAddExercises: Response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries()),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📦 fetchQuickAddExercises: Raw response data:', JSON.stringify(data, null, 2));
+          
+          if (data.exercises && Array.isArray(data.exercises)) {
+            const quickAddData = data.exercises.map((exercise: any) => ({
+              id: exercise.id,
+              name: exercise.name,
+              muscleGroup: exercise.muscleGroup,
+              sets: [
+                { reps: 10, weight: 0 },
+                { reps: 10, weight: 0 },
+                { reps: 10, weight: 0 }
+              ]
+            }));
+            console.log('🔧 fetchQuickAddExercises: Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
+            setQuickAddExercises(quickAddData);
+            console.log('✅ fetchQuickAddExercises: Successfully set quick add exercises');
+          } else {
+            console.log('⚠️ fetchQuickAddExercises: No exercises array in response or invalid format');
+            setQuickAddExercises([]);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('❌ fetchQuickAddExercises: Response not ok:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorBody: errorText,
+          });
+          setQuickAddExercises([]);
+        }
+      } catch (error) {
+        console.error('💥 fetchQuickAddExercises: Error occurred:', error);
+        console.error('💥 fetchQuickAddExercises: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        // Fallback to empty array if API fails
+        setQuickAddExercises([]);
+      }
+    };
+
     loadExercises();
-  }, []);
+    fetchQuickAddExercises();
+  }, [user?.id]);
 
   // Refresh exercises when screen comes back into focus
   useFocusEffect(
@@ -68,9 +139,94 @@ export default function CreateRoutineRoute() {
         }
       };
 
+      const fetchQuickAddExercises = async () => {
+        console.log('🔄 fetchQuickAddExercises (focus): Starting fetch process');
+        console.log('👤 fetchQuickAddExercises (focus): User object:', user);
+        console.log('🆔 fetchQuickAddExercises (focus): User ID:', user?.id);
+        
+        try {
+          const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+          console.log('🌐 fetchQuickAddExercises (focus): API_BASE_URL:', API_BASE_URL);
+          
+          const url = new URL(`${API_BASE_URL}/api/exercises/quick-add`);
+          if (user?.id) {
+            url.searchParams.append('userId', user.id);
+            console.log('✅ fetchQuickAddExercises (focus): Added userId to URL');
+          } else {
+            console.log('⚠️ fetchQuickAddExercises (focus): No user ID available, fetching default exercises');
+          }
+          url.searchParams.append('limit', '5');
+          
+          const finalUrl = url.toString();
+          console.log('📡 fetchQuickAddExercises (focus): Making request to:', finalUrl);
+
+          const response = await fetch(finalUrl);
+          console.log('📥 fetchQuickAddExercises (focus): Response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+            headers: Object.fromEntries(response.headers.entries()),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('📦 fetchQuickAddExercises (focus): Raw response data:', JSON.stringify(data, null, 2));
+            
+            if (data.exercises && Array.isArray(data.exercises)) {
+              const quickAddData = data.exercises.map((exercise: any) => ({
+                id: exercise.id,
+                name: exercise.name,
+                muscleGroup: exercise.muscleGroup,
+                sets: [
+                  { reps: 10, weight: 0 },
+                  { reps: 10, weight: 0 },
+                  { reps: 10, weight: 0 }
+                ]
+              }));
+              console.log('🔧 fetchQuickAddExercises (focus): Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
+              setQuickAddExercises(quickAddData);
+              console.log('✅ fetchQuickAddExercises (focus): Successfully set quick add exercises');
+            } else {
+              console.log('⚠️ fetchQuickAddExercises (focus): No exercises array in response or invalid format');
+              setQuickAddExercises([]);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('❌ fetchQuickAddExercises (focus): Response not ok:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorBody: errorText,
+            });
+            setQuickAddExercises([]);
+          }
+        } catch (error) {
+          console.error('💥 fetchQuickAddExercises (focus): Error occurred:', error);
+          console.error('💥 fetchQuickAddExercises (focus): Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+          setQuickAddExercises([]);
+        }
+      };
+
       loadExercises();
-    }, [])
+      fetchQuickAddExercises();
+    }, [user?.id])
   );
+
+  const handleQuickAdd = async (exercise: RoutineExercise) => {
+    const newExercises = [...exercises, exercise];
+    setExercises(newExercises);
+    await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
+  };
+
+  const removeExercise = async (index: number) => {
+    const newExercises = exercises.filter((_, i) => i !== index);
+    setExercises(newExercises);
+    await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
+  };
+
+  const clearAllExercises = async () => {
+    setExercises([]);
+    await AsyncStorage.removeItem('routineExercises');
+  };
 
   const handleSaveRoutine = async () => {
     console.log('🚀 handleSaveRoutine: Starting routine save process');
@@ -207,164 +363,144 @@ export default function CreateRoutineRoute() {
     }
   };
 
-  const removeExercise = async (index: number) => {
-    const newExercises = exercises.filter((_, i) => i !== index);
-    setExercises(newExercises);
-    await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
-  };
+  const renderQuickAddPill = (exercise: RoutineExercise) => (
+    <TouchableOpacity
+      key={exercise.id}
+      style={styles.quickAddPill}
+      onPress={() => handleQuickAdd(exercise)}
+      activeOpacity={0.7}
+    >
+      <Typography variant="label-small" color="contentPrimary">
+        + {exercise.name}
+      </Typography>
+      <Typography variant="paragraph-xsmall" color="contentTertiary">
+        {exercise.sets.length}×{exercise.sets[0].reps}
+      </Typography>
+    </TouchableOpacity>
+  );
 
-  const clearAllExercises = async () => {
-    Alert.alert(
-      'Clear All Exercises',
-      'Are you sure you want to remove all exercises?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            setExercises([]);
-            await AsyncStorage.removeItem('routineExercises');
-          },
-        },
-      ]
-    );
-  };
+  const renderExerciseItem = (exercise: RoutineExercise, index: number) => (
+    <View key={`${exercise.id}-${index}`} style={styles.exerciseItem}>
+      <View style={styles.exerciseItemLeft}>
+        <Typography variant="label-medium" color="contentPrimary">
+          {exercise.name}
+        </Typography>
+        <View style={styles.exerciseMetaRow}>
+          <View style={styles.metaPill}>
+            <Typography variant="paragraph-xsmall" color="contentSecondary">
+              {exercise.muscleGroup}
+            </Typography>
+          </View>
+          <Typography variant="paragraph-xsmall" color="contentTertiary">
+            {exercise.sets.length} sets
+          </Typography>
+        </View>
+      </View>
+      <TouchableOpacity
+        onPress={() => removeExercise(index)}
+        style={styles.removeButton}
+      >
+        <Typography variant="label-small" color="contentNegative">
+          ×
+        </Typography>
+      </TouchableOpacity>
+    </View>
+  );
 
   if (!user) {
     router.replace('/');
     return null;
   }
 
-  const renderExerciseCard = (exercise: RoutineExercise, index: number) => (
-    <View key={`${exercise.id}-${index}`} style={styles.exerciseCard}>
-      <View style={styles.exerciseHeader}>
-        <View style={styles.exerciseInfo}>
-          <Typography variant="text-default" color="dark" style={styles.exerciseName}>
-            {exercise.name}
-          </Typography>
-          <Typography variant="text-small" color="light">
-            {exercise.muscle_group} • {exercise.sets.length} sets
-          </Typography>
-        </View>
-        <Button
-          variant="text"
-          size="small"
-          onPress={() => removeExercise(index)}
-        >
-          Remove
-        </Button>
-      </View>
-      
-      {/* Set Details */}
-      <View style={styles.setsContainer}>
-        {exercise.sets.map((set, setIndex) => (
-          <View key={setIndex} style={styles.setCard}>
-            <Typography variant="text-small" color="dark" style={styles.setTitle}>
-              Set {setIndex + 1}
-            </Typography>
-            <Typography variant="text-small" color="light">
-              {set.reps} reps @ {set.weight}kg
-            </Typography>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Page Header */}
+      <View style={styles.contentWrapper}>
+        {/* Minimal Header */}
         <View style={styles.header}>
-          <Button variant="text" size="default" onPress={() => router.back()}>
-            ← Back to Home
-          </Button>
-          <Typography variant="heading-xxlarge" color="dark" style={styles.title}>
-            Create Routine
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Typography variant="label-medium" color="contentSecondary">
+              ←
+            </Typography>
+          </TouchableOpacity>
+          <Typography variant="label-medium" color="contentPrimary">
+            New Routine
           </Typography>
-          <Typography variant="text-default" color="light">
-            Build your workout routine by adding exercises
-          </Typography>
+          <View style={styles.backButton} />
         </View>
 
-        {/* Routine Details */}
-        <View style={styles.section}>
-          <Typography variant="heading-small" color="dark" style={styles.sectionTitle}>
-            Routine Details
-          </Typography>
-          <View style={styles.inputContainer}>
-            <Typography variant="text-small" color="dark" style={styles.inputLabel}>
-              Routine Name *
-            </Typography>
-            <TextInput
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Routine Name Input */}
+          <View style={styles.nameSection}>
+            <Input
               value={routineName}
               onChangeText={setRoutineName}
-              placeholder="Enter routine name"
-              style={styles.textInput}
-              placeholderTextColor={getColor('light')}
+              placeholder="Routine name"
+              autoFocus
             />
           </View>
-        </View>
 
-        {/* Exercises Section */}
-        <View style={styles.section}>
-          <View style={styles.exercisesHeader}>
-            <Typography variant="heading-small" color="dark">
-              Exercises ({exercises.length})
+          {/* Quick Add Section */}
+          <View style={styles.quickAddSection}>
+            <Typography variant="label-small" color="contentSecondary" style={styles.sectionLabel}>
+              QUICK ADD
             </Typography>
-            <View style={styles.exercisesActions}>
-              {exercises.length > 0 && (
-                <Button variant="text" size="small" onPress={clearAllExercises}>
-                  Clear All
-                </Button>
-              )}
-              <Button variant="primary" size="default" onPress={() => router.push('/exercise-search')}>
-                Add Exercise
-              </Button>
-            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.quickAddScroll}
+            >
+              {quickAddExercises.map(renderQuickAddPill)}
+            </ScrollView>
           </View>
 
-          {exercises.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Typography variant="text-default" color="light" style={styles.emptyStateTitle}>
-                No exercises added yet
-              </Typography>
-              <Typography variant="text-small" color="light">
-                Click "Add Exercise" to start building your routine
-              </Typography>
-            </View>
-          ) : (
-            <View style={styles.exercisesList}>
-              {exercises.map(renderExerciseCard)}
+          {/* Current Exercises */}
+          {exercises.length > 0 && (
+            <View style={styles.exercisesSection}>
+              <View style={styles.exercisesHeader}>
+                <Typography variant="label-small" color="contentSecondary">
+                  EXERCISES · {exercises.length}
+                </Typography>
+                <TouchableOpacity onPress={clearAllExercises}>
+                  <Typography variant="label-small" color="contentTertiary">
+                    Clear
+                  </Typography>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.exercisesList}>
+                {exercises.map(renderExerciseItem)}
+              </View>
             </View>
           )}
-        </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Button
-            variant="secondary"
-            size="large"
-            style={styles.actionButton}
-            onPress={() => router.back()}
+          {/* Add Exercise Button */}
+          <TouchableOpacity 
+            style={styles.addExerciseButton}
+            onPress={() => router.push('/exercise-search')}
+            activeOpacity={0.7}
           >
-            Cancel
-          </Button>
+            <Typography variant="label-medium" color="contentAccent">
+              + Add Exercise
+            </Typography>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Fixed Bottom Action */}
+        <View style={styles.bottomAction}>
           <Button
             variant="primary"
             size="large"
-            style={styles.actionButton}
+            style={styles.createButton}
             onPress={handleSaveRoutine}
-            disabled={!routineName.trim() || exercises.length === 0 || loading || !user?.id}
+            disabled={!routineName.trim() || exercises.length === 0 || loading}
           >
-            {loading ? "Saving..." : "Save Routine"}
+            {loading ? "Creating..." : "Create"}
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -372,110 +508,124 @@ export default function CreateRoutineRoute() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('backgroundSecondary'),
+  },
+  contentWrapper: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderTransparent'),
+  },
+  backButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  header: {
+  scrollContent: {
+    paddingBottom: 100, // Space for fixed bottom button
+  },
+  nameSection: {
+    backgroundColor: getColor('backgroundPrimary'),
     paddingHorizontal: 16,
+    paddingVertical: 20,
+    marginBottom: 2,
+  },
+
+  quickAddSection: {
+    backgroundColor: getColor('backgroundPrimary'),
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
-  title: {
-    marginVertical: 16,
-  },
-  section: {
+  sectionLabel: {
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 12,
+    letterSpacing: 0.5,
   },
-  sectionTitle: {
-    marginBottom: 16,
+  quickAddScroll: {
+    paddingHorizontal: 16,
   },
-  inputContainer: {
-    marginBottom: 16,
+  quickAddPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: getColor('backgroundTertiary'),
+    borderRadius: 20,
+    marginRight: 8,
   },
-  inputLabel: {
-    marginBottom: 8,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
-    borderRadius: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    color: getColor('dark'),
-    backgroundColor: 'white',
+  exercisesSection: {
+    backgroundColor: getColor('backgroundPrimary'),
+    paddingVertical: 16,
+    marginTop: 2,
   },
   exercisesHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  exercisesActions: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyStateTitle: {
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  exercisesList: {
-    gap: 16,
-  },
-  exerciseCard: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
-    borderRadius: 8,
-    backgroundColor: 'white',
-  },
-  exerciseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    paddingHorizontal: 16,
     marginBottom: 12,
   },
-  exerciseInfo: {
-    flex: 1,
+  exercisesList: {
+    paddingHorizontal: 16,
   },
-  exerciseName: {
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  setsContainer: {
+  exerciseItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderTransparent'),
+  },
+  exerciseItemLeft: {
+    flex: 1,
+    gap: 4,
+  },
+  exerciseMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  setCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: getColor('light-gray-1'),
-    borderRadius: 8,
-    minWidth: 100,
+  metaPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: getColor('backgroundTertiary'),
+    borderRadius: 4,
   },
-  setTitle: {
-    fontWeight: '500',
-    marginBottom: 2,
+  removeButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-    marginTop: 8,
+  addExerciseButton: {
+    backgroundColor: getColor('backgroundPrimary'),
+    paddingVertical: 20,
+    alignItems: 'center',
+    marginTop: 2,
   },
-  actionButton: {
-    flex: 1,
+  bottomAction: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderTopWidth: 1,
+    borderTopColor: getColor('borderTransparent'),
+  },
+  createButton: {
+    width: '100%',
   },
 }); 

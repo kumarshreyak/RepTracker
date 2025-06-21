@@ -9,12 +9,12 @@ export default function NotFoundScreen() {
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: 'Oops! Not Found' }} />
       <View style={styles.content}>
-        <Typography variant="heading-large" color="dark" style={styles.title}>
-          Page Not Found
-        </Typography>
-        <Typography variant="text-default" color="light" style={styles.description}>
-          The page you're looking for doesn't exist.
-        </Typography>
+              <Typography variant="heading-large" color="contentPrimary" style={styles.title}>
+        Page Not Found
+      </Typography>
+      <Typography variant="paragraph-medium" color="contentSecondary" style={styles.description}>
+        The page you're looking for doesn't exist.
+      </Typography>
         <Link href="/(tabs)" asChild>
           <Button variant="primary" size="large" style={styles.button}>
             Go back to Home
@@ -28,7 +28,7 @@ export default function NotFoundScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   content: {
     flex: 1,

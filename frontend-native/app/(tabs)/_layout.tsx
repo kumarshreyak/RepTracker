@@ -6,18 +6,18 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: getColor('blue-bright'),
+        tabBarActiveTintColor: getColor('accent'),
         headerStyle: {
-          backgroundColor: getColor('white'),
+          backgroundColor: getColor('backgroundPrimary'),
         },
         headerShadowVisible: true,
-        headerTintColor: getColor('dark'),
+        headerTintColor: getColor('contentPrimary'),
         tabBarStyle: {
-          backgroundColor: getColor('white'),
-          borderTopColor: getColor('light-gray-3'),
+          backgroundColor: getColor('backgroundPrimary'),
+          borderTopColor: getColor('borderOpaque'),
           borderTopWidth: 1,
         },
-        tabBarInactiveTintColor: getColor('light'),
+        tabBarInactiveTintColor: getColor('contentSecondary'),
       }}
     >
       <Tabs.Screen

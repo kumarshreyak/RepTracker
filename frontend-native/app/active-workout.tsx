@@ -6,11 +6,13 @@ import {
   ScrollView,
   Alert,
   Vibration,
+  TouchableOpacity,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Typography, Button } from '../src/components';
+import { Typography, Button, NumberInput } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface WorkoutSet {
   reps: number;
@@ -40,7 +42,7 @@ interface WorkoutExercise {
 
 interface ActiveWorkout {
   id?: string;
-  sessionId?: string; // Track the workout session ID
+  sessionId?: string;
   routineId: string;
   routineName: string;
   routineDescription?: string;
@@ -64,19 +66,30 @@ export default function ActiveWorkoutScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // UI state
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const setsScrollRef = useRef<ScrollView>(null);
 
   // Timer effect
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setElapsedTime(Date.now() - startTime.getTime());
-    }, 1000);
+    if (!isPaused) {
+      intervalRef.current = setInterval(() => {
+        setElapsedTime(Date.now() - startTime.getTime());
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [startTime]);
+  }, [startTime, isPaused]);
 
   // Load routine data and start workout
   useEffect(() => {
@@ -85,6 +98,13 @@ export default function ActiveWorkoutScreen() {
     }
   }, [routineId, user?.id]);
 
+  // Reset sets scroll position when exercise changes
+  useEffect(() => {
+    if (setsScrollRef.current) {
+      setsScrollRef.current.scrollTo({ x: 0, animated: true });
+    }
+  }, [currentExerciseIndex]);
+
   const fetchRoutineAndStartWorkout = async () => {
     try {
       setLoading(true);
@@ -92,7 +112,6 @@ export default function ActiveWorkoutScreen() {
 
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
       
-      // Fetch the specific routine/workout with populated exercise details
       const routineResponse = await fetch(`${API_BASE_URL}/api/workouts/${routineId}/start`);
       
       if (!routineResponse.ok) {
@@ -101,7 +120,6 @@ export default function ActiveWorkoutScreen() {
 
       const routineData = await routineResponse.json();
       
-      // Create a workout session from the routine
       const sessionData = {
         userId: user?.id,
         routineId: routineData.id,
@@ -123,9 +141,7 @@ export default function ActiveWorkoutScreen() {
       }
 
       const sessionResult = await sessionResponse.json();
-      console.log('Created workout session:', sessionResult);
       
-      // Convert the session data to active workout format
       const workout: ActiveWorkout = {
         sessionId: sessionResult.id,
         routineId: routineData.id,
@@ -167,13 +183,12 @@ export default function ActiveWorkoutScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const toggleSetComplete = async (exerciseIndex: number, setIndex: number) => {
+  const handleSetComplete = async (exerciseIndex: number, setIndex: number) => {
     if (!activeWorkout || !activeWorkout.sessionId) return;
 
     const currentSet = activeWorkout.exercises[exerciseIndex].sets[setIndex];
     const newCompletedState = !currentSet.completed;
 
-    // Update local state immediately for responsive UI
     setActiveWorkout(prev => {
       if (!prev) return prev;
 
@@ -186,17 +201,14 @@ export default function ActiveWorkoutScreen() {
         completed: newCompletedState,
       };
 
-      // Check if all sets in exercise are completed
       const allSetsCompleted = updated.exercises[exerciseIndex].sets.every(set => set.completed);
       updated.exercises[exerciseIndex].completed = allSetsCompleted;
 
       return updated;
     });
 
-    // Haptic feedback
-    Vibration.vibrate(50);
+    Vibration.vibrate(newCompletedState ? [0, 100, 50, 100] : 50);
 
-    // Update the backend workout session
     try {
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
       
@@ -222,105 +234,35 @@ export default function ActiveWorkoutScreen() {
 
       if (!response.ok) {
         console.error('Failed to update set in backend');
-        // Optionally revert the local state change here
-      } else {
-        console.log(`Set ${setIndex + 1} of exercise ${exerciseIndex + 1} updated successfully`);
       }
     } catch (error) {
       console.error('Error updating set:', error);
-      // Optionally revert the local state change here
     }
   };
 
-  const toggleExerciseComplete = async (exerciseIndex: number) => {
-    if (!activeWorkout || !activeWorkout.sessionId) return;
-
-    const currentExercise = activeWorkout.exercises[exerciseIndex];
-    const newCompletedState = !currentExercise.completed;
-
-    // Update local state immediately for responsive UI
+  const handleValueEdit = (exerciseIndex: number, setIndex: number, field: 'reps' | 'weight', value: string) => {
+    const numValue = parseInt(value) || 0;
+    
     setActiveWorkout(prev => {
       if (!prev) return prev;
 
       const updated = { ...prev };
       updated.exercises = [...prev.exercises];
       updated.exercises[exerciseIndex] = { ...prev.exercises[exerciseIndex] };
-      
-      updated.exercises[exerciseIndex].completed = newCompletedState;
-      
-      // Update all sets to match exercise completion state
-      updated.exercises[exerciseIndex].sets = updated.exercises[exerciseIndex].sets.map(set => ({
-        ...set,
-        completed: newCompletedState,
-      }));
+      updated.exercises[exerciseIndex].sets = [...prev.exercises[exerciseIndex].sets];
+      updated.exercises[exerciseIndex].sets[setIndex] = {
+        ...prev.exercises[exerciseIndex].sets[setIndex],
+        [field]: numValue,
+      };
 
       return updated;
     });
-
-    // Haptic feedback
-    Vibration.vibrate(newCompletedState ? [0, 100, 50, 100] : 50);
-
-    // Update all sets in the backend to match the exercise completion state
-    try {
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      
-      // Update each set in the exercise
-      const setUpdatePromises = currentExercise.sets.map(async (set, setIndex) => {
-        const updateData = {
-          actualReps: set.reps,
-          actualWeight: set.weight,
-          durationSeconds: set.durationSeconds || 0,
-          distance: set.distance || 0,
-          notes: set.notes || '',
-          completed: newCompletedState,
-        };
-
-        return fetch(
-          `${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/sets/${setIndex}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updateData),
-          }
-        );
-      });
-
-      const results = await Promise.all(setUpdatePromises);
-      const failedUpdates = results.filter(response => !response.ok);
-      
-      if (failedUpdates.length > 0) {
-        console.error(`Failed to update ${failedUpdates.length} sets in backend`);
-      } else {
-        console.log(`Exercise ${exerciseIndex + 1} completion state updated successfully`);
-      }
-
-      // Mark the exercise as finished/started in the backend
-      if (newCompletedState) {
-        await fetch(
-          `${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/finish`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ notes: '' }),
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Error updating exercise completion:', error);
-      // Optionally revert the local state change here
-    }
   };
 
   const handleEndWorkout = async () => {
-    if (!activeWorkout || !user?.id) return;
-
     Alert.alert(
       'End Workout?',
-      'Are you sure you want to end this workout? Your progress will be saved.',
+      'Your progress will be saved.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'End Workout', style: 'destructive', onPress: confirmEndWorkout },
@@ -338,18 +280,18 @@ export default function ActiveWorkoutScreen() {
       const finishedAt = new Date();
       const durationSeconds = Math.floor((finishedAt.getTime() - startTime.getTime()) / 1000);
 
-      // Update the existing session with actual performance data and mark as completed
       if (!activeWorkout.sessionId) {
         throw new Error('No active workout session found');
       }
+
       const updateData = {
         exercises: activeWorkout.exercises.map(ex => ({
           exerciseId: ex.exerciseId,
           sets: ex.sets.map(set => ({
             targetReps: set.reps,
             targetWeight: set.weight,
-            actualReps: set.reps, // In this implementation, we're using target as actual
-            actualWeight: set.weight, // In a real app, user would input actual values
+            actualReps: set.reps,
+            actualWeight: set.weight,
             durationSeconds: set.durationSeconds || 0,
             distance: set.distance || 0,
             notes: set.notes || '',
@@ -369,7 +311,6 @@ export default function ActiveWorkoutScreen() {
         notes: activeWorkout.notes || `Completed ${activeWorkout.exercises.filter(ex => ex.completed).length}/${activeWorkout.exercises.length} exercises`,
       };
 
-      // Update the session to mark it as completed
       const updateResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}`, {
         method: 'PUT',
         headers: {
@@ -382,27 +323,19 @@ export default function ActiveWorkoutScreen() {
         throw new Error('Failed to update workout session');
       }
 
-      console.log('Workout session completed successfully');
-
-      // Navigate back to home with success message
       router.replace('/(tabs)');
       
-      // Show success alert after navigation
       setTimeout(() => {
         Alert.alert(
           'Workout Completed!',
-          `Great job! You worked out for ${formatTime(elapsedTime)} and completed ${activeWorkout.exercises.filter(ex => ex.completed).length}/${activeWorkout.exercises.length} exercises.`,
+          `Great job! You worked out for ${formatTime(elapsedTime)}.`,
           [{ text: 'OK' }]
         );
       }, 500);
 
     } catch (err) {
       console.error('Error saving workout session:', err);
-      Alert.alert(
-        'Error',
-        'Failed to save workout session. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Error', 'Failed to save workout session. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -411,7 +344,7 @@ export default function ActiveWorkoutScreen() {
   const handleCancelWorkout = () => {
     Alert.alert(
       'Cancel Workout?',
-      'Are you sure you want to cancel this workout? Your progress will be lost.',
+      'Your progress will be lost.',
       [
         { text: 'Keep Going', style: 'cancel' },
         { text: 'Cancel Workout', style: 'destructive', onPress: () => router.back() },
@@ -423,7 +356,7 @@ export default function ActiveWorkoutScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <Typography variant="text-default" color="light">
+          <Typography variant="paragraph-medium" color="contentSecondary">
             Loading workout...
           </Typography>
         </View>
@@ -435,7 +368,7 @@ export default function ActiveWorkoutScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <Typography variant="text-default" color="red" style={styles.errorText}>
+          <Typography variant="paragraph-medium" color="contentNegative" style={styles.errorText}>
             {error || 'Failed to load workout'}
           </Typography>
           <Button variant="primary" size="default" onPress={() => router.back()}>
@@ -446,136 +379,219 @@ export default function ActiveWorkoutScreen() {
     );
   }
 
+  const currentExercise = activeWorkout.exercises[currentExerciseIndex];
   const completedExercises = activeWorkout.exercises.filter(ex => ex.completed).length;
-  const totalExercises = activeWorkout.exercises.length;
-  const completedSets = activeWorkout.exercises.reduce((total, ex) => total + ex.sets.filter(set => set.completed).length, 0);
-  const totalSets = activeWorkout.exercises.reduce((total, ex) => total + ex.sets.length, 0);
+  const progressPercentage = ((completedExercises + (currentExercise?.sets.filter(set => set.completed).length || 0) / (currentExercise?.sets.length || 1)) / activeWorkout.exercises.length) * 100;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Timer */}
-      <View style={styles.headerCard}>
-        <View style={styles.timerSection}>
-          <Typography variant="heading-large" color="dark" style={styles.timerText}>
+      {/* Fixed Header - Minimal Timer Bar */}
+      <View style={styles.timerBar}>
+        <View style={styles.timerLeft}>
+          <Typography variant="heading-xsmall" color="contentPrimary" style={styles.timerText}>
             {formatTime(elapsedTime)}
-          </Typography>
-          <Typography variant="text-default" color="light">
-            Workout Duration
           </Typography>
         </View>
         
-        <View style={styles.progressSection}>
-          <Typography variant="text-small" color="light">
-            {completedExercises}/{totalExercises} exercises • {completedSets}/{totalSets} sets
-          </Typography>
+        <View style={styles.timerRight}>
+          <TouchableOpacity 
+            style={styles.pauseButton} 
+            onPress={() => setIsPaused(!isPaused)}
+          >
+            <MaterialIcons 
+              name={isPaused ? "play-arrow" : "pause"} 
+              size={24} 
+              color={getColor('contentTertiary')} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.endButton} onPress={handleCancelWorkout}>
+            <MaterialIcons 
+              name="close" 
+              size={24} 
+              color={getColor('contentNegative')} 
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Workout Info */}
-      <View style={styles.card}>
-        <Typography variant="heading-default" color="dark" style={styles.workoutTitle}>
-          {activeWorkout.routineName}
-        </Typography>
-        {activeWorkout.routineDescription && (
-          <Typography variant="text-default" color="light" style={styles.workoutDescription}>
-            {activeWorkout.routineDescription}
-          </Typography>
-        )}
+      {/* Progress Indicator - Visual, No Text */}
+      <View style={styles.progressBar}>
+        <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
       </View>
 
-      {/* Exercises List */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.exercisesList}>
-          {activeWorkout.exercises.map((exercise, exerciseIndex) => (
-            <View key={exerciseIndex} style={[
-              styles.exerciseCard,
-              exercise.completed && styles.exerciseCard
-            ]}>
-              {/* Exercise Header */}
-              <View style={styles.exerciseHeader}>
-                <View style={styles.exerciseInfo}>
-                  <Typography variant="text-default" color="dark" style={styles.exerciseName}>
-                    {exercise.exercise?.name || `Exercise ${exerciseIndex + 1}`}
-                  </Typography>
-                  {exercise.exercise?.muscleGroup && (
-                    <Typography variant="text-small" color="light">
-                      {exercise.exercise.muscleGroup}
-                    </Typography>
-                  )}
-                </View>
-                <Button
-                  variant={exercise.completed ? "success" : "secondary"}
-                  size="small"
-                  onPress={() => toggleExerciseComplete(exerciseIndex)}
-                >
-                  {exercise.completed ? "✓ Complete" : "Mark Complete"}
-                </Button>
+      {/* Current Exercise Focus Area */}
+      <View style={styles.currentExerciseContainer}>
+        {/* Exercise Header - Minimal */}
+        <View style={styles.exerciseHeader}>
+          <View>
+            <Typography variant="label-medium" color="contentPrimary">
+              {currentExercise.exercise?.name || `Exercise ${currentExerciseIndex + 1}`}
+            </Typography>
+            <Typography variant="paragraph-xsmall" color="contentTertiary">
+              {currentExercise.exercise?.muscleGroup || ''}
+            </Typography>
+          </View>
+          
+          {/* Visual Set Counter */}
+          <View style={styles.setCounter}>
+            {currentExercise.sets.map((set, index) => (
+              <View key={index} style={styles.setIndicator}>
+                {set.completed ? (
+                  <MaterialIcons 
+                    name="check-circle" 
+                    size={16} 
+                    color={getColor('positive')} 
+                  />
+                ) : (
+                  <MaterialIcons 
+                    name="radio-button-unchecked" 
+                    size={16} 
+                    color={getColor('backgroundTertiary')} 
+                  />
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Active Sets - Card Based, Editable */}
+        <ScrollView 
+          ref={setsScrollRef}
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.setsScroller}
+          contentContainerStyle={styles.setsScrollContent}
+        >
+          {currentExercise.sets.map((set, setIndex) => (
+            <View key={setIndex} style={styles.setCard}>
+              {/* Set Number - Small Label */}
+              <Typography variant="label-xsmall" color="contentTertiary" style={styles.setLabel}>
+                SET {setIndex + 1}
+              </Typography>
+              
+              {/* Editable Values - Large, Tappable */}
+              <View style={styles.setValues}>
+                <NumberInput
+                  value={set.reps}
+                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'reps', value.toString())}
+                  unit="reps"
+                  displayVariant="display-xsmall"
+                  unitVariant="label-small"
+                  valueColor="contentPrimary"
+                  unitColor="contentTertiary"
+                  containerStyle={styles.valueGroup}
+                  minValue={0}
+                  maxValue={999}
+                />
+
+                <View style={styles.valueSeparator} />
+
+                <NumberInput
+                  value={set.weight}
+                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'weight', value.toString())}
+                  unit="kg"
+                  displayVariant="display-xsmall"
+                  unitVariant="label-small"
+                  valueColor="contentPrimary"
+                  unitColor="contentTertiary"
+                  containerStyle={styles.valueGroup}
+                  minValue={0}
+                  maxValue={9999}
+                  allowDecimal={true}
+                />
               </View>
 
-              {/* Sets List */}
-              <View style={styles.setsSection}>
-                <Typography variant="text-small" color="light" style={styles.setsHeader}>
-                  Sets ({exercise.sets.filter(set => set.completed).length}/{exercise.sets.length} completed)
-                </Typography>
-                
-                {exercise.sets.map((set, setIndex) => (
-                  <View key={setIndex} style={[
-                    styles.setRow,
-                    set.completed && styles.setRow
-                  ]}>
-                    <View style={styles.setInfo}>
-                      <Typography variant="text-small" color="dark" style={styles.setNumber}>
-                        Set {setIndex + 1}
-                      </Typography>
-                      <Typography variant="text-small" color="light">
-                        {set.reps} reps
-                        {set.weight > 0 && ` • ${set.weight}kg`}
-                        {set.notes && ` • ${set.notes}`}
-                      </Typography>
-                    </View>
-                    <Button
-                      variant={set.completed ? "success" : "text"}
-                      size="small"
-                      onPress={() => toggleSetComplete(exerciseIndex, setIndex)}
-                    >
-                      {set.completed ? "✓" : "Done"}
-                    </Button>
-                  </View>
-                ))}
-              </View>
-
-              {exercise.notes && (
-                <View style={styles.exerciseNotes}>
-                  <Typography variant="text-small" color="light">
-                    Notes: {exercise.notes}
+              {/* Complete Set Button - Large, Primary Action */}
+              <TouchableOpacity
+                style={[
+                  styles.completeSetButton,
+                  set.completed && styles.completeSetButtonDone
+                ]}
+                onPress={() => handleSetComplete(currentExerciseIndex, setIndex)}
+              >
+                {set.completed ? (
+                  <MaterialIcons 
+                    name="check" 
+                    size={20} 
+                    color={getColor("contentPositive")} 
+                  />
+                ) : (
+                  <Typography 
+                    variant="label-medium" 
+                    color="contentPrimary"
+                  >
+                    DONE
                   </Typography>
-                </View>
-              )}
+                )}
+              </TouchableOpacity>
             </View>
           ))}
-        </View>
-      </ScrollView>
+        </ScrollView>
 
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <Button
-          variant="secondary"
-          size="large"
-          style={styles.actionButton}
-          onPress={handleCancelWorkout}
-        >
-          Cancel Workout
-        </Button>
-        <Button
-          variant="danger"
-          size="large"
-          style={styles.actionButton}
-          onPress={handleEndWorkout}
-          disabled={saving}
-        >
-          {saving ? "Saving..." : "End Workout"}
-        </Button>
       </View>
+
+      {/* Exercise Chips - All Exercises */}
+      <View style={styles.exerciseChipsSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exerciseChipsContainer}>
+          {activeWorkout.exercises.map((exercise, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.exerciseChip,
+                index === currentExerciseIndex && styles.exerciseChipSelected
+              ]}
+              onPress={() => setCurrentExerciseIndex(index)}
+            >
+              <View style={styles.exerciseChipContent}>
+                <Typography 
+                  variant="label-small" 
+                  color={index === currentExerciseIndex ? "contentOnColor" : "contentPrimary"}
+                  style={styles.exerciseChipName}
+                >
+                  {exercise.exercise?.name || `Exercise ${index + 1}`}
+                </Typography>
+                <View style={styles.exerciseChipMeta}>
+                  <Typography 
+                    variant="paragraph-xsmall" 
+                    color={index === currentExerciseIndex ? "contentOnColor" : "contentSecondary"}
+                  >
+                    {exercise.sets.length} sets
+                  </Typography>
+                  {exercise.completed && (
+                    <MaterialIcons 
+                      name="check-circle" 
+                      size={12} 
+                      color={getColor(index === currentExerciseIndex ? "contentOnColor" : "positive")} 
+                      style={styles.exerciseChipCheck}
+                    />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Floating Action Button - End Workout */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={handleEndWorkout}
+        disabled={saving}
+      >
+        <View style={styles.fabContent}>
+          {!saving && (
+            <MaterialIcons 
+              name="flag" 
+              size={20} 
+              color={getColor("contentOnColor")} 
+              style={styles.fabIcon}
+            />
+          )}
+          <Typography variant="label-medium" color="contentOnColor">
+            {saving ? "SAVING..." : "FINISH"}
+          </Typography>
+        </View>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -583,7 +599,7 @@ export default function ActiveWorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('light-gray-1'),
+    backgroundColor: getColor('backgroundSecondary'),
   },
   centerContent: {
     flex: 1,
@@ -595,147 +611,172 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  headerCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    minHeight: 140,
-  },
-  timerSection: {
+  
+  // Timer Bar - Minimal, Always Visible
+  timerBar: {
+    backgroundColor: getColor('backgroundPrimary'),
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderOpaque'),
+  },
+  timerLeft: {
     flex: 1,
-    justifyContent: 'center',
   },
   timerText: {
-    fontSize: 56,
-    fontWeight: 'bold',
     fontFamily: 'monospace',
-    marginBottom: 12,
-    lineHeight: 64,
-    textAlign: 'center',
   },
-  progressSection: {
-    alignItems: 'center',
+  timerRight: {
+    flexDirection: 'row',
+    gap: 16,
   },
-  card: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  pauseButton: {
+    padding: 8,
   },
-  workoutTitle: {
-    marginBottom: 8,
+  endButton: {
+    padding: 8,
   },
-  workoutDescription: {
-    marginBottom: 0,
+  
+  // Progress Bar - Visual Only
+  progressBar: {
+    height: 4,
+    backgroundColor: getColor('backgroundTertiary'),
   },
-  scrollView: {
-    flex: 1,
+  progressFill: {
+    height: '100%',
+    backgroundColor: getColor('accent'),
   },
-  exercisesList: {
-    paddingHorizontal: 16,
-    paddingBottom: 100, // Space for bottom actions
-  },
-  exerciseCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: getColor('light-gray-3'),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  exerciseCardCompleted: {
-    borderColor: getColor('green'),
-    backgroundColor: getColor('green-bright'),
+  
+  // Current Exercise Area
+  currentExerciseContainer: {
+    backgroundColor: getColor('backgroundPrimary'),
+    marginTop: 2,
   },
   exerciseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  exerciseInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  exerciseName: {
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  setsSection: {
-    marginBottom: 12,
-  },
-  setsHeader: {
-    marginBottom: 12,
-    fontWeight: '500',
-  },
-  setRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: getColor('light-gray-1'),
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: getColor('light-gray-3'),
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
-  setRowCompleted: {
-    backgroundColor: getColor('green-bright'),
-    borderColor: getColor('green'),
-  },
-  setInfo: {
-    flex: 1,
-  },
-  setNumber: {
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  exerciseNotes: {
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: getColor('light-gray-3'),
-  },
-  bottomActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
+  setCounter: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: getColor('light-gray-3'),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    gap: 6,
   },
-  actionButton: {
-    flex: 1,
+  setIndicator: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Sets Scroller - Card Based
+  setsScroller: {
+    height: 300, // Fixed height to prevent unnecessary expansion
+  },
+  setsScrollContent: {
+    paddingHorizontal: 0,
+  },
+  setCard: {
+    width: 260,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  setLabel: {
+    marginBottom: 24,
+  },
+  setValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  valueGroup: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  valueSeparator: {
+    width: 1,
+    height: 60,
+    backgroundColor: getColor('borderOpaque'),
+  },
+  
+  // Complete Button - Primary Action
+  completeSetButton: {
+    backgroundColor: getColor('backgroundPrimary'),
+    borderWidth: 3,
+    borderColor: getColor('contentPrimary'),
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 32,
+  },
+  completeSetButtonDone: {
+    backgroundColor: getColor('backgroundLightPositive'),
+    borderColor: getColor('positive'),
+  },
+  
+  // Exercise Chips Section
+  exerciseChipsSection: {
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: getColor('borderOpaque'),
+  },
+  exerciseChipsContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  exerciseChip: {
+    backgroundColor: getColor('backgroundPrimary'),
+    borderWidth: 1,
+    borderColor: getColor('borderOpaque'),
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 120,
+  },
+  exerciseChipSelected: {
+    backgroundColor: getColor('backgroundAccent'),
+    borderColor: getColor('backgroundAccent'),
+  },
+  exerciseChipContent: {
+    alignItems: 'center',
+  },
+  exerciseChipName: {
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  exerciseChipMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  exerciseChipCheck: {
+    marginLeft: 2,
+  },
+  
+  // Floating Action Button
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    backgroundColor: getColor('backgroundAccent'),
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fabIcon: {
+    marginRight: 8,
   },
 }); 

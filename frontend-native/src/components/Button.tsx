@@ -24,33 +24,29 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   onPress,
 }) => {
-  // Size configurations
+  // Size configurations - using proper spacing values
   const sizeConfig = {
     small: {
       paddingVertical: 6,
       paddingHorizontal: 10,
-      fontSize: 11,
       iconSize: 12,
       gap: 6,
     },
     default: {
       paddingVertical: 8,
       paddingHorizontal: 12,
-      fontSize: 13,
       iconSize: 14,
       gap: 8,
     },
     large: {
       paddingVertical: 10,
       paddingHorizontal: 16,
-      fontSize: 15,
       iconSize: 16,
       gap: 10,
     },
     xlarge: {
       paddingVertical: 12,
       paddingHorizontal: 20,
-      fontSize: 17,
       iconSize: 20,
       gap: 12,
     },
@@ -64,37 +60,37 @@ export const Button: React.FC<ButtonProps> = ({
     xlarge: { padding: 12 },
   };
 
-  // Variant styles
+  // Variant styles using semantic colors
   const variantStyles = {
     default: {
-      backgroundColor: getColor('light-gray-2'),
-      borderColor: getColor('light-gray-4'),
-      textColor: getColor('dark'),
+      backgroundColor: getColor('backgroundPrimary'),
+      borderColor: getColor('borderOpaque'),
+      textColor: getColor('contentPrimary'),
     },
     primary: {
-      backgroundColor: getColor('blue-bright'),
-      borderColor: getColor('blue-bright'),
-      textColor: getColor('white'),
+      backgroundColor: getColor('backgroundAccent'),
+      borderColor: getColor('backgroundAccent'),
+      textColor: getColor('contentOnColor'),
     },
     danger: {
-      backgroundColor: getColor('red'),
-      borderColor: getColor('red'),
-      textColor: getColor('white'),
+      backgroundColor: getColor('backgroundNegative'),
+      borderColor: getColor('backgroundNegative'),
+      textColor: getColor('contentOnColor'),
     },
     secondary: {
-      backgroundColor: getColor('white'),
-      borderColor: getColor('light-gray-4'),
-      textColor: getColor('dark'),
+      backgroundColor: getColor('backgroundSecondary'),
+      borderColor: getColor('borderOpaque'),
+      textColor: getColor('contentPrimary'),
     },
     text: {
       backgroundColor: 'transparent',
       borderColor: 'transparent',
-      textColor: getColor('blue-bright'),
+      textColor: getColor('contentAccent'),
     },
     success: {
-      backgroundColor: getColor('green-bright'),
-      borderColor: getColor('green-bright'),
-      textColor: getColor('white'),
+      backgroundColor: getColor('backgroundPositive'),
+      borderColor: getColor('backgroundPositive'),
+      textColor: getColor('contentOnColor'),
     },
   };
 
@@ -118,9 +114,17 @@ export const Button: React.FC<ButtonProps> = ({
     ...style,
   };
 
-  const textVariant = size === 'small' ? 'text-small' : 
-                      size === 'large' ? 'text-large' :
-                      size === 'xlarge' ? 'text-xlarge' : 'text-default';
+  // Map button sizes to Typography variants
+  const textVariant = size === 'small' ? 'label-xsmall' : 
+                      size === 'large' ? 'label-medium' :
+                      size === 'xlarge' ? 'label-large' : 'label-small';
+
+  // Determine text color based on variant using semantic colors
+  const textColor = variant === 'primary' || variant === 'danger' || variant === 'success' 
+    ? 'contentOnColor' 
+    : variant === 'text' 
+    ? 'contentAccent' 
+    : 'contentPrimary';
 
   return (
     <TouchableOpacity 
@@ -137,9 +141,7 @@ export const Button: React.FC<ButtonProps> = ({
       {!iconOnly && (
         <Typography 
           variant={textVariant} 
-          color={variant === 'primary' || variant === 'danger' || variant === 'success' ? 'white' : 
-                 variant === 'text' ? 'blue-bright' : 'dark'}
-          style={{ fontWeight: '500' }}
+          color={textColor}
         >
           {children}
         </Typography>
@@ -158,8 +160,60 @@ export const EditIcon: React.FC<{ color?: string; size?: number }> = ({
     <View style={{
       width: size,
       height: size,
-      backgroundColor: color === 'currentColor' ? getColor('dark') : color,
+      backgroundColor: color === 'currentColor' ? getColor('contentPrimary') : color,
       borderRadius: 2,
     }} />
+  );
+};
+
+// Rect Primary Button - Based on Uber Design System
+export interface RectPrimaryButtonProps {
+  children: React.ReactNode;
+  onPress?: () => void;
+  disabled?: boolean;
+  style?: ViewStyle;
+  icon?: React.ReactNode;
+}
+
+export const RectPrimaryButton: React.FC<RectPrimaryButtonProps> = ({
+  children,
+  onPress,
+  disabled = false,
+  style = {},
+  icon,
+}) => {
+  const buttonStyle: ViewStyle = {
+    backgroundColor: getColor('primaryA'), // Black background as shown in Uber design
+    borderRadius: 0, // Rectangular shape with sharp corners
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    opacity: disabled ? 0.5 : 1,
+    minHeight: 48, // Consistent minimum height for touch targets
+    ...style,
+  };
+
+  return (
+    <TouchableOpacity 
+      style={buttonStyle}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.8}
+    >
+      {icon && (
+        <View style={{ width: 16, height: 16 }}>
+          {icon}
+        </View>
+      )}
+      <Typography 
+        variant="label-medium" 
+        color="contentOnColor"
+      >
+        {children}
+      </Typography>
+    </TouchableOpacity>
   );
 }; 

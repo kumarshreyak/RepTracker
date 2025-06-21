@@ -12,17 +12,14 @@ export default function RootLayout() {
         <Stack.Screen 
           name="create-routine" 
           options={{ 
-            headerShown: true,
-            presentation: 'modal',
-            title: 'Create Routine'
+            headerShown: false
           }} 
         />
         <Stack.Screen 
           name="exercise-search" 
           options={{ 
-            headerShown: true,
-            presentation: 'modal',
-            title: 'Search Exercises'
+            headerShown: false,
+            presentation: 'modal'
           }} 
         />
         <Stack.Screen name="+not-found" />
