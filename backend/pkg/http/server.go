@@ -49,33 +49,45 @@ type UserResponse struct {
 
 // Exercise HTTP types
 type ExerciseResponse struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description"`
-	MuscleGroup  string    `json:"muscleGroup"`
-	Equipment    string    `json:"equipment"`
-	Difficulty   string    `json:"difficulty"`
-	Instructions []string  `json:"instructions"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	Category         string    `json:"category"`
+	Equipment        []string  `json:"equipment"`
+	PrimaryMuscles   []string  `json:"primaryMuscles"`
+	SecondaryMuscles []string  `json:"secondaryMuscles"`
+	Instructions     []string  `json:"instructions"`
+	Video            string    `json:"video,omitempty"`
+	VariationsOn     []string  `json:"variationsOn,omitempty"`
+	VariationOn      []string  `json:"variationOn,omitempty"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
 }
 
 type CreateExerciseRequest struct {
-	Name         string   `json:"name"`
-	Description  string   `json:"description"`
-	MuscleGroup  string   `json:"muscleGroup"`
-	Equipment    string   `json:"equipment"`
-	Difficulty   string   `json:"difficulty"`
-	Instructions []string `json:"instructions"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	Category         string   `json:"category"`
+	Equipment        []string `json:"equipment"`
+	PrimaryMuscles   []string `json:"primaryMuscles"`
+	SecondaryMuscles []string `json:"secondaryMuscles"`
+	Instructions     []string `json:"instructions"`
+	Video            string   `json:"video,omitempty"`
+	VariationsOn     []string `json:"variationsOn,omitempty"`
+	VariationOn      []string `json:"variationOn,omitempty"`
 }
 
 type UpdateExerciseRequest struct {
-	Name         string   `json:"name,omitempty"`
-	Description  string   `json:"description,omitempty"`
-	MuscleGroup  string   `json:"muscleGroup,omitempty"`
-	Equipment    string   `json:"equipment,omitempty"`
-	Difficulty   string   `json:"difficulty,omitempty"`
-	Instructions []string `json:"instructions,omitempty"`
+	Name             string   `json:"name,omitempty"`
+	Description      string   `json:"description,omitempty"`
+	Category         string   `json:"category,omitempty"`
+	Equipment        []string `json:"equipment,omitempty"`
+	PrimaryMuscles   []string `json:"primaryMuscles,omitempty"`
+	SecondaryMuscles []string `json:"secondaryMuscles,omitempty"`
+	Instructions     []string `json:"instructions,omitempty"`
+	Video            string   `json:"video,omitempty"`
+	VariationsOn     []string `json:"variationsOn,omitempty"`
+	VariationOn      []string `json:"variationOn,omitempty"`
 }
 
 type ListExercisesResponse struct {
@@ -452,15 +464,19 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 // Helper functions for protobuf conversion
 func exerciseToResponse(pb *pb.Exercise) ExerciseResponse {
 	return ExerciseResponse{
-		ID:           pb.Id,
-		Name:         pb.Name,
-		Description:  pb.Description,
-		MuscleGroup:  pb.MuscleGroup,
-		Equipment:    pb.Equipment,
-		Difficulty:   pb.Difficulty,
-		Instructions: pb.Instructions,
-		CreatedAt:    pb.CreatedAt.AsTime(),
-		UpdatedAt:    pb.UpdatedAt.AsTime(),
+		ID:               pb.Id,
+		Name:             pb.Name,
+		Description:      pb.Description,
+		Category:         pb.Category,
+		Equipment:        pb.Equipment,
+		PrimaryMuscles:   pb.PrimaryMuscles,
+		SecondaryMuscles: pb.SecondaryMuscles,
+		Instructions:     pb.Instructions,
+		Video:            pb.Video,
+		VariationsOn:     pb.VariationsOn,
+		VariationOn:      pb.VariationOn,
+		CreatedAt:        pb.CreatedAt.AsTime(),
+		UpdatedAt:        pb.UpdatedAt.AsTime(),
 	}
 }
 
@@ -529,16 +545,22 @@ func (s *Server) handleListExercises(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageToken := r.URL.Query().Get("pageToken")
-	muscleGroup := r.URL.Query().Get("muscleGroup")
-	equipment := r.URL.Query().Get("equipment")
+
+	// Parse filter parameters
+	categories := r.URL.Query()["categories"]
+	equipment := r.URL.Query()["equipment"]
+	primaryMuscles := r.URL.Query()["primaryMuscles"]
+	secondaryMuscles := r.URL.Query()["secondaryMuscles"]
 	search := r.URL.Query().Get("search")
 
 	req := &pb.ListExercisesRequest{
-		PageSize:    pageSize,
-		PageToken:   pageToken,
-		MuscleGroup: muscleGroup,
-		Equipment:   equipment,
-		Search:      search,
+		PageSize:         pageSize,
+		PageToken:        pageToken,
+		Categories:       categories,
+		Equipment:        equipment,
+		PrimaryMuscles:   primaryMuscles,
+		SecondaryMuscles: secondaryMuscles,
+		Search:           search,
 	}
 
 	resp, err := s.exerciseService.ListExercises(ctx, req)
@@ -570,12 +592,16 @@ func (s *Server) handleCreateExercise(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	pbReq := &pb.CreateExerciseRequest{
-		Name:         req.Name,
-		Description:  req.Description,
-		MuscleGroup:  req.MuscleGroup,
-		Equipment:    req.Equipment,
-		Difficulty:   req.Difficulty,
-		Instructions: req.Instructions,
+		Name:             req.Name,
+		Description:      req.Description,
+		Category:         req.Category,
+		Equipment:        req.Equipment,
+		PrimaryMuscles:   req.PrimaryMuscles,
+		SecondaryMuscles: req.SecondaryMuscles,
+		Instructions:     req.Instructions,
+		Video:            req.Video,
+		VariationsOn:     req.VariationsOn,
+		VariationOn:      req.VariationOn,
 	}
 
 	exercise, err := s.exerciseService.CreateExercise(ctx, pbReq)
@@ -620,13 +646,17 @@ func (s *Server) handleUpdateExercise(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	pbReq := &pb.UpdateExerciseRequest{
-		Id:           id,
-		Name:         req.Name,
-		Description:  req.Description,
-		MuscleGroup:  req.MuscleGroup,
-		Equipment:    req.Equipment,
-		Difficulty:   req.Difficulty,
-		Instructions: req.Instructions,
+		Id:               id,
+		Name:             req.Name,
+		Description:      req.Description,
+		Category:         req.Category,
+		Equipment:        req.Equipment,
+		PrimaryMuscles:   req.PrimaryMuscles,
+		SecondaryMuscles: req.SecondaryMuscles,
+		Instructions:     req.Instructions,
+		Video:            req.Video,
+		VariationsOn:     req.VariationsOn,
+		VariationOn:      req.VariationOn,
 	}
 
 	exercise, err := s.exerciseService.UpdateExercise(ctx, pbReq)

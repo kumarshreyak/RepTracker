@@ -8,49 +8,15 @@ import {
   Vibration,
   TouchableOpacity,
   Dimensions,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Typography, Button, NumberInput } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { MaterialIcons } from '@expo/vector-icons';
-
-interface WorkoutSet {
-  reps: number;
-  weight: number;
-  durationSeconds?: number;
-  distance?: number;
-  notes?: string;
-  completed?: boolean;
-}
-
-interface WorkoutExercise {
-  exerciseId: string;
-  exercise?: {
-    id: string;
-    name: string;
-    description: string;
-    muscleGroup: string;
-    equipment: string;
-    difficulty: string;
-    instructions: string[];
-  };
-  sets: WorkoutSet[];
-  notes?: string;
-  restSeconds?: number;
-  completed?: boolean;
-}
-
-interface ActiveWorkout {
-  id?: string;
-  sessionId?: string;
-  routineId: string;
-  routineName: string;
-  routineDescription?: string;
-  exercises: WorkoutExercise[];
-  startedAt: Date;
-  notes?: string;
-}
+import { Exercise, WorkoutSet, WorkoutExercise, ActiveWorkout } from '@/types/exercise';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = 260;
@@ -476,7 +442,7 @@ export default function ActiveWorkoutScreen() {
               {currentExercise.exercise?.name || `Exercise ${currentExerciseIndex + 1}`}
             </Typography>
             <Typography variant="paragraph-xsmall" color="contentTertiary">
-              {currentExercise.exercise?.muscleGroup || ''}
+              {currentExercise.exercise?.primaryMuscles?.join(", ") || ''}
             </Typography>
           </View>
           

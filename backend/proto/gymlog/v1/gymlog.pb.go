@@ -418,18 +418,22 @@ func (x *ListUsersResponse) GetNextPageToken() string {
 
 // Exercise related messages
 type Exercise struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	MuscleGroup   string                 `protobuf:"bytes,4,opt,name=muscle_group,json=muscleGroup,proto3" json:"muscle_group,omitempty"`
-	Equipment     string                 `protobuf:"bytes,5,opt,name=equipment,proto3" json:"equipment,omitempty"`
-	Difficulty    string                 `protobuf:"bytes,6,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
-	Instructions  []string               `protobuf:"bytes,7,rep,name=instructions,proto3" json:"instructions,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Category         string                 `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"`
+	Equipment        []string               `protobuf:"bytes,5,rep,name=equipment,proto3" json:"equipment,omitempty"`
+	PrimaryMuscles   []string               `protobuf:"bytes,6,rep,name=primary_muscles,json=primaryMuscles,proto3" json:"primary_muscles,omitempty"`
+	SecondaryMuscles []string               `protobuf:"bytes,7,rep,name=secondary_muscles,json=secondaryMuscles,proto3" json:"secondary_muscles,omitempty"`
+	Instructions     []string               `protobuf:"bytes,8,rep,name=instructions,proto3" json:"instructions,omitempty"`
+	Video            string                 `protobuf:"bytes,9,opt,name=video,proto3" json:"video,omitempty"`
+	VariationsOn     []string               `protobuf:"bytes,10,rep,name=variations_on,json=variationsOn,proto3" json:"variations_on,omitempty"`
+	VariationOn      []string               `protobuf:"bytes,11,rep,name=variation_on,json=variationOn,proto3" json:"variation_on,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Exercise) Reset() {
@@ -483,30 +487,58 @@ func (x *Exercise) GetDescription() string {
 	return ""
 }
 
-func (x *Exercise) GetMuscleGroup() string {
+func (x *Exercise) GetCategory() string {
 	if x != nil {
-		return x.MuscleGroup
+		return x.Category
 	}
 	return ""
 }
 
-func (x *Exercise) GetEquipment() string {
+func (x *Exercise) GetEquipment() []string {
 	if x != nil {
 		return x.Equipment
 	}
-	return ""
+	return nil
 }
 
-func (x *Exercise) GetDifficulty() string {
+func (x *Exercise) GetPrimaryMuscles() []string {
 	if x != nil {
-		return x.Difficulty
+		return x.PrimaryMuscles
 	}
-	return ""
+	return nil
+}
+
+func (x *Exercise) GetSecondaryMuscles() []string {
+	if x != nil {
+		return x.SecondaryMuscles
+	}
+	return nil
 }
 
 func (x *Exercise) GetInstructions() []string {
 	if x != nil {
 		return x.Instructions
+	}
+	return nil
+}
+
+func (x *Exercise) GetVideo() string {
+	if x != nil {
+		return x.Video
+	}
+	return ""
+}
+
+func (x *Exercise) GetVariationsOn() []string {
+	if x != nil {
+		return x.VariationsOn
+	}
+	return nil
+}
+
+func (x *Exercise) GetVariationOn() []string {
+	if x != nil {
+		return x.VariationOn
 	}
 	return nil
 }
@@ -526,15 +558,19 @@ func (x *Exercise) GetUpdatedAt() *timestamppb.Timestamp {
 }
 
 type CreateExerciseRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	MuscleGroup   string                 `protobuf:"bytes,3,opt,name=muscle_group,json=muscleGroup,proto3" json:"muscle_group,omitempty"`
-	Equipment     string                 `protobuf:"bytes,4,opt,name=equipment,proto3" json:"equipment,omitempty"`
-	Difficulty    string                 `protobuf:"bytes,5,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
-	Instructions  []string               `protobuf:"bytes,6,rep,name=instructions,proto3" json:"instructions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description      string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Category         string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	Equipment        []string               `protobuf:"bytes,4,rep,name=equipment,proto3" json:"equipment,omitempty"`
+	PrimaryMuscles   []string               `protobuf:"bytes,5,rep,name=primary_muscles,json=primaryMuscles,proto3" json:"primary_muscles,omitempty"`
+	SecondaryMuscles []string               `protobuf:"bytes,6,rep,name=secondary_muscles,json=secondaryMuscles,proto3" json:"secondary_muscles,omitempty"`
+	Instructions     []string               `protobuf:"bytes,7,rep,name=instructions,proto3" json:"instructions,omitempty"`
+	Video            string                 `protobuf:"bytes,8,opt,name=video,proto3" json:"video,omitempty"`
+	VariationsOn     []string               `protobuf:"bytes,9,rep,name=variations_on,json=variationsOn,proto3" json:"variations_on,omitempty"`
+	VariationOn      []string               `protobuf:"bytes,10,rep,name=variation_on,json=variationOn,proto3" json:"variation_on,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateExerciseRequest) Reset() {
@@ -581,30 +617,58 @@ func (x *CreateExerciseRequest) GetDescription() string {
 	return ""
 }
 
-func (x *CreateExerciseRequest) GetMuscleGroup() string {
+func (x *CreateExerciseRequest) GetCategory() string {
 	if x != nil {
-		return x.MuscleGroup
+		return x.Category
 	}
 	return ""
 }
 
-func (x *CreateExerciseRequest) GetEquipment() string {
+func (x *CreateExerciseRequest) GetEquipment() []string {
 	if x != nil {
 		return x.Equipment
 	}
-	return ""
+	return nil
 }
 
-func (x *CreateExerciseRequest) GetDifficulty() string {
+func (x *CreateExerciseRequest) GetPrimaryMuscles() []string {
 	if x != nil {
-		return x.Difficulty
+		return x.PrimaryMuscles
 	}
-	return ""
+	return nil
+}
+
+func (x *CreateExerciseRequest) GetSecondaryMuscles() []string {
+	if x != nil {
+		return x.SecondaryMuscles
+	}
+	return nil
 }
 
 func (x *CreateExerciseRequest) GetInstructions() []string {
 	if x != nil {
 		return x.Instructions
+	}
+	return nil
+}
+
+func (x *CreateExerciseRequest) GetVideo() string {
+	if x != nil {
+		return x.Video
+	}
+	return ""
+}
+
+func (x *CreateExerciseRequest) GetVariationsOn() []string {
+	if x != nil {
+		return x.VariationsOn
+	}
+	return nil
+}
+
+func (x *CreateExerciseRequest) GetVariationOn() []string {
+	if x != nil {
+		return x.VariationOn
 	}
 	return nil
 }
@@ -654,16 +718,20 @@ func (x *GetExerciseRequest) GetId() string {
 }
 
 type UpdateExerciseRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	MuscleGroup   string                 `protobuf:"bytes,4,opt,name=muscle_group,json=muscleGroup,proto3" json:"muscle_group,omitempty"`
-	Equipment     string                 `protobuf:"bytes,5,opt,name=equipment,proto3" json:"equipment,omitempty"`
-	Difficulty    string                 `protobuf:"bytes,6,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
-	Instructions  []string               `protobuf:"bytes,7,rep,name=instructions,proto3" json:"instructions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Category         string                 `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"`
+	Equipment        []string               `protobuf:"bytes,5,rep,name=equipment,proto3" json:"equipment,omitempty"`
+	PrimaryMuscles   []string               `protobuf:"bytes,6,rep,name=primary_muscles,json=primaryMuscles,proto3" json:"primary_muscles,omitempty"`
+	SecondaryMuscles []string               `protobuf:"bytes,7,rep,name=secondary_muscles,json=secondaryMuscles,proto3" json:"secondary_muscles,omitempty"`
+	Instructions     []string               `protobuf:"bytes,8,rep,name=instructions,proto3" json:"instructions,omitempty"`
+	Video            string                 `protobuf:"bytes,9,opt,name=video,proto3" json:"video,omitempty"`
+	VariationsOn     []string               `protobuf:"bytes,10,rep,name=variations_on,json=variationsOn,proto3" json:"variations_on,omitempty"`
+	VariationOn      []string               `protobuf:"bytes,11,rep,name=variation_on,json=variationOn,proto3" json:"variation_on,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdateExerciseRequest) Reset() {
@@ -717,30 +785,58 @@ func (x *UpdateExerciseRequest) GetDescription() string {
 	return ""
 }
 
-func (x *UpdateExerciseRequest) GetMuscleGroup() string {
+func (x *UpdateExerciseRequest) GetCategory() string {
 	if x != nil {
-		return x.MuscleGroup
+		return x.Category
 	}
 	return ""
 }
 
-func (x *UpdateExerciseRequest) GetEquipment() string {
+func (x *UpdateExerciseRequest) GetEquipment() []string {
 	if x != nil {
 		return x.Equipment
 	}
-	return ""
+	return nil
 }
 
-func (x *UpdateExerciseRequest) GetDifficulty() string {
+func (x *UpdateExerciseRequest) GetPrimaryMuscles() []string {
 	if x != nil {
-		return x.Difficulty
+		return x.PrimaryMuscles
 	}
-	return ""
+	return nil
+}
+
+func (x *UpdateExerciseRequest) GetSecondaryMuscles() []string {
+	if x != nil {
+		return x.SecondaryMuscles
+	}
+	return nil
 }
 
 func (x *UpdateExerciseRequest) GetInstructions() []string {
 	if x != nil {
 		return x.Instructions
+	}
+	return nil
+}
+
+func (x *UpdateExerciseRequest) GetVideo() string {
+	if x != nil {
+		return x.Video
+	}
+	return ""
+}
+
+func (x *UpdateExerciseRequest) GetVariationsOn() []string {
+	if x != nil {
+		return x.VariationsOn
+	}
+	return nil
+}
+
+func (x *UpdateExerciseRequest) GetVariationOn() []string {
+	if x != nil {
+		return x.VariationOn
 	}
 	return nil
 }
@@ -790,14 +886,16 @@ func (x *DeleteExerciseRequest) GetId() string {
 }
 
 type ListExercisesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	MuscleGroup   string                 `protobuf:"bytes,3,opt,name=muscle_group,json=muscleGroup,proto3" json:"muscle_group,omitempty"` // filter by muscle group
-	Equipment     string                 `protobuf:"bytes,4,opt,name=equipment,proto3" json:"equipment,omitempty"`                        // filter by equipment
-	Search        string                 `protobuf:"bytes,5,opt,name=search,proto3" json:"search,omitempty"`                              // search by name, description, muscle group, or equipment
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	PageSize         int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken        string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Categories       []string               `protobuf:"bytes,3,rep,name=categories,proto3" json:"categories,omitempty"`
+	Equipment        []string               `protobuf:"bytes,4,rep,name=equipment,proto3" json:"equipment,omitempty"`
+	PrimaryMuscles   []string               `protobuf:"bytes,5,rep,name=primary_muscles,json=primaryMuscles,proto3" json:"primary_muscles,omitempty"`
+	SecondaryMuscles []string               `protobuf:"bytes,6,rep,name=secondary_muscles,json=secondaryMuscles,proto3" json:"secondary_muscles,omitempty"`
+	Search           string                 `protobuf:"bytes,7,opt,name=search,proto3" json:"search,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ListExercisesRequest) Reset() {
@@ -844,18 +942,32 @@ func (x *ListExercisesRequest) GetPageToken() string {
 	return ""
 }
 
-func (x *ListExercisesRequest) GetMuscleGroup() string {
+func (x *ListExercisesRequest) GetCategories() []string {
 	if x != nil {
-		return x.MuscleGroup
+		return x.Categories
 	}
-	return ""
+	return nil
 }
 
-func (x *ListExercisesRequest) GetEquipment() string {
+func (x *ListExercisesRequest) GetEquipment() []string {
 	if x != nil {
 		return x.Equipment
 	}
-	return ""
+	return nil
+}
+
+func (x *ListExercisesRequest) GetPrimaryMuscles() []string {
+	if x != nil {
+		return x.PrimaryMuscles
+	}
+	return nil
+}
+
+func (x *ListExercisesRequest) GetSecondaryMuscles() []string {
+	if x != nil {
+		return x.SecondaryMuscles
+	}
+	return nil
 }
 
 func (x *ListExercisesRequest) GetSearch() string {
@@ -2697,51 +2809,64 @@ const file_proto_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\"b\n" +
 	"\x11ListUsersResponse\x12%\n" +
 	"\x05users\x18\x01 \x03(\v2\x0f.gymlog.v1.UserR\x05users\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xcb\x02\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xd8\x03\n" +
 	"\bExercise\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12!\n" +
-	"\fmuscle_group\x18\x04 \x01(\tR\vmuscleGroup\x12\x1c\n" +
-	"\tequipment\x18\x05 \x01(\tR\tequipment\x12\x1e\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bcategory\x18\x04 \x01(\tR\bcategory\x12\x1c\n" +
+	"\tequipment\x18\x05 \x03(\tR\tequipment\x12'\n" +
+	"\x0fprimary_muscles\x18\x06 \x03(\tR\x0eprimaryMuscles\x12+\n" +
+	"\x11secondary_muscles\x18\a \x03(\tR\x10secondaryMuscles\x12\"\n" +
+	"\finstructions\x18\b \x03(\tR\finstructions\x12\x14\n" +
+	"\x05video\x18\t \x01(\tR\x05video\x12#\n" +
+	"\rvariations_on\x18\n" +
+	" \x03(\tR\fvariationsOn\x12!\n" +
+	"\fvariation_on\x18\v \x03(\tR\vvariationOn\x129\n" +
 	"\n" +
-	"difficulty\x18\x06 \x01(\tR\n" +
-	"difficulty\x12\"\n" +
-	"\finstructions\x18\a \x03(\tR\finstructions\x129\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xd2\x01\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xdf\x02\n" +
 	"\x15CreateExerciseRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12!\n" +
-	"\fmuscle_group\x18\x03 \x01(\tR\vmuscleGroup\x12\x1c\n" +
-	"\tequipment\x18\x04 \x01(\tR\tequipment\x12\x1e\n" +
-	"\n" +
-	"difficulty\x18\x05 \x01(\tR\n" +
-	"difficulty\x12\"\n" +
-	"\finstructions\x18\x06 \x03(\tR\finstructions\"$\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\x12\x1c\n" +
+	"\tequipment\x18\x04 \x03(\tR\tequipment\x12'\n" +
+	"\x0fprimary_muscles\x18\x05 \x03(\tR\x0eprimaryMuscles\x12+\n" +
+	"\x11secondary_muscles\x18\x06 \x03(\tR\x10secondaryMuscles\x12\"\n" +
+	"\finstructions\x18\a \x03(\tR\finstructions\x12\x14\n" +
+	"\x05video\x18\b \x01(\tR\x05video\x12#\n" +
+	"\rvariations_on\x18\t \x03(\tR\fvariationsOn\x12!\n" +
+	"\fvariation_on\x18\n" +
+	" \x03(\tR\vvariationOn\"$\n" +
 	"\x12GetExerciseRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xe2\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xef\x02\n" +
 	"\x15UpdateExerciseRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12!\n" +
-	"\fmuscle_group\x18\x04 \x01(\tR\vmuscleGroup\x12\x1c\n" +
-	"\tequipment\x18\x05 \x01(\tR\tequipment\x12\x1e\n" +
-	"\n" +
-	"difficulty\x18\x06 \x01(\tR\n" +
-	"difficulty\x12\"\n" +
-	"\finstructions\x18\a \x03(\tR\finstructions\"'\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bcategory\x18\x04 \x01(\tR\bcategory\x12\x1c\n" +
+	"\tequipment\x18\x05 \x03(\tR\tequipment\x12'\n" +
+	"\x0fprimary_muscles\x18\x06 \x03(\tR\x0eprimaryMuscles\x12+\n" +
+	"\x11secondary_muscles\x18\a \x03(\tR\x10secondaryMuscles\x12\"\n" +
+	"\finstructions\x18\b \x03(\tR\finstructions\x12\x14\n" +
+	"\x05video\x18\t \x01(\tR\x05video\x12#\n" +
+	"\rvariations_on\x18\n" +
+	" \x03(\tR\fvariationsOn\x12!\n" +
+	"\fvariation_on\x18\v \x03(\tR\vvariationOn\"'\n" +
 	"\x15DeleteExerciseRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xab\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xfe\x01\n" +
 	"\x14ListExercisesRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\x12!\n" +
-	"\fmuscle_group\x18\x03 \x01(\tR\vmuscleGroup\x12\x1c\n" +
-	"\tequipment\x18\x04 \x01(\tR\tequipment\x12\x16\n" +
-	"\x06search\x18\x05 \x01(\tR\x06search\"r\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x1e\n" +
+	"\n" +
+	"categories\x18\x03 \x03(\tR\n" +
+	"categories\x12\x1c\n" +
+	"\tequipment\x18\x04 \x03(\tR\tequipment\x12'\n" +
+	"\x0fprimary_muscles\x18\x05 \x03(\tR\x0eprimaryMuscles\x12+\n" +
+	"\x11secondary_muscles\x18\x06 \x03(\tR\x10secondaryMuscles\x12\x16\n" +
+	"\x06search\x18\a \x01(\tR\x06search\"r\n" +
 	"\x15ListExercisesResponse\x121\n" +
 	"\texercises\x18\x01 \x03(\v2\x13.gymlog.v1.ExerciseR\texercises\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"L\n" +

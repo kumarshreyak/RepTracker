@@ -6,24 +6,14 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Typography, Button, Input } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
-
-interface WorkoutSet {
-  reps: number;
-  weight: number;
-}
-
-interface RoutineExercise {
-  id: string;
-  name: string;
-  muscleGroup: string;
-  sets: WorkoutSet[];
-}
+import { RoutineExercise, WorkoutSet } from '@/types/exercise';
 
 // Quick add exercises will be fetched from the API
 
@@ -41,7 +31,13 @@ export default function CreateRoutineRoute() {
         const saved = await AsyncStorage.getItem('routineExercises');
         if (saved) {
           const parsedExercises = JSON.parse(saved);
-          setExercises(parsedExercises);
+          // Ensure exercises have the new structure
+          const normalizedExercises = parsedExercises.map((ex: any) => ({
+            ...ex,
+            primaryMuscles: ex.primaryMuscles || (ex.muscleGroup ? [ex.muscleGroup] : []),
+            secondaryMuscles: ex.secondaryMuscles || []
+          }));
+          setExercises(normalizedExercises);
         }
       } catch (error) {
         console.error('Error loading exercises from AsyncStorage:', error);
@@ -86,7 +82,8 @@ export default function CreateRoutineRoute() {
             const quickAddData = data.exercises.map((exercise: any) => ({
               id: exercise.id,
               name: exercise.name,
-              muscleGroup: exercise.muscleGroup,
+              primaryMuscles: exercise.primaryMuscles || [],
+              secondaryMuscles: exercise.secondaryMuscles || [],
               sets: [
                 { reps: 10, weight: 0 },
                 { reps: 10, weight: 0 },
@@ -129,7 +126,13 @@ export default function CreateRoutineRoute() {
           const saved = await AsyncStorage.getItem('routineExercises');
           if (saved) {
             const parsedExercises = JSON.parse(saved);
-            setExercises(parsedExercises);
+            // Ensure exercises have the new structure
+            const normalizedExercises = parsedExercises.map((ex: any) => ({
+              ...ex,
+              primaryMuscles: ex.primaryMuscles || (ex.muscleGroup ? [ex.muscleGroup] : []),
+              secondaryMuscles: ex.secondaryMuscles || []
+            }));
+            setExercises(normalizedExercises);
           } else {
             setExercises([]);
           }
@@ -176,7 +179,8 @@ export default function CreateRoutineRoute() {
               const quickAddData = data.exercises.map((exercise: any) => ({
                 id: exercise.id,
                 name: exercise.name,
-                muscleGroup: exercise.muscleGroup,
+                primaryMuscles: exercise.primaryMuscles || [],
+                secondaryMuscles: exercise.secondaryMuscles || [],
                 sets: [
                   { reps: 10, weight: 0 },
                   { reps: 10, weight: 0 },
@@ -388,7 +392,7 @@ export default function CreateRoutineRoute() {
         <View style={styles.exerciseMetaRow}>
           <View style={styles.metaPill}>
             <Typography variant="paragraph-xsmall" color="contentSecondary">
-              {exercise.muscleGroup}
+              {exercise.primaryMuscles?.join(", ") || "No muscle groups"}
             </Typography>
           </View>
           <Typography variant="paragraph-xsmall" color="contentTertiary">

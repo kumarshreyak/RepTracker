@@ -16,17 +16,25 @@ import (
 	"gymlog-backend/pkg/models"
 )
 
+// JSONFile represents the structure of the exercises.json file
+type JSONFile struct {
+	Categories []string       `json:"categories"`
+	Equipment  []string       `json:"equipment"`
+	Exercises  []JSONExercise `json:"exercises"`
+}
+
 // JSONExercise represents the structure of exercises in the JSON file
 type JSONExercise struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Description  string   `json:"description"`
-	MuscleGroup  string   `json:"muscle_group"`
-	Equipment    string   `json:"equipment"`
-	Difficulty   string   `json:"difficulty"`
-	Instructions []string `json:"instructions"`
-	CreatedAt    string   `json:"created_at"`
-	UpdatedAt    string   `json:"updated_at"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	Category         string   `json:"category"`
+	Equipment        []string `json:"equipment"`
+	PrimaryMuscles   []string `json:"primary_muscles"`
+	SecondaryMuscles []string `json:"secondary_muscles"`
+	Instructions     []string `json:"instructions"`
+	Video            string   `json:"video,omitempty"`
+	VariationsOn     []string `json:"variations_on,omitempty"`
+	VariationOn      []string `json:"variation_on,omitempty"`
 }
 
 func main() {
@@ -57,19 +65,19 @@ func main() {
 	exerciseColl := db.GetCollection("exercises")
 
 	// Read the JSON file
-	jsonFile := filepath.Join("scripts", "strengthlog_exercises.json")
+	jsonFile := filepath.Join("scripts", "exercises.json")
 	jsonData, err := ioutil.ReadFile(jsonFile)
 	if err != nil {
 		log.Fatalf("Failed to read JSON file: %v", err)
 	}
 
 	// Parse JSON data
-	var jsonExercises []JSONExercise
-	if err := json.Unmarshal(jsonData, &jsonExercises); err != nil {
+	var jsonFileData JSONFile
+	if err := json.Unmarshal(jsonData, &jsonFileData); err != nil {
 		log.Fatalf("Failed to parse JSON: %v", err)
 	}
 
-	log.Printf("Found %d exercises in JSON file", len(jsonExercises))
+	log.Printf("Found %d exercises in JSON file", len(jsonFileData.Exercises))
 
 	// Clear existing exercises
 	ctx := context.Background()
@@ -83,38 +91,20 @@ func main() {
 	var exercises []interface{}
 	now := time.Now()
 
-	for _, jsonEx := range jsonExercises {
-		// Parse timestamps if they exist, otherwise use current time
-		var createdAt, updatedAt time.Time
-		if jsonEx.CreatedAt != "" {
-			if parsed, err := time.Parse(time.RFC3339, jsonEx.CreatedAt); err == nil {
-				createdAt = parsed
-			} else {
-				createdAt = now
-			}
-		} else {
-			createdAt = now
-		}
-
-		if jsonEx.UpdatedAt != "" {
-			if parsed, err := time.Parse(time.RFC3339, jsonEx.UpdatedAt); err == nil {
-				updatedAt = parsed
-			} else {
-				updatedAt = now
-			}
-		} else {
-			updatedAt = now
-		}
-
+	for _, jsonEx := range jsonFileData.Exercises {
 		exercise := models.Exercise{
-			Name:         jsonEx.Name,
-			Description:  jsonEx.Description,
-			MuscleGroup:  jsonEx.MuscleGroup,
-			Equipment:    jsonEx.Equipment,
-			Difficulty:   jsonEx.Difficulty,
-			Instructions: jsonEx.Instructions,
-			CreatedAt:    createdAt,
-			UpdatedAt:    updatedAt,
+			Name:             jsonEx.Name,
+			Description:      jsonEx.Description,
+			Category:         jsonEx.Category,
+			Equipment:        jsonEx.Equipment,
+			PrimaryMuscles:   jsonEx.PrimaryMuscles,
+			SecondaryMuscles: jsonEx.SecondaryMuscles,
+			Instructions:     jsonEx.Instructions,
+			Video:            jsonEx.Video,
+			VariationsOn:     jsonEx.VariationsOn,
+			VariationOn:      jsonEx.VariationOn,
+			CreatedAt:        now,
+			UpdatedAt:        now,
 		}
 
 		exercises = append(exercises, exercise)

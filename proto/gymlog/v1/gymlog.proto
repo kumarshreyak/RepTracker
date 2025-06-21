@@ -53,21 +53,29 @@ message Exercise {
   string id = 1;
   string name = 2;
   string description = 3;
-  string muscle_group = 4;
-  string equipment = 5;
-  string difficulty = 6;
-  repeated string instructions = 7;
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  string category = 4;
+  repeated string equipment = 5;
+  repeated string primary_muscles = 6;
+  repeated string secondary_muscles = 7;
+  repeated string instructions = 8;
+  string video = 9;
+  repeated string variations_on = 10;
+  repeated string variation_on = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
 }
 
 message CreateExerciseRequest {
   string name = 1;
   string description = 2;
-  string muscle_group = 3;
-  string equipment = 4;
-  string difficulty = 5;
-  repeated string instructions = 6;
+  string category = 3;
+  repeated string equipment = 4;
+  repeated string primary_muscles = 5;
+  repeated string secondary_muscles = 6;
+  repeated string instructions = 7;
+  string video = 8;
+  repeated string variations_on = 9;
+  repeated string variation_on = 10;
 }
 
 message GetExerciseRequest {
@@ -78,10 +86,14 @@ message UpdateExerciseRequest {
   string id = 1;
   string name = 2;
   string description = 3;
-  string muscle_group = 4;
-  string equipment = 5;
-  string difficulty = 6;
-  repeated string instructions = 7;
+  string category = 4;
+  repeated string equipment = 5;
+  repeated string primary_muscles = 6;
+  repeated string secondary_muscles = 7;
+  repeated string instructions = 8;
+  string video = 9;
+  repeated string variations_on = 10;
+  repeated string variation_on = 11;
 }
 
 message DeleteExerciseRequest {
@@ -91,9 +103,11 @@ message DeleteExerciseRequest {
 message ListExercisesRequest {
   int32 page_size = 1;
   string page_token = 2;
-  string muscle_group = 3; // filter by muscle group
-  string equipment = 4;    // filter by equipment
-  string search = 5;       // search by name, description, muscle group, or equipment
+  repeated string categories = 3;
+  repeated string equipment = 4;
+  repeated string primary_muscles = 5;
+  repeated string secondary_muscles = 6;
+  string search = 7;
 }
 
 message ListExercisesResponse {

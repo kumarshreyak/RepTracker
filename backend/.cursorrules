@@ -1,0 +1,117 @@
+# GymLog Backend Cursor Rules
+
+## 🚀 Backend Development Guidelines
+
+### Data Models & Naming Conventions
+**CRITICAL: Always use camelCase naming for all data models, interfaces, and JSON tags**
+
+#### **Naming Convention Rules:**
+- ✅ **ALWAYS use camelCase**: `muscleGroup`, `exerciseId`, `workoutSession`, `userId`
+- ❌ **NEVER use snake_case**: No `muscle_group`, `exercise_id`, `workout_session`, `user_id`
+- ❌ **NEVER use kebab-case**: No `muscle-group`, `exercise-id`, `workout-session`, `user-id`
+- ✅ **Struct fields**: Use PascalCase for Go struct fields with camelCase JSON tags
+- ✅ **MongoDB BSON tags**: Use camelCase for consistency with JSON
+- ✅ **API responses**: All JSON responses use camelCase
+
+### Exercise Data Management
+**MANDATORY: Always use the exercise constants and models documented in `@pkg/models/EXERCISE_CONSTANTS_README.md`**
+
+Before working with exercise-related code:
+1. **READ EXERCISE_CONSTANTS_README.md** - Review the complete documentation
+2. **Use typed constants** - Never use string literals for categories, equipment, or muscles
+3. **Follow the type system**: Use `ExerciseCategory`, `EquipmentType`, `MuscleType`, and `MuscleGroup`
+4. **Use validation functions** - Always validate user input with `IsValid*` functions
+
+#### Quick Reference:
+- **Categories**: `models.CategoryStrength`, `models.CategoryCardio`, etc.
+- **Equipment**: `models.EquipmentBarbell`, `models.EquipmentDumbbell`, etc.
+- **Muscles**: `models.MuscleBiceps`, `models.MuscleChest`, etc.
+- **Muscle Groups**: `models.MuscleGroupArms`, `models.MuscleGroupLegs`, etc.
+
+#### Example Usage:
+```go
+// ✅ CORRECT - Using typed constants
+filter["category"] = models.CategoryStrength
+if !models.IsValidCategory(userInput) {
+    return errors.New("invalid category")
+}
+
+// ❌ INCORRECT - Using string literals
+filter["category"] = "strength"
+```
+
+### MongoDB Usage
+- **Collection names**: Use lowercase, plural names (e.g., `exercises`, `users`, `workouts`)
+- **Field names**: Use camelCase in BSON tags to match JSON output
+- **Indexes**: Create appropriate indexes for common queries
+- **Aggregations**: Use MongoDB aggregation pipeline for complex queries
+
+### Service Layer Patterns
+1. **Context propagation**: Always pass `context.Context` as the first parameter
+2. **Error handling**: Return meaningful errors, wrap with context when appropriate
+3. **Validation**: Validate input at service layer boundaries
+4. **Transactions**: Use MongoDB transactions for multi-document operations
+
+### API Design
+- **RESTful conventions**: Follow REST principles for HTTP endpoints
+- **gRPC services**: Use Protocol Buffers for service definitions
+- **Response format**: Consistent JSON responses with camelCase fields
+- **Error responses**: Structured error messages with appropriate HTTP status codes
+
+### Testing
+- **Unit tests**: Test individual functions with mocked dependencies
+- **Integration tests**: Test service interactions with real MongoDB instance
+- **Test data**: Use the exercise constants for test fixtures
+
+### Documentation References
+- **EXERCISE_CONSTANTS_README.md**: Complete guide for exercise constants and models
+- **exercise_constants.go**: Type definitions for categories, equipment, and muscles
+- **exercise_filters.go**: Filter and query models for advanced searches
+- **user.go**: Core data models including the updated Exercise struct
+
+### Best Practices
+1. **Type safety**: Leverage Go's type system with the defined constants
+2. **Validation**: Always validate external input using the provided functions
+3. **Consistency**: Use the same naming conventions throughout the codebase
+4. **Performance**: Use appropriate indexes and limit query results
+5. **Security**: Sanitize user input and use parameterized queries
+
+## Example: Working with Exercises
+
+```go
+import "gymlog-backend/pkg/models"
+
+// Creating a filter for strength exercises
+func GetStrengthExercises(ctx context.Context) ([]*models.Exercise, error) {
+    filter := bson.M{
+        "category": models.CategoryStrength,
+    }
+    return exerciseCollection.Find(ctx, filter)
+}
+
+// Validating exercise data
+func ValidateExercise(exercise *models.Exercise) error {
+    if !models.IsValidCategory(exercise.Category) {
+        return fmt.Errorf("invalid category: %s", exercise.Category)
+    }
+    
+    for _, equip := range exercise.Equipment {
+        if !models.IsValidEquipment(equip) {
+            return fmt.Errorf("invalid equipment: %s", equip)
+        }
+    }
+    
+    return nil
+}
+
+// Using muscle group mapping
+func GetArmExercises(ctx context.Context) ([]*models.Exercise, error) {
+    armMuscles := models.GetMusclesInGroup(models.MuscleGroupArms)
+    filter := bson.M{
+        "primaryMuscles": bson.M{"$in": armMuscles},
+    }
+    return exerciseCollection.Find(ctx, filter)
+}
+```
+
+**Remember: Always use the typed constants and validation functions. When in doubt, check EXERCISE_CONSTANTS_README.md for proper usage patterns.** 
