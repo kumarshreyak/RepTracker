@@ -326,6 +326,14 @@ message IntensityMetrics {
   double load_density = 5;           // Total Volume / Total Workout Time (minutes)
 }
 
+message StrengthMetrics {
+  map<string, double> estimated_one_rm_epley = 1;   // Exercise ID -> 1RM using Epley formula
+  map<string, double> estimated_one_rm_brzycki = 2; // Exercise ID -> 1RM using Brzycki formula
+  double wilks_score = 3;                           // Wilks coefficient for powerlifting comparison
+  double push_pull_ratio = 4;                       // Push volume / Pull volume ratio
+  double power_output = 5;                          // (Weight × Distance × Reps) / Time
+}
+
 message SetMetrics {
   int32 total_sets = 1;
   int32 completed_sets = 2;
@@ -354,11 +362,12 @@ message WorkoutMetrics {
   VolumeMetrics volume_metrics = 6;
   PerformanceMetrics performance_metrics = 7;
   IntensityMetrics intensity_metrics = 8;
-  SetMetrics set_metrics = 9;
-  repeated ExerciseMetrics exercise_metrics = 10;
-  int32 workout_duration_secs = 11;
-  google.protobuf.Timestamp created_at = 12;
-  google.protobuf.Timestamp updated_at = 13;
+  StrengthMetrics strength_metrics = 9;
+  SetMetrics set_metrics = 10;
+  repeated ExerciseMetrics exercise_metrics = 11;
+  int32 workout_duration_secs = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
 }
 
 message PeriodMetrics {

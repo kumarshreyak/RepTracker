@@ -63,6 +63,11 @@ func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *m
 		return nil, fmt.Errorf("failed to calculate intensity metrics: %w", err)
 	}
 
+	metrics.StrengthMetrics, err = m.calculateStrengthMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate strength metrics: %w", err)
+	}
+
 	metrics.SetMetrics = m.calculateSetMetrics(session)
 
 	metrics.ExerciseMetrics, err = m.calculateExerciseMetrics(ctx, session)
@@ -259,6 +264,162 @@ func (m *MetricsService) calculateOneRM(weight float64, reps int32) float64 {
 	}
 	// Epley formula: 1RM = weight × (1 + reps/30)
 	return weight * (1 + float64(reps)/30.0)
+}
+
+// calculateOneRMBrzycki estimates 1RM using the Brzycki formula
+func (m *MetricsService) calculateOneRMBrzycki(weight float64, reps int32) float64 {
+	if reps <= 0 {
+		return 0
+	}
+	if reps == 1 {
+		return weight
+	}
+	if reps >= 37 {
+		// Formula becomes invalid for reps >= 37, use Epley instead
+		return m.calculateOneRM(weight, reps)
+	}
+	// Brzycki formula: 1RM = weight × (36 / (37 - reps))
+	return weight * (36.0 / (37.0 - float64(reps)))
+}
+
+func (m *MetricsService) calculateStrengthMetrics(ctx context.Context, session *models.WorkoutSession) (models.StrengthMetrics, error) {
+	estimatedOneRMEpley := make(map[string]float64)
+	estimatedOneRMBrzycki := make(map[string]float64)
+
+	var pushVolume, pullVolume float64
+	var totalPowerOutput float64
+	var maxWeightLifted float64
+
+	// Default body weight for Wilks calculation (TODO: get from user profile)
+	bodyWeight := 75.0 // kg - this should be retrieved from user profile when available
+
+	// Default gender for Wilks calculation (TODO: get from user profile)
+	isMale := true // this should be retrieved from user profile when available
+
+	for _, exercise := range session.Exercises {
+		exerciseDetails, err := m.exerciseService.GetExercise(ctx, &pb.GetExerciseRequest{Id: exercise.ExerciseID.Hex()})
+		if err != nil {
+			continue
+		}
+
+		var maxWeightForExercise float64
+		var maxRepsAtMaxWeight int32
+
+		for _, set := range exercise.Sets {
+			if !set.Completed {
+				continue
+			}
+
+			weight := float64(set.ActualWeight)
+			reps := set.ActualReps
+
+			// Track max weight for this exercise
+			if weight > maxWeightForExercise {
+				maxWeightForExercise = weight
+				maxRepsAtMaxWeight = reps
+			}
+
+			// Track overall max weight for Wilks calculation
+			if weight > maxWeightLifted {
+				maxWeightLifted = weight
+			}
+
+			// Calculate push/pull volume
+			setVolume := weight * float64(reps)
+			isPush := false
+			isPull := false
+
+			for _, muscle := range exerciseDetails.PrimaryMuscles {
+				if models.PushMuscles[muscle] {
+					isPush = true
+				}
+				if models.PullMuscles[muscle] {
+					isPull = true
+				}
+			}
+
+			if isPush {
+				pushVolume += setVolume
+			}
+			if isPull {
+				pullVolume += setVolume
+			}
+
+			// Calculate power output (simplified - assuming 1 meter distance for most exercises)
+			// Power = (Weight × Distance × Reps) / Time
+			// For now, we'll use a simplified calculation without precise distance and time per set
+			distance := 1.0 // meters - this is a simplification
+			if session.DurationSeconds > 0 {
+				timePerSet := float64(session.DurationSeconds) / float64(m.getTotalSets(session)) // approximate time per set
+				if timePerSet > 0 {
+					setPower := (weight * distance * float64(reps)) / timePerSet
+					totalPowerOutput += setPower
+				}
+			}
+		}
+
+		// Calculate 1RM estimates for this exercise
+		if maxWeightForExercise > 0 && maxRepsAtMaxWeight > 0 {
+			exerciseID := exercise.ExerciseID.Hex()
+			estimatedOneRMEpley[exerciseID] = m.calculateOneRM(maxWeightForExercise, maxRepsAtMaxWeight)
+			estimatedOneRMBrzycki[exerciseID] = m.calculateOneRMBrzycki(maxWeightForExercise, maxRepsAtMaxWeight)
+		}
+	}
+
+	// Calculate push:pull ratio
+	var pushPullRatio float64
+	if pullVolume > 0 {
+		pushPullRatio = pushVolume / pullVolume
+	}
+
+	// Calculate Wilks score using the heaviest lift
+	wilksScore := m.calculateWilksScore(maxWeightLifted, bodyWeight, isMale)
+
+	return models.StrengthMetrics{
+		EstimatedOneRMEpley:   estimatedOneRMEpley,
+		EstimatedOneRMBrzycki: estimatedOneRMBrzycki,
+		WilksScore:            wilksScore,
+		PushPullRatio:         pushPullRatio,
+		PowerOutput:           totalPowerOutput,
+	}, nil
+}
+
+// calculateWilksScore calculates the Wilks coefficient for powerlifting comparison
+func (m *MetricsService) calculateWilksScore(weightLifted, bodyWeight float64, isMale bool) float64 {
+	if weightLifted <= 0 || bodyWeight <= 0 {
+		return 0
+	}
+
+	var coeffs models.WilksCoefficients
+	if isMale {
+		coeffs = models.WilksMaleCoefficients
+	} else {
+		coeffs = models.WilksFemaleCoefficients
+	}
+
+	// Wilks formula: Wilks = Weight Lifted × 500 / (a + b×BW + c×BW² + d×BW³ + e×BW⁴ + f×BW⁵)
+	bw := bodyWeight
+	denominator := coeffs.A +
+		coeffs.B*bw +
+		coeffs.C*bw*bw +
+		coeffs.D*bw*bw*bw +
+		coeffs.E*bw*bw*bw*bw +
+		coeffs.F*bw*bw*bw*bw*bw
+
+	if denominator == 0 {
+		return 0
+	}
+
+	return weightLifted * 500.0 / denominator
+}
+
+// getTotalSets returns the total number of sets in a workout session
+func (m *MetricsService) getTotalSets(session *models.WorkoutSession) int {
+	totalSets := 0
+	for _, exercise := range session.Exercises {
+		totalSets += len(exercise.Sets)
+	}
+	return totalSets
 }
 
 func (m *MetricsService) calculateSetMetrics(session *models.WorkoutSession) models.SetMetrics {
@@ -766,6 +927,7 @@ func (m *MetricsService) workoutMetricsToProto(workoutMetrics *models.WorkoutMet
 		VolumeMetrics:       m.volumeMetricsToProto(&workoutMetrics.VolumeMetrics),
 		PerformanceMetrics:  m.performanceMetricsToProto(&workoutMetrics.PerformanceMetrics),
 		IntensityMetrics:    m.intensityMetricsToProto(&workoutMetrics.IntensityMetrics),
+		StrengthMetrics:     m.strengthMetricsToProto(&workoutMetrics.StrengthMetrics),
 		SetMetrics:          m.setMetricsToProto(&workoutMetrics.SetMetrics),
 		ExerciseMetrics:     exerciseMetrics,
 		WorkoutDurationSecs: workoutMetrics.WorkoutDurationSecs,
@@ -808,6 +970,16 @@ func (m *MetricsService) setMetricsToProto(sm *models.SetMetrics) *pb.SetMetrics
 		TotalSets:      sm.TotalSets,
 		CompletedSets:  sm.CompletedSets,
 		CompletionRate: sm.CompletionRate,
+	}
+}
+
+func (m *MetricsService) strengthMetricsToProto(sm *models.StrengthMetrics) *pb.StrengthMetrics {
+	return &pb.StrengthMetrics{
+		EstimatedOneRmEpley:   sm.EstimatedOneRMEpley,
+		EstimatedOneRmBrzycki: sm.EstimatedOneRMBrzycki,
+		WilksScore:            sm.WilksScore,
+		PushPullRatio:         sm.PushPullRatio,
+		PowerOutput:           sm.PowerOutput,
 	}
 }
 

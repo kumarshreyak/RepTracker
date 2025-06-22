@@ -29,6 +29,14 @@ type IntensityMetrics struct {
 	LoadDensity           float64            `bson:"loadDensity" json:"loadDensity"`                     // Total Volume / Total Workout Time (minutes)
 }
 
+type StrengthMetrics struct {
+	EstimatedOneRMEpley   map[string]float64 `bson:"estimatedOneRmEpley" json:"estimatedOneRmEpley"`     // Exercise ID -> 1RM using Epley formula
+	EstimatedOneRMBrzycki map[string]float64 `bson:"estimatedOneRmBrzycki" json:"estimatedOneRmBrzycki"` // Exercise ID -> 1RM using Brzycki formula
+	WilksScore            float64            `bson:"wilksScore" json:"wilksScore"`                       // Wilks coefficient for powerlifting comparison
+	PushPullRatio         float64            `bson:"pushPullRatio" json:"pushPullRatio"`                 // Push volume / Pull volume ratio
+	PowerOutput           float64            `bson:"powerOutput" json:"powerOutput"`                     // (Weight × Distance × Reps) / Time
+}
+
 type SetMetrics struct {
 	TotalSets      int32   `bson:"totalSets" json:"totalSets"`
 	CompletedSets  int32   `bson:"completedSets" json:"completedSets"`
@@ -57,6 +65,7 @@ type WorkoutMetrics struct {
 	VolumeMetrics       VolumeMetrics      `bson:"volumeMetrics" json:"volumeMetrics"`
 	PerformanceMetrics  PerformanceMetrics `bson:"performanceMetrics" json:"performanceMetrics"`
 	IntensityMetrics    IntensityMetrics   `bson:"intensityMetrics" json:"intensityMetrics"`
+	StrengthMetrics     StrengthMetrics    `bson:"strengthMetrics" json:"strengthMetrics"`
 	SetMetrics          SetMetrics         `bson:"setMetrics" json:"setMetrics"`
 	ExerciseMetrics     []ExerciseMetrics  `bson:"exerciseMetrics" json:"exerciseMetrics"`
 	WorkoutDurationSecs int32              `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
@@ -114,4 +123,42 @@ type MuscleGroupConstants struct {
 var DefaultMuscleGroupWeights = MuscleGroupConstants{
 	PrimaryMultiplier:   1.0,
 	SecondaryMultiplier: 0.6,
+}
+
+// Push/Pull muscle group classifications for strength ratios
+var PushMuscles = map[string]bool{
+	"chest":     true,
+	"triceps":   true,
+	"shoulders": true,
+}
+
+var PullMuscles = map[string]bool{
+	"lats":        true,
+	"middle back": true,
+	"rhomboids":   true,
+	"traps":       true,
+	"biceps":      true,
+}
+
+// Wilks coefficient constants for male/female
+type WilksCoefficients struct {
+	A, B, C, D, E, F float64
+}
+
+var WilksMaleCoefficients = WilksCoefficients{
+	A: -216.0475144,
+	B: 16.2606339,
+	C: -0.002388645,
+	D: -0.00113732,
+	E: 7.01863e-06,
+	F: -1.291e-08,
+}
+
+var WilksFemaleCoefficients = WilksCoefficients{
+	A: 594.31747775582,
+	B: -27.23842536447,
+	C: 0.82112226871,
+	D: -0.00930733913,
+	E: 4.731582e-05,
+	F: -9.054e-08,
 }

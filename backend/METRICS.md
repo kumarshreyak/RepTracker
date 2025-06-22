@@ -99,21 +99,66 @@ The GymLog metrics system automatically calculates comprehensive workout analyti
 - Indicates workout efficiency and pace
 - Higher density suggests more intense, faster-paced training
 
+### Strength & Performance Metrics
+
+#### 14. Estimated 1RM (Epley Formula)
+**Formula**: `1RM = Weight × (1 + Reps/30)`
+- Classic formula for estimating one-rep maximum
+- Calculated per exercise using heaviest set
+- Accurate for rep ranges 1-10, less reliable above 10 reps
+
+#### 15. Estimated 1RM (Brzycki Formula)
+**Formula**: `1RM = Weight × (36 / (37 - Reps))`
+- Alternative 1RM estimation formula
+- Generally more conservative than Epley
+- Invalid for reps ≥ 37 (falls back to Epley)
+- Better for higher rep ranges (6-15 reps)
+
+#### 16. Wilks Score
+**Formula**: `Wilks = Weight Lifted × 500 / (a + b×BW + c×BW² + d×BW³ + e×BW⁴ + f×BW⁵)`
+- Powerlifting comparison metric accounting for body weight
+- Uses gender-specific coefficients (male/female)
+- Allows comparison of strength across different body weights
+- Based on heaviest lift in the session
+
+**Male Coefficients:**
+- a = -216.0475144, b = 16.2606339, c = -0.002388645
+- d = -0.00113732, e = 7.01863e-06, f = -1.291e-08
+
+**Female Coefficients:**
+- a = 594.31747775582, b = -27.23842536447, c = 0.82112226871
+- d = -0.00930733913, e = 4.731582e-05, f = -9.054e-08
+
+#### 17. Push:Pull Ratio
+**Formula**: `Σ(Push Volume) / Σ(Pull Volume)`
+- Balance metric for upper body training
+- **Push muscles**: chest, triceps, shoulders
+- **Pull muscles**: lats, middle back, rhomboids, traps, biceps
+- **Ideal range**: 1:1 to 1:1.5 (slightly favoring pull)
+- Values >1.5 may indicate push dominance
+
+#### 18. Power Output
+**Formula**: `(Weight × Distance × Reps) / Time`
+- Measures training power and explosiveness
+- Currently uses simplified distance calculation (1m per rep)
+- Time distributed across all sets in workout
+- Higher values indicate more explosive, powerful training
+
 ### Volume Landmarks (MEV/MAV/MRV)
 
-#### 14. Minimum Effective Volume (MEV)
+#### 19. Minimum Effective Volume (MEV)
 **Formula**: `max(average × 0.75, average - std_deviation)`
 - Minimum volume needed for progress
 - Based on 8 weeks of historical data
 - Falls back to 10 sets/week equivalent if insufficient data
 
-#### 15. Maximum Adaptive Volume (MAV)
+#### 20. Maximum Adaptive Volume (MAV)
 **Formula**: `average + (std_deviation × 0.5)`
 - Volume at peak progress rate
 - Sweet spot for muscle growth
 - Falls back to 17.5 sets/week equivalent if insufficient data
 
-#### 16. Maximum Recoverable Volume (MRV)
+#### 21. Maximum Recoverable Volume (MRV)
 **Formula**: `average + (std_deviation × 1.5)`
 - Maximum volume before performance decline
 - Upper limit for training volume
@@ -121,12 +166,12 @@ The GymLog metrics system automatically calculates comprehensive workout analyti
 
 ### Trend Metrics
 
-#### 17. Volume Progression
+#### 22. Volume Progression
 - Historical volume data points over time
 - Tracks workout-to-workout changes
 - Supports weekly and monthly views
 
-#### 18. Volume Growth Rate
+#### 23. Volume Growth Rate
 **Formula**: `(Current Period Volume - Previous Period Volume) / Previous Period Volume × 100`
 - Percentage change in volume between periods
 - Indicates training progression trends
@@ -198,6 +243,14 @@ type IntensityMetrics struct {
     LoadDensity           float64            `bson:"loadDensity" json:"loadDensity"`
 }
 
+type StrengthMetrics struct {
+    EstimatedOneRMEpley   map[string]float64 `bson:"estimatedOneRmEpley" json:"estimatedOneRmEpley"`
+    EstimatedOneRMBrzycki map[string]float64 `bson:"estimatedOneRmBrzycki" json:"estimatedOneRmBrzycki"`
+    WilksScore            float64            `bson:"wilksScore" json:"wilksScore"`
+    PushPullRatio         float64            `bson:"pushPullRatio" json:"pushPullRatio"`
+    PowerOutput           float64            `bson:"powerOutput" json:"powerOutput"`
+}
+
 type WorkoutMetrics struct {
     ID                   primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
     UserID               primitive.ObjectID  `bson:"userId" json:"userId"`
@@ -207,6 +260,7 @@ type WorkoutMetrics struct {
     VolumeMetrics        VolumeMetrics       `bson:"volumeMetrics" json:"volumeMetrics"`
     PerformanceMetrics   PerformanceMetrics  `bson:"performanceMetrics" json:"performanceMetrics"`
     IntensityMetrics     IntensityMetrics    `bson:"intensityMetrics" json:"intensityMetrics"`
+    StrengthMetrics      StrengthMetrics     `bson:"strengthMetrics" json:"strengthMetrics"`
     SetMetrics           SetMetrics          `bson:"setMetrics" json:"setMetrics"`
     ExerciseMetrics      []ExerciseMetrics   `bson:"exerciseMetrics" json:"exerciseMetrics"`
     WorkoutDurationSecs  int32               `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
@@ -325,17 +379,55 @@ var DefaultMuscleGroupWeights = MuscleGroupConstants{
 }
 ```
 
+**Push/Pull Muscle Classifications**:
+```go
+var PushMuscles = map[string]bool{
+    "chest":     true,
+    "triceps":   true,
+    "shoulders": true,
+}
+
+var PullMuscles = map[string]bool{
+    "lats":        true,
+    "middle back": true,
+    "rhomboids":   true,
+    "traps":       true,
+    "biceps":      true,
+}
+```
+
+**Wilks Coefficients**:
+```go
+var WilksMaleCoefficients = WilksCoefficients{
+    A: -216.0475144, B: 16.2606339, C: -0.002388645,
+    D: -0.00113732, E: 7.01863e-06, F: -1.291e-08,
+}
+
+var WilksFemaleCoefficients = WilksCoefficients{
+    A: 594.31747775582, B: -27.23842536447, C: 0.82112226871,
+    D: -0.00930733913, E: 4.731582e-05, F: -9.054e-08,
+}
+```
+
 **RPE Thresholds**:
 - Effective/Hard sets: RPE ≥ 7
 - Configurable in calculation logic
 
 **1RM Estimation**:
 - Uses Epley formula: `1RM = Weight × (1 + Reps/30)`
+- Uses Brzycki formula: `1RM = Weight × (36 / (37 - Reps))`
 - Applied for intensity calculations and zone classifications
+- Brzycki falls back to Epley for reps ≥ 37
 
 **Volume Landmark Periods**:
 - Based on 8 weeks of historical data
 - Fallback to sensible defaults when insufficient data
+
+**Strength Metrics Configuration**:
+- Body weight defaults to 75kg (TODO: integrate with user profile)
+- Gender defaults to male (TODO: integrate with user profile)
+- Power output uses simplified 1m distance per rep
+- Push/pull classification based on primary muscles only
 
 ## Usage Examples
 
@@ -376,6 +468,20 @@ fmt.Printf("Hard Sets: %d", workoutMetrics.VolumeMetrics.HardSets)
 fmt.Printf("Average Intensity: %.1f%%", workoutMetrics.IntensityMetrics.AverageIntensity)
 fmt.Printf("Load Density: %.2f", workoutMetrics.IntensityMetrics.LoadDensity)
 fmt.Printf("Light Sets: %.1f%%", workoutMetrics.IntensityMetrics.IntensityDistribution["light"])
+
+// Access strength metrics
+fmt.Printf("Wilks Score: %.2f", workoutMetrics.StrengthMetrics.WilksScore)
+fmt.Printf("Push:Pull Ratio: %.2f", workoutMetrics.StrengthMetrics.PushPullRatio)
+fmt.Printf("Power Output: %.2f", workoutMetrics.StrengthMetrics.PowerOutput)
+
+// Access 1RM estimates per exercise
+for exerciseID, oneRM := range workoutMetrics.StrengthMetrics.EstimatedOneRMEpley {
+    fmt.Printf("Exercise %s - Estimated 1RM (Epley): %.2f kg", exerciseID, oneRM)
+}
+
+for exerciseID, oneRM := range workoutMetrics.StrengthMetrics.EstimatedOneRMBrzycki {
+    fmt.Printf("Exercise %s - Estimated 1RM (Brzycki): %.2f kg", exerciseID, oneRM)
+}
 ```
 
 ### Querying Historical Data
