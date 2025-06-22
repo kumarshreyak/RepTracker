@@ -204,6 +204,7 @@ type WorkoutSessionResponse struct {
 	FinishedAt      *time.Time                       `json:"finishedAt,omitempty"`
 	DurationSeconds int32                            `json:"durationSeconds"`
 	Notes           string                           `json:"notes"`
+	RPERating       int32                            `json:"rpeRating,omitempty"`
 	IsActive        bool                             `json:"isActive"`
 	CreatedAt       time.Time                        `json:"createdAt"`
 	UpdatedAt       time.Time                        `json:"updatedAt"`
@@ -224,6 +225,7 @@ type UpdateWorkoutSessionRequest struct {
 	FinishedAt      *time.Time                       `json:"finishedAt,omitempty"`
 	DurationSeconds int32                            `json:"durationSeconds,omitempty"`
 	Notes           string                           `json:"notes,omitempty"`
+	RPERating       int32                            `json:"rpeRating,omitempty"`
 	IsActive        *bool                            `json:"isActive,omitempty"`
 }
 
@@ -808,6 +810,7 @@ func workoutSessionToResponse(pb *pb.WorkoutSession) WorkoutSessionResponse {
 		FinishedAt:      finishedAt,
 		DurationSeconds: pb.DurationSeconds,
 		Notes:           pb.Notes,
+		RPERating:       pb.RpeRating,
 		IsActive:        pb.IsActive,
 		CreatedAt:       pb.CreatedAt.AsTime(),
 		UpdatedAt:       pb.UpdatedAt.AsTime(),
@@ -940,6 +943,7 @@ func (s *Server) handleUpdateWorkoutSession(w http.ResponseWriter, r *http.Reque
 		Description:     req.Description,
 		DurationSeconds: req.DurationSeconds,
 		Notes:           req.Notes,
+		RpeRating:       req.RPERating,
 	}
 
 	if req.FinishedAt != nil {

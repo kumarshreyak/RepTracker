@@ -260,6 +260,9 @@ func (s *WorkoutSessionService) UpdateWorkoutSession(ctx context.Context, req *p
 	if req.Notes != "" {
 		update["notes"] = req.Notes
 	}
+	if req.RpeRating > 0 {
+		update["rpe_rating"] = req.RpeRating
+	}
 	if req.IsActive != update["is_active"] {
 		update["is_active"] = req.IsActive
 	}
@@ -575,6 +578,7 @@ func (s *WorkoutSessionService) modelToProto(session *models.WorkoutSession) *pb
 		FinishedAt:      finishedAt,
 		DurationSeconds: session.DurationSeconds,
 		Notes:           session.Notes,
+		RpeRating:       session.RPERating,
 		IsActive:        session.IsActive,
 		CreatedAt:       timestamppb.New(session.CreatedAt),
 		UpdatedAt:       timestamppb.New(session.UpdatedAt),

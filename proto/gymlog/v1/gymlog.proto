@@ -234,6 +234,7 @@ message WorkoutSession {
   bool is_active = 11; // true if session is in progress
   google.protobuf.Timestamp created_at = 12;
   google.protobuf.Timestamp updated_at = 13;
+  int32 rpe_rating = 14; // Rate of Perceived Exertion (1-10 scale)
 }
 
 message CreateWorkoutSessionRequest {
@@ -257,6 +258,7 @@ message UpdateWorkoutSessionRequest {
   int32 duration_seconds = 6;
   string notes = 7;
   bool is_active = 8;
+  int32 rpe_rating = 9; // Rate of Perceived Exertion (1-10 scale)
 }
 
 message DeleteWorkoutSessionRequest {
