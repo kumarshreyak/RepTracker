@@ -287,7 +287,11 @@ export default function HomeTab() {
     const completionPercentage = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
     
     return (
-      <View key={session.id} style={styles.workoutChip}>
+      <Pressable 
+        key={session.id} 
+        style={styles.workoutChip}
+        onPress={() => router.push(`/workout-detail?id=${session.id}`)}
+      >
         <View style={styles.workoutChipContent}>
           <Typography variant="label-xsmall" color="contentPrimary" style={styles.workoutChipName}>
             {session.name.replace(/ - \d+\/\d+\/\d+/, '')}
@@ -305,7 +309,7 @@ export default function HomeTab() {
             ]} 
           />
         </View>
-      </View>
+      </Pressable>
     );
   };
 
