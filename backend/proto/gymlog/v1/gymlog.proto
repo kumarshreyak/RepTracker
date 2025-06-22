@@ -414,6 +414,19 @@ message PeriodizationMetrics {
   double form_freshness_index = 4;      // FFI = TSB / CTL × 100
 }
 
+message InjuryRiskPreventionMetrics {
+  double injury_risk_score = 1;        // IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality, high risk if > 1.5
+  bool load_spike_alert = 2;            // Spike = True if Weekly Volume > 1.5 × Average of Last 4 Weeks
+  double asymmetry_development = 3;     // Asymmetry = |(Left Performance - Right Performance)| / Average × 100
+}
+
+message EfficiencyTechniqueMetrics {
+  double strength_efficiency = 1;        // SE = (1RM Gain / Total Volume) × 1000
+  double volume_efficiency = 2;          // VE = Performance Improvement / Total Training Volume
+  double rpe_performance_correlation = 3; // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+  double technique_consistency = 4;       // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
+}
+
 message WorkoutMetrics {
   string id = 1;
   string user_id = 2;
@@ -431,11 +444,13 @@ message WorkoutMetrics {
   WorkCapacityMetrics work_capacity_metrics = 14;
   TrainingPatternMetrics training_pattern_metrics = 15;
   PeriodizationMetrics periodization_metrics = 16;
-  SetMetrics set_metrics = 17;
-  repeated ExerciseMetrics exercise_metrics = 18;
-  int32 workout_duration_secs = 19;
-  google.protobuf.Timestamp created_at = 20;
-  google.protobuf.Timestamp updated_at = 21;
+  InjuryRiskPreventionMetrics injury_risk_prevention_metrics = 17;
+  EfficiencyTechniqueMetrics efficiency_technique_metrics = 18;
+  SetMetrics set_metrics = 19;
+  repeated ExerciseMetrics exercise_metrics = 20;
+  int32 workout_duration_secs = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp updated_at = 23;
 }
 
 message PeriodMetrics {

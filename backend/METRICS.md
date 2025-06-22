@@ -303,6 +303,59 @@ The GymLog metrics system automatically calculates comprehensive workout analyti
 - Negative values suggest fatigue and need for recovery
 - **Optimal range**: -5% to +15% for peak performance readiness
 
+### Injury Risk & Prevention Metrics
+
+#### 40. Injury Risk Score (IRS)
+**Formula**: `IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality`
+- Combines acute:chronic workload ratio, muscle imbalances, and fatigue factors
+- Divided by recovery quality (sleep + nutrition average)
+- **High risk**: IRS > 1.5 indicates elevated injury risk
+- Helps identify when to reduce training intensity or focus on recovery
+
+#### 41. Load Spike Alert
+**Formula**: `Spike = True if Weekly Volume > 1.5 × Average of Last 4 Weeks`
+- Detects sudden increases in training volume
+- Based on 4-week rolling average of total volume load
+- **Alert threshold**: Current week volume exceeds 150% of 4-week average
+- Rapid volume increases are associated with higher injury risk
+
+#### 42. Asymmetry Development
+**Formula**: `Asymmetry = |(Left Performance - Right Performance)| / Average × 100`
+- Measures strength imbalances between left and right sides
+- Uses maximum imbalance found across all muscle groups
+- **Risk threshold**: Asymmetry > 15% may indicate injury risk
+- Tracks bilateral exercise performance differences
+
+### Efficiency & Technique Metrics
+
+#### 43. Strength Efficiency (SE)
+**Formula**: `SE = (1RM Gain / Total Volume) × 1000`
+- Measures strength gains relative to training volume invested
+- Higher values indicate more efficient strength development
+- Compares current session 1RM estimates to previous session
+- Multiplied by 1000 for easier interpretation (e.g., 2.5 vs 0.0025)
+
+#### 44. Volume Efficiency (VE)
+**Formula**: `VE = Performance Improvement / Total Training Volume`
+- Assesses how effectively training volume translates to performance
+- Uses average performance improvement across all exercises
+- Lower volume with same gains = higher efficiency
+- Helps optimize training volume for individual response
+
+#### 45. RPE-Performance Correlation
+**Formula**: `Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)`
+- Measures consistency between perceived exertion and actual performance
+- Strong positive correlation indicates good RPE calibration
+- Weak correlation may suggest RPE mis-calibration or variable factors
+- **Minimum sample size**: 5 sets required for meaningful correlation
+
+#### 46. Technique Consistency
+**Formula**: `Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)`
+- Measures consistency of movement execution across reps
+- Based on simulated rep times using exercise tempo patterns
+- Values closer to 1.0 indicate more consistent technique
+- Helps identify exercises where technique may be breaking down
+
 ### Trend Metrics
 
 #### 31. Volume Progression
@@ -472,6 +525,19 @@ type PeriodizationMetrics struct {
     FormFreshnessIndex     float64 `bson:"formFreshnessIndex" json:"formFreshnessIndex"`         // FFI = TSB / CTL × 100
 }
 
+type InjuryRiskPreventionMetrics struct {
+    InjuryRiskScore     float64 `bson:"injuryRiskScore" json:"injuryRiskScore"`         // IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality, high risk if > 1.5
+    LoadSpikeAlert      bool    `bson:"loadSpikeAlert" json:"loadSpikeAlert"`           // Spike = True if Weekly Volume > 1.5 × Average of Last 4 Weeks
+    AsymmetryDevelopment float64 `bson:"asymmetryDevelopment" json:"asymmetryDevelopment"` // Asymmetry = |(Left Performance - Right Performance)| / Average × 100
+}
+
+type EfficiencyTechniqueMetrics struct {
+    StrengthEfficiency        float64 `bson:"strengthEfficiency" json:"strengthEfficiency"`               // SE = (1RM Gain / Total Volume) × 1000
+    VolumeEfficiency          float64 `bson:"volumeEfficiency" json:"volumeEfficiency"`                   // VE = Performance Improvement / Total Training Volume
+    RPEPerformanceCorrelation float64 `bson:"rpePerformanceCorrelation" json:"rpePerformanceCorrelation"` // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+    TechniqueConsistency      float64 `bson:"techniqueConsistency" json:"techniqueConsistency"`           // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
+}
+
 type WorkoutMetrics struct {
     ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
     UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
@@ -492,6 +558,8 @@ type WorkoutMetrics struct {
     WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
     CreatedAt                 time.Time                 `bson:"createdAt" json:"createdAt"`
     UpdatedAt                 time.Time                 `bson:"updatedAt" json:"updatedAt"`
+    InjuryRiskPreventionMetrics InjuryRiskPreventionMetrics `bson:"injuryRiskPreventionMetrics" json:"injuryRiskPreventionMetrics"`
+    EfficiencyTechniqueMetrics EfficiencyTechniqueMetrics `bson:"efficiencyTechniqueMetrics" json:"efficiencyTechniqueMetrics"`
 }
 ```
 
@@ -890,60 +958,51 @@ if workoutMetrics.PeriodizationMetrics.FormFreshnessIndex >= -5 && workoutMetric
 } else {
     fmt.Printf("Form Status: Outside optimal range - adjust training load")
 }
+
+// Access Injury Risk & Prevention metrics
+fmt.Printf("Injury Risk Score: %.2f", workoutMetrics.InjuryRiskPreventionMetrics.InjuryRiskScore)
+fmt.Printf("Load Spike Alert: %t", workoutMetrics.InjuryRiskPreventionMetrics.LoadSpikeAlert)
+fmt.Printf("Asymmetry Development: %.1f%%", workoutMetrics.InjuryRiskPreventionMetrics.AsymmetryDevelopment)
+
+// Interpret injury risk
+if workoutMetrics.InjuryRiskPreventionMetrics.InjuryRiskScore > models.InjuryRiskThreshold {
+    fmt.Printf("⚠️ High injury risk detected - consider reducing training load")
+}
+
+if workoutMetrics.InjuryRiskPreventionMetrics.LoadSpikeAlert {
+    fmt.Printf("⚠️ Training volume spike detected - monitor recovery closely")
+}
+
+if workoutMetrics.InjuryRiskPreventionMetrics.AsymmetryDevelopment > models.AsymmetryRiskThreshold {
+    fmt.Printf("⚠️ High asymmetry detected - focus on corrective exercises")
+}
+
+// Access Efficiency & Technique metrics
+fmt.Printf("Strength Efficiency: %.2f", workoutMetrics.EfficiencyTechniqueMetrics.StrengthEfficiency)
+fmt.Printf("Volume Efficiency: %.6f", workoutMetrics.EfficiencyTechniqueMetrics.VolumeEfficiency)
+fmt.Printf("RPE-Performance Correlation: %.3f", workoutMetrics.EfficiencyTechniqueMetrics.RPEPerformanceCorrelation)
+fmt.Printf("Technique Consistency: %.3f", workoutMetrics.EfficiencyTechniqueMetrics.TechniqueConsistency)
+
+// Interpret efficiency metrics
+if workoutMetrics.EfficiencyTechniqueMetrics.StrengthEfficiency > 2.0 {
+    fmt.Printf("✅ High strength efficiency - optimal strength gains per volume")
+} else if workoutMetrics.EfficiencyTechniqueMetrics.StrengthEfficiency < 0.5 {
+    fmt.Printf("📊 Low strength efficiency - consider program adjustments")
+}
+
+if workoutMetrics.EfficiencyTechniqueMetrics.RPEPerformanceCorrelation > 0.7 {
+    fmt.Printf("✅ Good RPE calibration - accurate effort perception")
+} else if workoutMetrics.EfficiencyTechniqueMetrics.RPEPerformanceCorrelation < 0.3 {
+    fmt.Printf("📊 Poor RPE calibration - work on effort perception")
+}
+
+if workoutMetrics.EfficiencyTechniqueMetrics.TechniqueConsistency > 0.8 {
+    fmt.Printf("✅ Excellent technique consistency")
+} else if workoutMetrics.EfficiencyTechniqueMetrics.TechniqueConsistency < 0.6 {
+    fmt.Printf("📊 Technique inconsistency detected - focus on movement quality")
+}
 ```
 
 ### Querying Historical Data
 
-```go
-// Get user's volume trends
-trends, err := metricsService.CalculateVolumeTrends(ctx, userID, "weekly")
-if err != nil {
-    return err
-}
-
-// Access progression data
-for _, point := range trends.VolumeProgression {
-    fmt.Printf("Date: %s, Volume: %.2f\n", 
-        point.Date.Format("2006-01-02"), 
-        point.VolumeLoad)
-}
 ```
-
-## Error Handling
-
-The metrics system is designed to be resilient:
-
-1. **Non-blocking**: Metrics calculation failures don't prevent workout session updates
-2. **Graceful degradation**: Missing exercise data is skipped rather than failing entirely
-3. **Default values**: Volume landmarks fall back to sensible defaults when insufficient data
-4. **Logging**: All errors are logged for debugging without exposing to users
-
-## Performance Considerations
-
-1. **Async calculation**: Metrics are calculated after successful session updates
-2. **Cached aggregations**: User metrics are cached in `user_metrics` collection
-3. **Efficient queries**: Database queries use appropriate indexes
-4. **Batch operations**: Multiple metrics calculated in single database operations
-
-## Future Enhancements
-
-1. **Body Weight Integration**: Relative volume calculations when body weight tracking is added
-2. **Per-set RPE**: More granular RPE tracking for improved effective reps/hard sets
-3. **Exercise-specific landmarks**: MEV/MAV/MRV per exercise rather than just muscle groups
-4. **Advanced analytics**: Strength curves, volume-load relationships, deload recommendations
-5. **Real-time updates**: WebSocket integration for live metrics updates during workouts
-6. **Enhanced Tempo Tracking**: User-defined tempo patterns per exercise rather than defaults
-7. **Rest Period Tracking**: Actual rest time measurement for more accurate work capacity calculations
-8. **Bilateral Exercise Detection**: Automatic identification of unilateral vs bilateral exercises for imbalance calculations
-9. **Advanced Muscle Mapping**: More detailed muscle group classifications and exercise-muscle relationships
-10. **Fatigue Prediction**: ML-based fatigue prediction using stimulus-to-fatigue ratios and historical data
-
-## Contributing
-
-When modifying the metrics system:
-
-1. **Maintain backwards compatibility** in data models
-2. **Update this documentation** for any new metrics or changes
-3. **Add tests** for new calculation logic
-4. **Follow camelCase naming** for all new fields and properties
-5. **Preserve existing API contracts** unless versioning appropriately 

@@ -72,27 +72,29 @@ type ExerciseMetrics struct {
 }
 
 type WorkoutMetrics struct {
-	ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
-	UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
-	SessionID                 primitive.ObjectID        `bson:"sessionId" json:"sessionId"`
-	RoutineID                 primitive.ObjectID        `bson:"routineId" json:"routineId"`
-	Date                      time.Time                 `bson:"date" json:"date"`
-	VolumeMetrics             VolumeMetrics             `bson:"volumeMetrics" json:"volumeMetrics"`
-	PerformanceMetrics        PerformanceMetrics        `bson:"performanceMetrics" json:"performanceMetrics"`
-	IntensityMetrics          IntensityMetrics          `bson:"intensityMetrics" json:"intensityMetrics"`
-	StrengthMetrics           StrengthMetrics           `bson:"strengthMetrics" json:"strengthMetrics"`
-	ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
-	RecoveryFatigueMetrics    RecoveryFatigueMetrics    `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
-	BodyCompositionMetrics    BodyCompositionMetrics    `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
-	MuscleSpecificMetrics     MuscleSpecificMetrics     `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
-	WorkCapacityMetrics       WorkCapacityMetrics       `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
-	TrainingPatternMetrics    TrainingPatternMetrics    `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
-	PeriodizationMetrics      PeriodizationMetrics      `bson:"periodizationMetrics" json:"periodizationMetrics"`
-	SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
-	ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
-	WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
-	CreatedAt                 time.Time                 `bson:"createdAt" json:"createdAt"`
-	UpdatedAt                 time.Time                 `bson:"updatedAt" json:"updatedAt"`
+	ID                          primitive.ObjectID          `bson:"_id,omitempty" json:"id"`
+	UserID                      primitive.ObjectID          `bson:"userId" json:"userId"`
+	SessionID                   primitive.ObjectID          `bson:"sessionId" json:"sessionId"`
+	RoutineID                   primitive.ObjectID          `bson:"routineId" json:"routineId"`
+	Date                        time.Time                   `bson:"date" json:"date"`
+	VolumeMetrics               VolumeMetrics               `bson:"volumeMetrics" json:"volumeMetrics"`
+	PerformanceMetrics          PerformanceMetrics          `bson:"performanceMetrics" json:"performanceMetrics"`
+	IntensityMetrics            IntensityMetrics            `bson:"intensityMetrics" json:"intensityMetrics"`
+	StrengthMetrics             StrengthMetrics             `bson:"strengthMetrics" json:"strengthMetrics"`
+	ProgressAdaptationMetrics   ProgressAdaptationMetrics   `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
+	RecoveryFatigueMetrics      RecoveryFatigueMetrics      `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
+	BodyCompositionMetrics      BodyCompositionMetrics      `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
+	MuscleSpecificMetrics       MuscleSpecificMetrics       `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
+	WorkCapacityMetrics         WorkCapacityMetrics         `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
+	TrainingPatternMetrics      TrainingPatternMetrics      `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
+	PeriodizationMetrics        PeriodizationMetrics        `bson:"periodizationMetrics" json:"periodizationMetrics"`
+	InjuryRiskPreventionMetrics InjuryRiskPreventionMetrics `bson:"injuryRiskPreventionMetrics" json:"injuryRiskPreventionMetrics"`
+	EfficiencyTechniqueMetrics  EfficiencyTechniqueMetrics  `bson:"efficiencyTechniqueMetrics" json:"efficiencyTechniqueMetrics"`
+	SetMetrics                  SetMetrics                  `bson:"setMetrics" json:"setMetrics"`
+	ExerciseMetrics             []ExerciseMetrics           `bson:"exerciseMetrics" json:"exerciseMetrics"`
+	WorkoutDurationSecs         int32                       `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
+	CreatedAt                   time.Time                   `bson:"createdAt" json:"createdAt"`
+	UpdatedAt                   time.Time                   `bson:"updatedAt" json:"updatedAt"`
 }
 
 type PeriodMetrics struct {
@@ -339,4 +341,33 @@ const (
 	ChronicTrainingLoadDays = 42   // 6 weeks
 	AcuteTrainingLoadDays   = 7    // 1 week
 	ExponentialDecayFactor  = 0.07 // Standard decay factor for training load
+)
+
+// Injury Risk & Prevention Metrics
+type InjuryRiskPreventionMetrics struct {
+	InjuryRiskScore      float64 `bson:"injuryRiskScore" json:"injuryRiskScore"`           // IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality, high risk if > 1.5
+	LoadSpikeAlert       bool    `bson:"loadSpikeAlert" json:"loadSpikeAlert"`             // Spike = True if Weekly Volume > 1.5 × Average of Last 4 Weeks
+	AsymmetryDevelopment float64 `bson:"asymmetryDevelopment" json:"asymmetryDevelopment"` // Asymmetry = |(Left Performance - Right Performance)| / Average × 100
+}
+
+// Efficiency & Technique Metrics
+type EfficiencyTechniqueMetrics struct {
+	StrengthEfficiency        float64 `bson:"strengthEfficiency" json:"strengthEfficiency"`               // SE = (1RM Gain / Total Volume) × 1000
+	VolumeEfficiency          float64 `bson:"volumeEfficiency" json:"volumeEfficiency"`                   // VE = Performance Improvement / Total Training Volume
+	RPEPerformanceCorrelation float64 `bson:"rpePerformanceCorrelation" json:"rpePerformanceCorrelation"` // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+	TechniqueConsistency      float64 `bson:"techniqueConsistency" json:"techniqueConsistency"`           // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
+}
+
+// Constants for Injury Risk & Prevention Metrics
+const (
+	InjuryRiskThreshold    = 1.5  // High risk if injury risk score > 1.5
+	LoadSpikeMultiplier    = 1.5  // Load spike if weekly volume > 1.5x 4-week average
+	AsymmetryRiskThreshold = 15.0 // High asymmetry risk if > 15%
+)
+
+// Constants for Efficiency & Technique Metrics
+const (
+	StrengthEfficiencyMultiplier = 1000.0 // Multiplier for strength efficiency calculation
+	MinCorrelationSampleSize     = 5      // Minimum sets needed for correlation calculation
+	DefaultRepTime               = 3.0    // Default rep time in seconds for technique consistency
 )

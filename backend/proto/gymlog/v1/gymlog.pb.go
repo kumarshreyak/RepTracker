@@ -3844,36 +3844,166 @@ func (x *PeriodizationMetrics) GetFormFreshnessIndex() float64 {
 	return 0
 }
 
-type WorkoutMetrics struct {
-	state                     protoimpl.MessageState     `protogen:"open.v1"`
-	Id                        string                     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	UserId                    string                     `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	SessionId                 string                     `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	RoutineId                 string                     `protobuf:"bytes,4,opt,name=routine_id,json=routineId,proto3" json:"routine_id,omitempty"`
-	Date                      *timestamppb.Timestamp     `protobuf:"bytes,5,opt,name=date,proto3" json:"date,omitempty"`
-	VolumeMetrics             *VolumeMetrics             `protobuf:"bytes,6,opt,name=volume_metrics,json=volumeMetrics,proto3" json:"volume_metrics,omitempty"`
-	PerformanceMetrics        *PerformanceMetrics        `protobuf:"bytes,7,opt,name=performance_metrics,json=performanceMetrics,proto3" json:"performance_metrics,omitempty"`
-	IntensityMetrics          *IntensityMetrics          `protobuf:"bytes,8,opt,name=intensity_metrics,json=intensityMetrics,proto3" json:"intensity_metrics,omitempty"`
-	StrengthMetrics           *StrengthMetrics           `protobuf:"bytes,9,opt,name=strength_metrics,json=strengthMetrics,proto3" json:"strength_metrics,omitempty"`
-	ProgressAdaptationMetrics *ProgressAdaptationMetrics `protobuf:"bytes,10,opt,name=progress_adaptation_metrics,json=progressAdaptationMetrics,proto3" json:"progress_adaptation_metrics,omitempty"`
-	RecoveryFatigueMetrics    *RecoveryFatigueMetrics    `protobuf:"bytes,11,opt,name=recovery_fatigue_metrics,json=recoveryFatigueMetrics,proto3" json:"recovery_fatigue_metrics,omitempty"`
-	BodyCompositionMetrics    *BodyCompositionMetrics    `protobuf:"bytes,12,opt,name=body_composition_metrics,json=bodyCompositionMetrics,proto3" json:"body_composition_metrics,omitempty"`
-	MuscleSpecificMetrics     *MuscleSpecificMetrics     `protobuf:"bytes,13,opt,name=muscle_specific_metrics,json=muscleSpecificMetrics,proto3" json:"muscle_specific_metrics,omitempty"`
-	WorkCapacityMetrics       *WorkCapacityMetrics       `protobuf:"bytes,14,opt,name=work_capacity_metrics,json=workCapacityMetrics,proto3" json:"work_capacity_metrics,omitempty"`
-	TrainingPatternMetrics    *TrainingPatternMetrics    `protobuf:"bytes,15,opt,name=training_pattern_metrics,json=trainingPatternMetrics,proto3" json:"training_pattern_metrics,omitempty"`
-	PeriodizationMetrics      *PeriodizationMetrics      `protobuf:"bytes,16,opt,name=periodization_metrics,json=periodizationMetrics,proto3" json:"periodization_metrics,omitempty"`
-	SetMetrics                *SetMetrics                `protobuf:"bytes,17,opt,name=set_metrics,json=setMetrics,proto3" json:"set_metrics,omitempty"`
-	ExerciseMetrics           []*ExerciseMetrics         `protobuf:"bytes,18,rep,name=exercise_metrics,json=exerciseMetrics,proto3" json:"exercise_metrics,omitempty"`
-	WorkoutDurationSecs       int32                      `protobuf:"varint,19,opt,name=workout_duration_secs,json=workoutDurationSecs,proto3" json:"workout_duration_secs,omitempty"`
-	CreatedAt                 *timestamppb.Timestamp     `protobuf:"bytes,20,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt                 *timestamppb.Timestamp     `protobuf:"bytes,21,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+type InjuryRiskPreventionMetrics struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	InjuryRiskScore      float64                `protobuf:"fixed64,1,opt,name=injury_risk_score,json=injuryRiskScore,proto3" json:"injury_risk_score,omitempty"`              // IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality, high risk if > 1.5
+	LoadSpikeAlert       bool                   `protobuf:"varint,2,opt,name=load_spike_alert,json=loadSpikeAlert,proto3" json:"load_spike_alert,omitempty"`                  // Spike = True if Weekly Volume > 1.5 × Average of Last 4 Weeks
+	AsymmetryDevelopment float64                `protobuf:"fixed64,3,opt,name=asymmetry_development,json=asymmetryDevelopment,proto3" json:"asymmetry_development,omitempty"` // Asymmetry = |(Left Performance - Right Performance)| / Average × 100
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *InjuryRiskPreventionMetrics) Reset() {
+	*x = InjuryRiskPreventionMetrics{}
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InjuryRiskPreventionMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InjuryRiskPreventionMetrics) ProtoMessage() {}
+
+func (x *InjuryRiskPreventionMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InjuryRiskPreventionMetrics.ProtoReflect.Descriptor instead.
+func (*InjuryRiskPreventionMetrics) Descriptor() ([]byte, []int) {
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *InjuryRiskPreventionMetrics) GetInjuryRiskScore() float64 {
+	if x != nil {
+		return x.InjuryRiskScore
+	}
+	return 0
+}
+
+func (x *InjuryRiskPreventionMetrics) GetLoadSpikeAlert() bool {
+	if x != nil {
+		return x.LoadSpikeAlert
+	}
+	return false
+}
+
+func (x *InjuryRiskPreventionMetrics) GetAsymmetryDevelopment() float64 {
+	if x != nil {
+		return x.AsymmetryDevelopment
+	}
+	return 0
+}
+
+type EfficiencyTechniqueMetrics struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	StrengthEfficiency        float64                `protobuf:"fixed64,1,opt,name=strength_efficiency,json=strengthEfficiency,proto3" json:"strength_efficiency,omitempty"`                        // SE = (1RM Gain / Total Volume) × 1000
+	VolumeEfficiency          float64                `protobuf:"fixed64,2,opt,name=volume_efficiency,json=volumeEfficiency,proto3" json:"volume_efficiency,omitempty"`                              // VE = Performance Improvement / Total Training Volume
+	RpePerformanceCorrelation float64                `protobuf:"fixed64,3,opt,name=rpe_performance_correlation,json=rpePerformanceCorrelation,proto3" json:"rpe_performance_correlation,omitempty"` // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+	TechniqueConsistency      float64                `protobuf:"fixed64,4,opt,name=technique_consistency,json=techniqueConsistency,proto3" json:"technique_consistency,omitempty"`                  // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
 
+func (x *EfficiencyTechniqueMetrics) Reset() {
+	*x = EfficiencyTechniqueMetrics{}
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EfficiencyTechniqueMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EfficiencyTechniqueMetrics) ProtoMessage() {}
+
+func (x *EfficiencyTechniqueMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EfficiencyTechniqueMetrics.ProtoReflect.Descriptor instead.
+func (*EfficiencyTechniqueMetrics) Descriptor() ([]byte, []int) {
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *EfficiencyTechniqueMetrics) GetStrengthEfficiency() float64 {
+	if x != nil {
+		return x.StrengthEfficiency
+	}
+	return 0
+}
+
+func (x *EfficiencyTechniqueMetrics) GetVolumeEfficiency() float64 {
+	if x != nil {
+		return x.VolumeEfficiency
+	}
+	return 0
+}
+
+func (x *EfficiencyTechniqueMetrics) GetRpePerformanceCorrelation() float64 {
+	if x != nil {
+		return x.RpePerformanceCorrelation
+	}
+	return 0
+}
+
+func (x *EfficiencyTechniqueMetrics) GetTechniqueConsistency() float64 {
+	if x != nil {
+		return x.TechniqueConsistency
+	}
+	return 0
+}
+
+type WorkoutMetrics struct {
+	state                       protoimpl.MessageState       `protogen:"open.v1"`
+	Id                          string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId                      string                       `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	SessionId                   string                       `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	RoutineId                   string                       `protobuf:"bytes,4,opt,name=routine_id,json=routineId,proto3" json:"routine_id,omitempty"`
+	Date                        *timestamppb.Timestamp       `protobuf:"bytes,5,opt,name=date,proto3" json:"date,omitempty"`
+	VolumeMetrics               *VolumeMetrics               `protobuf:"bytes,6,opt,name=volume_metrics,json=volumeMetrics,proto3" json:"volume_metrics,omitempty"`
+	PerformanceMetrics          *PerformanceMetrics          `protobuf:"bytes,7,opt,name=performance_metrics,json=performanceMetrics,proto3" json:"performance_metrics,omitempty"`
+	IntensityMetrics            *IntensityMetrics            `protobuf:"bytes,8,opt,name=intensity_metrics,json=intensityMetrics,proto3" json:"intensity_metrics,omitempty"`
+	StrengthMetrics             *StrengthMetrics             `protobuf:"bytes,9,opt,name=strength_metrics,json=strengthMetrics,proto3" json:"strength_metrics,omitempty"`
+	ProgressAdaptationMetrics   *ProgressAdaptationMetrics   `protobuf:"bytes,10,opt,name=progress_adaptation_metrics,json=progressAdaptationMetrics,proto3" json:"progress_adaptation_metrics,omitempty"`
+	RecoveryFatigueMetrics      *RecoveryFatigueMetrics      `protobuf:"bytes,11,opt,name=recovery_fatigue_metrics,json=recoveryFatigueMetrics,proto3" json:"recovery_fatigue_metrics,omitempty"`
+	BodyCompositionMetrics      *BodyCompositionMetrics      `protobuf:"bytes,12,opt,name=body_composition_metrics,json=bodyCompositionMetrics,proto3" json:"body_composition_metrics,omitempty"`
+	MuscleSpecificMetrics       *MuscleSpecificMetrics       `protobuf:"bytes,13,opt,name=muscle_specific_metrics,json=muscleSpecificMetrics,proto3" json:"muscle_specific_metrics,omitempty"`
+	WorkCapacityMetrics         *WorkCapacityMetrics         `protobuf:"bytes,14,opt,name=work_capacity_metrics,json=workCapacityMetrics,proto3" json:"work_capacity_metrics,omitempty"`
+	TrainingPatternMetrics      *TrainingPatternMetrics      `protobuf:"bytes,15,opt,name=training_pattern_metrics,json=trainingPatternMetrics,proto3" json:"training_pattern_metrics,omitempty"`
+	PeriodizationMetrics        *PeriodizationMetrics        `protobuf:"bytes,16,opt,name=periodization_metrics,json=periodizationMetrics,proto3" json:"periodization_metrics,omitempty"`
+	InjuryRiskPreventionMetrics *InjuryRiskPreventionMetrics `protobuf:"bytes,17,opt,name=injury_risk_prevention_metrics,json=injuryRiskPreventionMetrics,proto3" json:"injury_risk_prevention_metrics,omitempty"`
+	EfficiencyTechniqueMetrics  *EfficiencyTechniqueMetrics  `protobuf:"bytes,18,opt,name=efficiency_technique_metrics,json=efficiencyTechniqueMetrics,proto3" json:"efficiency_technique_metrics,omitempty"`
+	SetMetrics                  *SetMetrics                  `protobuf:"bytes,19,opt,name=set_metrics,json=setMetrics,proto3" json:"set_metrics,omitempty"`
+	ExerciseMetrics             []*ExerciseMetrics           `protobuf:"bytes,20,rep,name=exercise_metrics,json=exerciseMetrics,proto3" json:"exercise_metrics,omitempty"`
+	WorkoutDurationSecs         int32                        `protobuf:"varint,21,opt,name=workout_duration_secs,json=workoutDurationSecs,proto3" json:"workout_duration_secs,omitempty"`
+	CreatedAt                   *timestamppb.Timestamp       `protobuf:"bytes,22,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt                   *timestamppb.Timestamp       `protobuf:"bytes,23,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
 func (x *WorkoutMetrics) Reset() {
 	*x = WorkoutMetrics{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[50]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3885,7 +4015,7 @@ func (x *WorkoutMetrics) String() string {
 func (*WorkoutMetrics) ProtoMessage() {}
 
 func (x *WorkoutMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[50]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3898,7 +4028,7 @@ func (x *WorkoutMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkoutMetrics.ProtoReflect.Descriptor instead.
 func (*WorkoutMetrics) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{50}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *WorkoutMetrics) GetId() string {
@@ -4013,6 +4143,20 @@ func (x *WorkoutMetrics) GetPeriodizationMetrics() *PeriodizationMetrics {
 	return nil
 }
 
+func (x *WorkoutMetrics) GetInjuryRiskPreventionMetrics() *InjuryRiskPreventionMetrics {
+	if x != nil {
+		return x.InjuryRiskPreventionMetrics
+	}
+	return nil
+}
+
+func (x *WorkoutMetrics) GetEfficiencyTechniqueMetrics() *EfficiencyTechniqueMetrics {
+	if x != nil {
+		return x.EfficiencyTechniqueMetrics
+	}
+	return nil
+}
+
 func (x *WorkoutMetrics) GetSetMetrics() *SetMetrics {
 	if x != nil {
 		return x.SetMetrics
@@ -4064,7 +4208,7 @@ type PeriodMetrics struct {
 
 func (x *PeriodMetrics) Reset() {
 	*x = PeriodMetrics{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[51]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4076,7 +4220,7 @@ func (x *PeriodMetrics) String() string {
 func (*PeriodMetrics) ProtoMessage() {}
 
 func (x *PeriodMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[51]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4089,7 +4233,7 @@ func (x *PeriodMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeriodMetrics.ProtoReflect.Descriptor instead.
 func (*PeriodMetrics) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{51}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *PeriodMetrics) GetStartDate() *timestamppb.Timestamp {
@@ -4159,7 +4303,7 @@ type VolumeLandmarks struct {
 
 func (x *VolumeLandmarks) Reset() {
 	*x = VolumeLandmarks{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[52]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4171,7 +4315,7 @@ func (x *VolumeLandmarks) String() string {
 func (*VolumeLandmarks) ProtoMessage() {}
 
 func (x *VolumeLandmarks) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[52]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4184,7 +4328,7 @@ func (x *VolumeLandmarks) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VolumeLandmarks.ProtoReflect.Descriptor instead.
 func (*VolumeLandmarks) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{52}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *VolumeLandmarks) GetMev() map[string]float64 {
@@ -4224,7 +4368,7 @@ type UserMetrics struct {
 
 func (x *UserMetrics) Reset() {
 	*x = UserMetrics{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[53]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4236,7 +4380,7 @@ func (x *UserMetrics) String() string {
 func (*UserMetrics) ProtoMessage() {}
 
 func (x *UserMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[53]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4249,7 +4393,7 @@ func (x *UserMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserMetrics.ProtoReflect.Descriptor instead.
 func (*UserMetrics) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{53}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *UserMetrics) GetId() string {
@@ -4319,7 +4463,7 @@ type VolumeProgressionPoint struct {
 
 func (x *VolumeProgressionPoint) Reset() {
 	*x = VolumeProgressionPoint{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[54]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4331,7 +4475,7 @@ func (x *VolumeProgressionPoint) String() string {
 func (*VolumeProgressionPoint) ProtoMessage() {}
 
 func (x *VolumeProgressionPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[54]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4344,7 +4488,7 @@ func (x *VolumeProgressionPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VolumeProgressionPoint.ProtoReflect.Descriptor instead.
 func (*VolumeProgressionPoint) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{54}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *VolumeProgressionPoint) GetDate() *timestamppb.Timestamp {
@@ -4377,7 +4521,7 @@ type DoubleList struct {
 
 func (x *DoubleList) Reset() {
 	*x = DoubleList{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[55]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4389,7 +4533,7 @@ func (x *DoubleList) String() string {
 func (*DoubleList) ProtoMessage() {}
 
 func (x *DoubleList) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[55]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4402,7 +4546,7 @@ func (x *DoubleList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DoubleList.ProtoReflect.Descriptor instead.
 func (*DoubleList) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{55}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *DoubleList) GetValues() []float64 {
@@ -4425,7 +4569,7 @@ type TrendMetrics struct {
 
 func (x *TrendMetrics) Reset() {
 	*x = TrendMetrics{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[56]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4437,7 +4581,7 @@ func (x *TrendMetrics) String() string {
 func (*TrendMetrics) ProtoMessage() {}
 
 func (x *TrendMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[56]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4450,7 +4594,7 @@ func (x *TrendMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrendMetrics.ProtoReflect.Descriptor instead.
 func (*TrendMetrics) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{56}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *TrendMetrics) GetPeriod() string {
@@ -4498,7 +4642,7 @@ type GetUserMetricsRequest struct {
 
 func (x *GetUserMetricsRequest) Reset() {
 	*x = GetUserMetricsRequest{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[57]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4510,7 +4654,7 @@ func (x *GetUserMetricsRequest) String() string {
 func (*GetUserMetricsRequest) ProtoMessage() {}
 
 func (x *GetUserMetricsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[57]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4523,7 +4667,7 @@ func (x *GetUserMetricsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserMetricsRequest.ProtoReflect.Descriptor instead.
 func (*GetUserMetricsRequest) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{57}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *GetUserMetricsRequest) GetUserId() string {
@@ -4550,7 +4694,7 @@ type GetVolumeTrendsRequest struct {
 
 func (x *GetVolumeTrendsRequest) Reset() {
 	*x = GetVolumeTrendsRequest{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[58]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4562,7 +4706,7 @@ func (x *GetVolumeTrendsRequest) String() string {
 func (*GetVolumeTrendsRequest) ProtoMessage() {}
 
 func (x *GetVolumeTrendsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[58]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4575,7 +4719,7 @@ func (x *GetVolumeTrendsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVolumeTrendsRequest.ProtoReflect.Descriptor instead.
 func (*GetVolumeTrendsRequest) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{58}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *GetVolumeTrendsRequest) GetUserId() string {
@@ -4601,7 +4745,7 @@ type GetWorkoutMetricsRequest struct {
 
 func (x *GetWorkoutMetricsRequest) Reset() {
 	*x = GetWorkoutMetricsRequest{}
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[59]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4613,7 +4757,7 @@ func (x *GetWorkoutMetricsRequest) String() string {
 func (*GetWorkoutMetricsRequest) ProtoMessage() {}
 
 func (x *GetWorkoutMetricsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gymlog_v1_gymlog_proto_msgTypes[59]
+	mi := &file_gymlog_v1_gymlog_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4626,7 +4770,7 @@ func (x *GetWorkoutMetricsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkoutMetricsRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkoutMetricsRequest) Descriptor() ([]byte, []int) {
-	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{59}
+	return file_gymlog_v1_gymlog_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *GetWorkoutMetricsRequest) GetSessionId() string {
@@ -5040,8 +5184,16 @@ const file_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"\x15chronic_training_load\x18\x01 \x01(\x01R\x13chronicTrainingLoad\x12.\n" +
 	"\x13acute_training_load\x18\x02 \x01(\x01R\x11acuteTrainingLoad\x126\n" +
 	"\x17training_stress_balance\x18\x03 \x01(\x01R\x15trainingStressBalance\x120\n" +
-	"\x14form_freshness_index\x18\x04 \x01(\x01R\x12formFreshnessIndex\"\xf3\n" +
-	"\n" +
+	"\x14form_freshness_index\x18\x04 \x01(\x01R\x12formFreshnessIndex\"\xa8\x01\n" +
+	"\x1bInjuryRiskPreventionMetrics\x12*\n" +
+	"\x11injury_risk_score\x18\x01 \x01(\x01R\x0finjuryRiskScore\x12(\n" +
+	"\x10load_spike_alert\x18\x02 \x01(\bR\x0eloadSpikeAlert\x123\n" +
+	"\x15asymmetry_development\x18\x03 \x01(\x01R\x14asymmetryDevelopment\"\xef\x01\n" +
+	"\x1aEfficiencyTechniqueMetrics\x12/\n" +
+	"\x13strength_efficiency\x18\x01 \x01(\x01R\x12strengthEfficiency\x12+\n" +
+	"\x11volume_efficiency\x18\x02 \x01(\x01R\x10volumeEfficiency\x12>\n" +
+	"\x1brpe_performance_correlation\x18\x03 \x01(\x01R\x19rpePerformanceCorrelation\x123\n" +
+	"\x15technique_consistency\x18\x04 \x01(\x01R\x14techniqueConsistency\"\xc9\f\n" +
 	"\x0eWorkoutMetrics\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1d\n" +
@@ -5061,15 +5213,17 @@ const file_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"\x17muscle_specific_metrics\x18\r \x01(\v2 .gymlog.v1.MuscleSpecificMetricsR\x15muscleSpecificMetrics\x12R\n" +
 	"\x15work_capacity_metrics\x18\x0e \x01(\v2\x1e.gymlog.v1.WorkCapacityMetricsR\x13workCapacityMetrics\x12[\n" +
 	"\x18training_pattern_metrics\x18\x0f \x01(\v2!.gymlog.v1.TrainingPatternMetricsR\x16trainingPatternMetrics\x12T\n" +
-	"\x15periodization_metrics\x18\x10 \x01(\v2\x1f.gymlog.v1.PeriodizationMetricsR\x14periodizationMetrics\x126\n" +
-	"\vset_metrics\x18\x11 \x01(\v2\x15.gymlog.v1.SetMetricsR\n" +
+	"\x15periodization_metrics\x18\x10 \x01(\v2\x1f.gymlog.v1.PeriodizationMetricsR\x14periodizationMetrics\x12k\n" +
+	"\x1einjury_risk_prevention_metrics\x18\x11 \x01(\v2&.gymlog.v1.InjuryRiskPreventionMetricsR\x1binjuryRiskPreventionMetrics\x12g\n" +
+	"\x1cefficiency_technique_metrics\x18\x12 \x01(\v2%.gymlog.v1.EfficiencyTechniqueMetricsR\x1aefficiencyTechniqueMetrics\x126\n" +
+	"\vset_metrics\x18\x13 \x01(\v2\x15.gymlog.v1.SetMetricsR\n" +
 	"setMetrics\x12E\n" +
-	"\x10exercise_metrics\x18\x12 \x03(\v2\x1a.gymlog.v1.ExerciseMetricsR\x0fexerciseMetrics\x122\n" +
-	"\x15workout_duration_secs\x18\x13 \x01(\x05R\x13workoutDurationSecs\x129\n" +
+	"\x10exercise_metrics\x18\x14 \x03(\v2\x1a.gymlog.v1.ExerciseMetricsR\x0fexerciseMetrics\x122\n" +
+	"\x15workout_duration_secs\x18\x15 \x01(\x05R\x13workoutDurationSecs\x129\n" +
 	"\n" +
-	"created_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x81\x04\n" +
+	"updated_at\x18\x17 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x81\x04\n" +
 	"\rPeriodMetrics\x129\n" +
 	"\n" +
 	"start_date\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\tstartDate\x125\n" +
@@ -5180,7 +5334,7 @@ func file_gymlog_v1_gymlog_proto_rawDescGZIP() []byte {
 	return file_gymlog_v1_gymlog_proto_rawDescData
 }
 
-var file_gymlog_v1_gymlog_proto_msgTypes = make([]protoimpl.MessageInfo, 78)
+var file_gymlog_v1_gymlog_proto_msgTypes = make([]protoimpl.MessageInfo, 80)
 var file_gymlog_v1_gymlog_proto_goTypes = []any{
 	(*User)(nil),                         // 0: gymlog.v1.User
 	(*CreateUserRequest)(nil),            // 1: gymlog.v1.CreateUserRequest
@@ -5232,89 +5386,91 @@ var file_gymlog_v1_gymlog_proto_goTypes = []any{
 	(*WorkCapacityMetrics)(nil),          // 47: gymlog.v1.WorkCapacityMetrics
 	(*TrainingPatternMetrics)(nil),       // 48: gymlog.v1.TrainingPatternMetrics
 	(*PeriodizationMetrics)(nil),         // 49: gymlog.v1.PeriodizationMetrics
-	(*WorkoutMetrics)(nil),               // 50: gymlog.v1.WorkoutMetrics
-	(*PeriodMetrics)(nil),                // 51: gymlog.v1.PeriodMetrics
-	(*VolumeLandmarks)(nil),              // 52: gymlog.v1.VolumeLandmarks
-	(*UserMetrics)(nil),                  // 53: gymlog.v1.UserMetrics
-	(*VolumeProgressionPoint)(nil),       // 54: gymlog.v1.VolumeProgressionPoint
-	(*DoubleList)(nil),                   // 55: gymlog.v1.DoubleList
-	(*TrendMetrics)(nil),                 // 56: gymlog.v1.TrendMetrics
-	(*GetUserMetricsRequest)(nil),        // 57: gymlog.v1.GetUserMetricsRequest
-	(*GetVolumeTrendsRequest)(nil),       // 58: gymlog.v1.GetVolumeTrendsRequest
-	(*GetWorkoutMetricsRequest)(nil),     // 59: gymlog.v1.GetWorkoutMetricsRequest
-	nil,                                  // 60: gymlog.v1.VolumeMetrics.MuscleGroupVolumeEntry
-	nil,                                  // 61: gymlog.v1.PerformanceMetrics.RpeDistributionEntry
-	nil,                                  // 62: gymlog.v1.IntensityMetrics.IntensityDistributionEntry
-	nil,                                  // 63: gymlog.v1.StrengthMetrics.EstimatedOneRmEpleyEntry
-	nil,                                  // 64: gymlog.v1.StrengthMetrics.EstimatedOneRmBrzyckiEntry
-	nil,                                  // 65: gymlog.v1.ProgressAdaptationMetrics.WeekOverWeekProgressRateEntry
-	nil,                                  // 66: gymlog.v1.ProgressAdaptationMetrics.PlateauDetectionEntry
-	nil,                                  // 67: gymlog.v1.ProgressAdaptationMetrics.StrengthGainVelocityEntry
-	nil,                                  // 68: gymlog.v1.ProgressAdaptationMetrics.AdaptationRateEntry
-	nil,                                  // 69: gymlog.v1.MuscleSpecificMetrics.MuscleGroupDistributionEntry
-	nil,                                  // 70: gymlog.v1.MuscleSpecificMetrics.MuscleImbalanceIndexEntry
-	nil,                                  // 71: gymlog.v1.MuscleSpecificMetrics.AntagonistRatioEntry
-	nil,                                  // 72: gymlog.v1.MuscleSpecificMetrics.StimulusToFatigueRatioEntry
-	nil,                                  // 73: gymlog.v1.PeriodMetrics.MuscleGroupVolumeEntry
-	nil,                                  // 74: gymlog.v1.VolumeLandmarks.MevEntry
-	nil,                                  // 75: gymlog.v1.VolumeLandmarks.MavEntry
-	nil,                                  // 76: gymlog.v1.VolumeLandmarks.MrvEntry
-	nil,                                  // 77: gymlog.v1.TrendMetrics.MuscleGroupTrendsEntry
-	(*timestamppb.Timestamp)(nil),        // 78: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                // 79: google.protobuf.Empty
+	(*InjuryRiskPreventionMetrics)(nil),  // 50: gymlog.v1.InjuryRiskPreventionMetrics
+	(*EfficiencyTechniqueMetrics)(nil),   // 51: gymlog.v1.EfficiencyTechniqueMetrics
+	(*WorkoutMetrics)(nil),               // 52: gymlog.v1.WorkoutMetrics
+	(*PeriodMetrics)(nil),                // 53: gymlog.v1.PeriodMetrics
+	(*VolumeLandmarks)(nil),              // 54: gymlog.v1.VolumeLandmarks
+	(*UserMetrics)(nil),                  // 55: gymlog.v1.UserMetrics
+	(*VolumeProgressionPoint)(nil),       // 56: gymlog.v1.VolumeProgressionPoint
+	(*DoubleList)(nil),                   // 57: gymlog.v1.DoubleList
+	(*TrendMetrics)(nil),                 // 58: gymlog.v1.TrendMetrics
+	(*GetUserMetricsRequest)(nil),        // 59: gymlog.v1.GetUserMetricsRequest
+	(*GetVolumeTrendsRequest)(nil),       // 60: gymlog.v1.GetVolumeTrendsRequest
+	(*GetWorkoutMetricsRequest)(nil),     // 61: gymlog.v1.GetWorkoutMetricsRequest
+	nil,                                  // 62: gymlog.v1.VolumeMetrics.MuscleGroupVolumeEntry
+	nil,                                  // 63: gymlog.v1.PerformanceMetrics.RpeDistributionEntry
+	nil,                                  // 64: gymlog.v1.IntensityMetrics.IntensityDistributionEntry
+	nil,                                  // 65: gymlog.v1.StrengthMetrics.EstimatedOneRmEpleyEntry
+	nil,                                  // 66: gymlog.v1.StrengthMetrics.EstimatedOneRmBrzyckiEntry
+	nil,                                  // 67: gymlog.v1.ProgressAdaptationMetrics.WeekOverWeekProgressRateEntry
+	nil,                                  // 68: gymlog.v1.ProgressAdaptationMetrics.PlateauDetectionEntry
+	nil,                                  // 69: gymlog.v1.ProgressAdaptationMetrics.StrengthGainVelocityEntry
+	nil,                                  // 70: gymlog.v1.ProgressAdaptationMetrics.AdaptationRateEntry
+	nil,                                  // 71: gymlog.v1.MuscleSpecificMetrics.MuscleGroupDistributionEntry
+	nil,                                  // 72: gymlog.v1.MuscleSpecificMetrics.MuscleImbalanceIndexEntry
+	nil,                                  // 73: gymlog.v1.MuscleSpecificMetrics.AntagonistRatioEntry
+	nil,                                  // 74: gymlog.v1.MuscleSpecificMetrics.StimulusToFatigueRatioEntry
+	nil,                                  // 75: gymlog.v1.PeriodMetrics.MuscleGroupVolumeEntry
+	nil,                                  // 76: gymlog.v1.VolumeLandmarks.MevEntry
+	nil,                                  // 77: gymlog.v1.VolumeLandmarks.MavEntry
+	nil,                                  // 78: gymlog.v1.VolumeLandmarks.MrvEntry
+	nil,                                  // 79: gymlog.v1.TrendMetrics.MuscleGroupTrendsEntry
+	(*timestamppb.Timestamp)(nil),        // 80: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                // 81: google.protobuf.Empty
 }
 var file_gymlog_v1_gymlog_proto_depIdxs = []int32{
-	78,  // 0: gymlog.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	78,  // 1: gymlog.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 0: gymlog.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	80,  // 1: gymlog.v1.User.updated_at:type_name -> google.protobuf.Timestamp
 	0,   // 2: gymlog.v1.ListUsersResponse.users:type_name -> gymlog.v1.User
-	78,  // 3: gymlog.v1.Exercise.created_at:type_name -> google.protobuf.Timestamp
-	78,  // 4: gymlog.v1.Exercise.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 3: gymlog.v1.Exercise.created_at:type_name -> google.protobuf.Timestamp
+	80,  // 4: gymlog.v1.Exercise.updated_at:type_name -> google.protobuf.Timestamp
 	6,   // 5: gymlog.v1.ListExercisesResponse.exercises:type_name -> gymlog.v1.Exercise
 	6,   // 6: gymlog.v1.GetQuickAddExercisesResponse.exercises:type_name -> gymlog.v1.Exercise
 	6,   // 7: gymlog.v1.WorkoutExercise.exercise:type_name -> gymlog.v1.Exercise
 	15,  // 8: gymlog.v1.WorkoutExercise.sets:type_name -> gymlog.v1.WorkoutSet
 	16,  // 9: gymlog.v1.Workout.exercises:type_name -> gymlog.v1.WorkoutExercise
-	78,  // 10: gymlog.v1.Workout.started_at:type_name -> google.protobuf.Timestamp
-	78,  // 11: gymlog.v1.Workout.finished_at:type_name -> google.protobuf.Timestamp
-	78,  // 12: gymlog.v1.Workout.created_at:type_name -> google.protobuf.Timestamp
-	78,  // 13: gymlog.v1.Workout.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 10: gymlog.v1.Workout.started_at:type_name -> google.protobuf.Timestamp
+	80,  // 11: gymlog.v1.Workout.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 12: gymlog.v1.Workout.created_at:type_name -> google.protobuf.Timestamp
+	80,  // 13: gymlog.v1.Workout.updated_at:type_name -> google.protobuf.Timestamp
 	16,  // 14: gymlog.v1.CreateWorkoutRequest.exercises:type_name -> gymlog.v1.WorkoutExercise
-	78,  // 15: gymlog.v1.CreateWorkoutRequest.started_at:type_name -> google.protobuf.Timestamp
+	80,  // 15: gymlog.v1.CreateWorkoutRequest.started_at:type_name -> google.protobuf.Timestamp
 	16,  // 16: gymlog.v1.UpdateWorkoutRequest.exercises:type_name -> gymlog.v1.WorkoutExercise
-	78,  // 17: gymlog.v1.UpdateWorkoutRequest.finished_at:type_name -> google.protobuf.Timestamp
-	78,  // 18: gymlog.v1.ListWorkoutsRequest.start_date:type_name -> google.protobuf.Timestamp
-	78,  // 19: gymlog.v1.ListWorkoutsRequest.end_date:type_name -> google.protobuf.Timestamp
+	80,  // 17: gymlog.v1.UpdateWorkoutRequest.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 18: gymlog.v1.ListWorkoutsRequest.start_date:type_name -> google.protobuf.Timestamp
+	80,  // 19: gymlog.v1.ListWorkoutsRequest.end_date:type_name -> google.protobuf.Timestamp
 	17,  // 20: gymlog.v1.ListWorkoutsResponse.workouts:type_name -> gymlog.v1.Workout
-	78,  // 21: gymlog.v1.WorkoutSessionSet.started_at:type_name -> google.protobuf.Timestamp
-	78,  // 22: gymlog.v1.WorkoutSessionSet.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 21: gymlog.v1.WorkoutSessionSet.started_at:type_name -> google.protobuf.Timestamp
+	80,  // 22: gymlog.v1.WorkoutSessionSet.finished_at:type_name -> google.protobuf.Timestamp
 	6,   // 23: gymlog.v1.WorkoutSessionExercise.exercise:type_name -> gymlog.v1.Exercise
 	24,  // 24: gymlog.v1.WorkoutSessionExercise.sets:type_name -> gymlog.v1.WorkoutSessionSet
-	78,  // 25: gymlog.v1.WorkoutSessionExercise.started_at:type_name -> google.protobuf.Timestamp
-	78,  // 26: gymlog.v1.WorkoutSessionExercise.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 25: gymlog.v1.WorkoutSessionExercise.started_at:type_name -> google.protobuf.Timestamp
+	80,  // 26: gymlog.v1.WorkoutSessionExercise.finished_at:type_name -> google.protobuf.Timestamp
 	25,  // 27: gymlog.v1.WorkoutSession.exercises:type_name -> gymlog.v1.WorkoutSessionExercise
-	78,  // 28: gymlog.v1.WorkoutSession.started_at:type_name -> google.protobuf.Timestamp
-	78,  // 29: gymlog.v1.WorkoutSession.finished_at:type_name -> google.protobuf.Timestamp
-	78,  // 30: gymlog.v1.WorkoutSession.created_at:type_name -> google.protobuf.Timestamp
-	78,  // 31: gymlog.v1.WorkoutSession.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 28: gymlog.v1.WorkoutSession.started_at:type_name -> google.protobuf.Timestamp
+	80,  // 29: gymlog.v1.WorkoutSession.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 30: gymlog.v1.WorkoutSession.created_at:type_name -> google.protobuf.Timestamp
+	80,  // 31: gymlog.v1.WorkoutSession.updated_at:type_name -> google.protobuf.Timestamp
 	25,  // 32: gymlog.v1.UpdateWorkoutSessionRequest.exercises:type_name -> gymlog.v1.WorkoutSessionExercise
-	78,  // 33: gymlog.v1.UpdateWorkoutSessionRequest.finished_at:type_name -> google.protobuf.Timestamp
-	78,  // 34: gymlog.v1.ListWorkoutSessionsRequest.start_date:type_name -> google.protobuf.Timestamp
-	78,  // 35: gymlog.v1.ListWorkoutSessionsRequest.end_date:type_name -> google.protobuf.Timestamp
+	80,  // 33: gymlog.v1.UpdateWorkoutSessionRequest.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 34: gymlog.v1.ListWorkoutSessionsRequest.start_date:type_name -> google.protobuf.Timestamp
+	80,  // 35: gymlog.v1.ListWorkoutSessionsRequest.end_date:type_name -> google.protobuf.Timestamp
 	26,  // 36: gymlog.v1.ListWorkoutSessionsResponse.sessions:type_name -> gymlog.v1.WorkoutSession
-	60,  // 37: gymlog.v1.VolumeMetrics.muscle_group_volume:type_name -> gymlog.v1.VolumeMetrics.MuscleGroupVolumeEntry
-	61,  // 38: gymlog.v1.PerformanceMetrics.rpe_distribution:type_name -> gymlog.v1.PerformanceMetrics.RpeDistributionEntry
-	62,  // 39: gymlog.v1.IntensityMetrics.intensity_distribution:type_name -> gymlog.v1.IntensityMetrics.IntensityDistributionEntry
-	63,  // 40: gymlog.v1.StrengthMetrics.estimated_one_rm_epley:type_name -> gymlog.v1.StrengthMetrics.EstimatedOneRmEpleyEntry
-	64,  // 41: gymlog.v1.StrengthMetrics.estimated_one_rm_brzycki:type_name -> gymlog.v1.StrengthMetrics.EstimatedOneRmBrzyckiEntry
-	65,  // 42: gymlog.v1.ProgressAdaptationMetrics.week_over_week_progress_rate:type_name -> gymlog.v1.ProgressAdaptationMetrics.WeekOverWeekProgressRateEntry
-	66,  // 43: gymlog.v1.ProgressAdaptationMetrics.plateau_detection:type_name -> gymlog.v1.ProgressAdaptationMetrics.PlateauDetectionEntry
-	67,  // 44: gymlog.v1.ProgressAdaptationMetrics.strength_gain_velocity:type_name -> gymlog.v1.ProgressAdaptationMetrics.StrengthGainVelocityEntry
-	68,  // 45: gymlog.v1.ProgressAdaptationMetrics.adaptation_rate:type_name -> gymlog.v1.ProgressAdaptationMetrics.AdaptationRateEntry
-	69,  // 46: gymlog.v1.MuscleSpecificMetrics.muscle_group_distribution:type_name -> gymlog.v1.MuscleSpecificMetrics.MuscleGroupDistributionEntry
-	70,  // 47: gymlog.v1.MuscleSpecificMetrics.muscle_imbalance_index:type_name -> gymlog.v1.MuscleSpecificMetrics.MuscleImbalanceIndexEntry
-	71,  // 48: gymlog.v1.MuscleSpecificMetrics.antagonist_ratio:type_name -> gymlog.v1.MuscleSpecificMetrics.AntagonistRatioEntry
-	72,  // 49: gymlog.v1.MuscleSpecificMetrics.stimulus_to_fatigue_ratio:type_name -> gymlog.v1.MuscleSpecificMetrics.StimulusToFatigueRatioEntry
-	78,  // 50: gymlog.v1.WorkoutMetrics.date:type_name -> google.protobuf.Timestamp
+	62,  // 37: gymlog.v1.VolumeMetrics.muscle_group_volume:type_name -> gymlog.v1.VolumeMetrics.MuscleGroupVolumeEntry
+	63,  // 38: gymlog.v1.PerformanceMetrics.rpe_distribution:type_name -> gymlog.v1.PerformanceMetrics.RpeDistributionEntry
+	64,  // 39: gymlog.v1.IntensityMetrics.intensity_distribution:type_name -> gymlog.v1.IntensityMetrics.IntensityDistributionEntry
+	65,  // 40: gymlog.v1.StrengthMetrics.estimated_one_rm_epley:type_name -> gymlog.v1.StrengthMetrics.EstimatedOneRmEpleyEntry
+	66,  // 41: gymlog.v1.StrengthMetrics.estimated_one_rm_brzycki:type_name -> gymlog.v1.StrengthMetrics.EstimatedOneRmBrzyckiEntry
+	67,  // 42: gymlog.v1.ProgressAdaptationMetrics.week_over_week_progress_rate:type_name -> gymlog.v1.ProgressAdaptationMetrics.WeekOverWeekProgressRateEntry
+	68,  // 43: gymlog.v1.ProgressAdaptationMetrics.plateau_detection:type_name -> gymlog.v1.ProgressAdaptationMetrics.PlateauDetectionEntry
+	69,  // 44: gymlog.v1.ProgressAdaptationMetrics.strength_gain_velocity:type_name -> gymlog.v1.ProgressAdaptationMetrics.StrengthGainVelocityEntry
+	70,  // 45: gymlog.v1.ProgressAdaptationMetrics.adaptation_rate:type_name -> gymlog.v1.ProgressAdaptationMetrics.AdaptationRateEntry
+	71,  // 46: gymlog.v1.MuscleSpecificMetrics.muscle_group_distribution:type_name -> gymlog.v1.MuscleSpecificMetrics.MuscleGroupDistributionEntry
+	72,  // 47: gymlog.v1.MuscleSpecificMetrics.muscle_imbalance_index:type_name -> gymlog.v1.MuscleSpecificMetrics.MuscleImbalanceIndexEntry
+	73,  // 48: gymlog.v1.MuscleSpecificMetrics.antagonist_ratio:type_name -> gymlog.v1.MuscleSpecificMetrics.AntagonistRatioEntry
+	74,  // 49: gymlog.v1.MuscleSpecificMetrics.stimulus_to_fatigue_ratio:type_name -> gymlog.v1.MuscleSpecificMetrics.StimulusToFatigueRatioEntry
+	80,  // 50: gymlog.v1.WorkoutMetrics.date:type_name -> google.protobuf.Timestamp
 	36,  // 51: gymlog.v1.WorkoutMetrics.volume_metrics:type_name -> gymlog.v1.VolumeMetrics
 	37,  // 52: gymlog.v1.WorkoutMetrics.performance_metrics:type_name -> gymlog.v1.PerformanceMetrics
 	38,  // 53: gymlog.v1.WorkoutMetrics.intensity_metrics:type_name -> gymlog.v1.IntensityMetrics
@@ -5326,84 +5482,86 @@ var file_gymlog_v1_gymlog_proto_depIdxs = []int32{
 	47,  // 59: gymlog.v1.WorkoutMetrics.work_capacity_metrics:type_name -> gymlog.v1.WorkCapacityMetrics
 	48,  // 60: gymlog.v1.WorkoutMetrics.training_pattern_metrics:type_name -> gymlog.v1.TrainingPatternMetrics
 	49,  // 61: gymlog.v1.WorkoutMetrics.periodization_metrics:type_name -> gymlog.v1.PeriodizationMetrics
-	44,  // 62: gymlog.v1.WorkoutMetrics.set_metrics:type_name -> gymlog.v1.SetMetrics
-	45,  // 63: gymlog.v1.WorkoutMetrics.exercise_metrics:type_name -> gymlog.v1.ExerciseMetrics
-	78,  // 64: gymlog.v1.WorkoutMetrics.created_at:type_name -> google.protobuf.Timestamp
-	78,  // 65: gymlog.v1.WorkoutMetrics.updated_at:type_name -> google.protobuf.Timestamp
-	78,  // 66: gymlog.v1.PeriodMetrics.start_date:type_name -> google.protobuf.Timestamp
-	78,  // 67: gymlog.v1.PeriodMetrics.end_date:type_name -> google.protobuf.Timestamp
-	73,  // 68: gymlog.v1.PeriodMetrics.muscle_group_volume:type_name -> gymlog.v1.PeriodMetrics.MuscleGroupVolumeEntry
-	74,  // 69: gymlog.v1.VolumeLandmarks.mev:type_name -> gymlog.v1.VolumeLandmarks.MevEntry
-	75,  // 70: gymlog.v1.VolumeLandmarks.mav:type_name -> gymlog.v1.VolumeLandmarks.MavEntry
-	76,  // 71: gymlog.v1.VolumeLandmarks.mrv:type_name -> gymlog.v1.VolumeLandmarks.MrvEntry
-	51,  // 72: gymlog.v1.UserMetrics.weekly_metrics:type_name -> gymlog.v1.PeriodMetrics
-	51,  // 73: gymlog.v1.UserMetrics.monthly_metrics:type_name -> gymlog.v1.PeriodMetrics
-	51,  // 74: gymlog.v1.UserMetrics.all_time_metrics:type_name -> gymlog.v1.PeriodMetrics
-	52,  // 75: gymlog.v1.UserMetrics.volume_landmarks:type_name -> gymlog.v1.VolumeLandmarks
-	78,  // 76: gymlog.v1.UserMetrics.created_at:type_name -> google.protobuf.Timestamp
-	78,  // 77: gymlog.v1.UserMetrics.updated_at:type_name -> google.protobuf.Timestamp
-	78,  // 78: gymlog.v1.VolumeProgressionPoint.date:type_name -> google.protobuf.Timestamp
-	54,  // 79: gymlog.v1.TrendMetrics.volume_progression:type_name -> gymlog.v1.VolumeProgressionPoint
-	77,  // 80: gymlog.v1.TrendMetrics.muscle_group_trends:type_name -> gymlog.v1.TrendMetrics.MuscleGroupTrendsEntry
-	40,  // 81: gymlog.v1.ProgressAdaptationMetrics.PlateauDetectionEntry.value:type_name -> gymlog.v1.PlateauStatus
-	55,  // 82: gymlog.v1.TrendMetrics.MuscleGroupTrendsEntry.value:type_name -> gymlog.v1.DoubleList
-	1,   // 83: gymlog.v1.UserService.CreateUser:input_type -> gymlog.v1.CreateUserRequest
-	2,   // 84: gymlog.v1.UserService.GetUser:input_type -> gymlog.v1.GetUserRequest
-	3,   // 85: gymlog.v1.UserService.UpdateUser:input_type -> gymlog.v1.UpdateUserRequest
-	4,   // 86: gymlog.v1.UserService.ListUsers:input_type -> gymlog.v1.ListUsersRequest
-	7,   // 87: gymlog.v1.ExerciseService.CreateExercise:input_type -> gymlog.v1.CreateExerciseRequest
-	8,   // 88: gymlog.v1.ExerciseService.GetExercise:input_type -> gymlog.v1.GetExerciseRequest
-	9,   // 89: gymlog.v1.ExerciseService.UpdateExercise:input_type -> gymlog.v1.UpdateExerciseRequest
-	10,  // 90: gymlog.v1.ExerciseService.DeleteExercise:input_type -> gymlog.v1.DeleteExerciseRequest
-	11,  // 91: gymlog.v1.ExerciseService.ListExercises:input_type -> gymlog.v1.ListExercisesRequest
-	13,  // 92: gymlog.v1.ExerciseService.GetQuickAddExercises:input_type -> gymlog.v1.GetQuickAddExercisesRequest
-	18,  // 93: gymlog.v1.WorkoutService.CreateWorkout:input_type -> gymlog.v1.CreateWorkoutRequest
-	19,  // 94: gymlog.v1.WorkoutService.GetWorkout:input_type -> gymlog.v1.GetWorkoutRequest
-	20,  // 95: gymlog.v1.WorkoutService.UpdateWorkout:input_type -> gymlog.v1.UpdateWorkoutRequest
-	21,  // 96: gymlog.v1.WorkoutService.DeleteWorkout:input_type -> gymlog.v1.DeleteWorkoutRequest
-	22,  // 97: gymlog.v1.WorkoutService.ListWorkouts:input_type -> gymlog.v1.ListWorkoutsRequest
-	27,  // 98: gymlog.v1.WorkoutSessionService.CreateWorkoutSession:input_type -> gymlog.v1.CreateWorkoutSessionRequest
-	28,  // 99: gymlog.v1.WorkoutSessionService.GetWorkoutSession:input_type -> gymlog.v1.GetWorkoutSessionRequest
-	29,  // 100: gymlog.v1.WorkoutSessionService.UpdateWorkoutSession:input_type -> gymlog.v1.UpdateWorkoutSessionRequest
-	30,  // 101: gymlog.v1.WorkoutSessionService.DeleteWorkoutSession:input_type -> gymlog.v1.DeleteWorkoutSessionRequest
-	31,  // 102: gymlog.v1.WorkoutSessionService.ListWorkoutSessions:input_type -> gymlog.v1.ListWorkoutSessionsRequest
-	33,  // 103: gymlog.v1.WorkoutSessionService.StartExercise:input_type -> gymlog.v1.StartExerciseRequest
-	34,  // 104: gymlog.v1.WorkoutSessionService.FinishExercise:input_type -> gymlog.v1.FinishExerciseRequest
-	35,  // 105: gymlog.v1.WorkoutSessionService.UpdateSet:input_type -> gymlog.v1.UpdateSetRequest
-	57,  // 106: gymlog.v1.MetricsService.GetUserMetrics:input_type -> gymlog.v1.GetUserMetricsRequest
-	59,  // 107: gymlog.v1.MetricsService.GetWorkoutMetrics:input_type -> gymlog.v1.GetWorkoutMetricsRequest
-	58,  // 108: gymlog.v1.MetricsService.GetVolumeTrends:input_type -> gymlog.v1.GetVolumeTrendsRequest
-	0,   // 109: gymlog.v1.UserService.CreateUser:output_type -> gymlog.v1.User
-	0,   // 110: gymlog.v1.UserService.GetUser:output_type -> gymlog.v1.User
-	0,   // 111: gymlog.v1.UserService.UpdateUser:output_type -> gymlog.v1.User
-	5,   // 112: gymlog.v1.UserService.ListUsers:output_type -> gymlog.v1.ListUsersResponse
-	6,   // 113: gymlog.v1.ExerciseService.CreateExercise:output_type -> gymlog.v1.Exercise
-	6,   // 114: gymlog.v1.ExerciseService.GetExercise:output_type -> gymlog.v1.Exercise
-	6,   // 115: gymlog.v1.ExerciseService.UpdateExercise:output_type -> gymlog.v1.Exercise
-	79,  // 116: gymlog.v1.ExerciseService.DeleteExercise:output_type -> google.protobuf.Empty
-	12,  // 117: gymlog.v1.ExerciseService.ListExercises:output_type -> gymlog.v1.ListExercisesResponse
-	14,  // 118: gymlog.v1.ExerciseService.GetQuickAddExercises:output_type -> gymlog.v1.GetQuickAddExercisesResponse
-	17,  // 119: gymlog.v1.WorkoutService.CreateWorkout:output_type -> gymlog.v1.Workout
-	17,  // 120: gymlog.v1.WorkoutService.GetWorkout:output_type -> gymlog.v1.Workout
-	17,  // 121: gymlog.v1.WorkoutService.UpdateWorkout:output_type -> gymlog.v1.Workout
-	79,  // 122: gymlog.v1.WorkoutService.DeleteWorkout:output_type -> google.protobuf.Empty
-	23,  // 123: gymlog.v1.WorkoutService.ListWorkouts:output_type -> gymlog.v1.ListWorkoutsResponse
-	26,  // 124: gymlog.v1.WorkoutSessionService.CreateWorkoutSession:output_type -> gymlog.v1.WorkoutSession
-	26,  // 125: gymlog.v1.WorkoutSessionService.GetWorkoutSession:output_type -> gymlog.v1.WorkoutSession
-	26,  // 126: gymlog.v1.WorkoutSessionService.UpdateWorkoutSession:output_type -> gymlog.v1.WorkoutSession
-	79,  // 127: gymlog.v1.WorkoutSessionService.DeleteWorkoutSession:output_type -> google.protobuf.Empty
-	32,  // 128: gymlog.v1.WorkoutSessionService.ListWorkoutSessions:output_type -> gymlog.v1.ListWorkoutSessionsResponse
-	26,  // 129: gymlog.v1.WorkoutSessionService.StartExercise:output_type -> gymlog.v1.WorkoutSession
-	26,  // 130: gymlog.v1.WorkoutSessionService.FinishExercise:output_type -> gymlog.v1.WorkoutSession
-	26,  // 131: gymlog.v1.WorkoutSessionService.UpdateSet:output_type -> gymlog.v1.WorkoutSession
-	53,  // 132: gymlog.v1.MetricsService.GetUserMetrics:output_type -> gymlog.v1.UserMetrics
-	50,  // 133: gymlog.v1.MetricsService.GetWorkoutMetrics:output_type -> gymlog.v1.WorkoutMetrics
-	56,  // 134: gymlog.v1.MetricsService.GetVolumeTrends:output_type -> gymlog.v1.TrendMetrics
-	109, // [109:135] is the sub-list for method output_type
-	83,  // [83:109] is the sub-list for method input_type
-	83,  // [83:83] is the sub-list for extension type_name
-	83,  // [83:83] is the sub-list for extension extendee
-	0,   // [0:83] is the sub-list for field type_name
+	50,  // 62: gymlog.v1.WorkoutMetrics.injury_risk_prevention_metrics:type_name -> gymlog.v1.InjuryRiskPreventionMetrics
+	51,  // 63: gymlog.v1.WorkoutMetrics.efficiency_technique_metrics:type_name -> gymlog.v1.EfficiencyTechniqueMetrics
+	44,  // 64: gymlog.v1.WorkoutMetrics.set_metrics:type_name -> gymlog.v1.SetMetrics
+	45,  // 65: gymlog.v1.WorkoutMetrics.exercise_metrics:type_name -> gymlog.v1.ExerciseMetrics
+	80,  // 66: gymlog.v1.WorkoutMetrics.created_at:type_name -> google.protobuf.Timestamp
+	80,  // 67: gymlog.v1.WorkoutMetrics.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 68: gymlog.v1.PeriodMetrics.start_date:type_name -> google.protobuf.Timestamp
+	80,  // 69: gymlog.v1.PeriodMetrics.end_date:type_name -> google.protobuf.Timestamp
+	75,  // 70: gymlog.v1.PeriodMetrics.muscle_group_volume:type_name -> gymlog.v1.PeriodMetrics.MuscleGroupVolumeEntry
+	76,  // 71: gymlog.v1.VolumeLandmarks.mev:type_name -> gymlog.v1.VolumeLandmarks.MevEntry
+	77,  // 72: gymlog.v1.VolumeLandmarks.mav:type_name -> gymlog.v1.VolumeLandmarks.MavEntry
+	78,  // 73: gymlog.v1.VolumeLandmarks.mrv:type_name -> gymlog.v1.VolumeLandmarks.MrvEntry
+	53,  // 74: gymlog.v1.UserMetrics.weekly_metrics:type_name -> gymlog.v1.PeriodMetrics
+	53,  // 75: gymlog.v1.UserMetrics.monthly_metrics:type_name -> gymlog.v1.PeriodMetrics
+	53,  // 76: gymlog.v1.UserMetrics.all_time_metrics:type_name -> gymlog.v1.PeriodMetrics
+	54,  // 77: gymlog.v1.UserMetrics.volume_landmarks:type_name -> gymlog.v1.VolumeLandmarks
+	80,  // 78: gymlog.v1.UserMetrics.created_at:type_name -> google.protobuf.Timestamp
+	80,  // 79: gymlog.v1.UserMetrics.updated_at:type_name -> google.protobuf.Timestamp
+	80,  // 80: gymlog.v1.VolumeProgressionPoint.date:type_name -> google.protobuf.Timestamp
+	56,  // 81: gymlog.v1.TrendMetrics.volume_progression:type_name -> gymlog.v1.VolumeProgressionPoint
+	79,  // 82: gymlog.v1.TrendMetrics.muscle_group_trends:type_name -> gymlog.v1.TrendMetrics.MuscleGroupTrendsEntry
+	40,  // 83: gymlog.v1.ProgressAdaptationMetrics.PlateauDetectionEntry.value:type_name -> gymlog.v1.PlateauStatus
+	57,  // 84: gymlog.v1.TrendMetrics.MuscleGroupTrendsEntry.value:type_name -> gymlog.v1.DoubleList
+	1,   // 85: gymlog.v1.UserService.CreateUser:input_type -> gymlog.v1.CreateUserRequest
+	2,   // 86: gymlog.v1.UserService.GetUser:input_type -> gymlog.v1.GetUserRequest
+	3,   // 87: gymlog.v1.UserService.UpdateUser:input_type -> gymlog.v1.UpdateUserRequest
+	4,   // 88: gymlog.v1.UserService.ListUsers:input_type -> gymlog.v1.ListUsersRequest
+	7,   // 89: gymlog.v1.ExerciseService.CreateExercise:input_type -> gymlog.v1.CreateExerciseRequest
+	8,   // 90: gymlog.v1.ExerciseService.GetExercise:input_type -> gymlog.v1.GetExerciseRequest
+	9,   // 91: gymlog.v1.ExerciseService.UpdateExercise:input_type -> gymlog.v1.UpdateExerciseRequest
+	10,  // 92: gymlog.v1.ExerciseService.DeleteExercise:input_type -> gymlog.v1.DeleteExerciseRequest
+	11,  // 93: gymlog.v1.ExerciseService.ListExercises:input_type -> gymlog.v1.ListExercisesRequest
+	13,  // 94: gymlog.v1.ExerciseService.GetQuickAddExercises:input_type -> gymlog.v1.GetQuickAddExercisesRequest
+	18,  // 95: gymlog.v1.WorkoutService.CreateWorkout:input_type -> gymlog.v1.CreateWorkoutRequest
+	19,  // 96: gymlog.v1.WorkoutService.GetWorkout:input_type -> gymlog.v1.GetWorkoutRequest
+	20,  // 97: gymlog.v1.WorkoutService.UpdateWorkout:input_type -> gymlog.v1.UpdateWorkoutRequest
+	21,  // 98: gymlog.v1.WorkoutService.DeleteWorkout:input_type -> gymlog.v1.DeleteWorkoutRequest
+	22,  // 99: gymlog.v1.WorkoutService.ListWorkouts:input_type -> gymlog.v1.ListWorkoutsRequest
+	27,  // 100: gymlog.v1.WorkoutSessionService.CreateWorkoutSession:input_type -> gymlog.v1.CreateWorkoutSessionRequest
+	28,  // 101: gymlog.v1.WorkoutSessionService.GetWorkoutSession:input_type -> gymlog.v1.GetWorkoutSessionRequest
+	29,  // 102: gymlog.v1.WorkoutSessionService.UpdateWorkoutSession:input_type -> gymlog.v1.UpdateWorkoutSessionRequest
+	30,  // 103: gymlog.v1.WorkoutSessionService.DeleteWorkoutSession:input_type -> gymlog.v1.DeleteWorkoutSessionRequest
+	31,  // 104: gymlog.v1.WorkoutSessionService.ListWorkoutSessions:input_type -> gymlog.v1.ListWorkoutSessionsRequest
+	33,  // 105: gymlog.v1.WorkoutSessionService.StartExercise:input_type -> gymlog.v1.StartExerciseRequest
+	34,  // 106: gymlog.v1.WorkoutSessionService.FinishExercise:input_type -> gymlog.v1.FinishExerciseRequest
+	35,  // 107: gymlog.v1.WorkoutSessionService.UpdateSet:input_type -> gymlog.v1.UpdateSetRequest
+	59,  // 108: gymlog.v1.MetricsService.GetUserMetrics:input_type -> gymlog.v1.GetUserMetricsRequest
+	61,  // 109: gymlog.v1.MetricsService.GetWorkoutMetrics:input_type -> gymlog.v1.GetWorkoutMetricsRequest
+	60,  // 110: gymlog.v1.MetricsService.GetVolumeTrends:input_type -> gymlog.v1.GetVolumeTrendsRequest
+	0,   // 111: gymlog.v1.UserService.CreateUser:output_type -> gymlog.v1.User
+	0,   // 112: gymlog.v1.UserService.GetUser:output_type -> gymlog.v1.User
+	0,   // 113: gymlog.v1.UserService.UpdateUser:output_type -> gymlog.v1.User
+	5,   // 114: gymlog.v1.UserService.ListUsers:output_type -> gymlog.v1.ListUsersResponse
+	6,   // 115: gymlog.v1.ExerciseService.CreateExercise:output_type -> gymlog.v1.Exercise
+	6,   // 116: gymlog.v1.ExerciseService.GetExercise:output_type -> gymlog.v1.Exercise
+	6,   // 117: gymlog.v1.ExerciseService.UpdateExercise:output_type -> gymlog.v1.Exercise
+	81,  // 118: gymlog.v1.ExerciseService.DeleteExercise:output_type -> google.protobuf.Empty
+	12,  // 119: gymlog.v1.ExerciseService.ListExercises:output_type -> gymlog.v1.ListExercisesResponse
+	14,  // 120: gymlog.v1.ExerciseService.GetQuickAddExercises:output_type -> gymlog.v1.GetQuickAddExercisesResponse
+	17,  // 121: gymlog.v1.WorkoutService.CreateWorkout:output_type -> gymlog.v1.Workout
+	17,  // 122: gymlog.v1.WorkoutService.GetWorkout:output_type -> gymlog.v1.Workout
+	17,  // 123: gymlog.v1.WorkoutService.UpdateWorkout:output_type -> gymlog.v1.Workout
+	81,  // 124: gymlog.v1.WorkoutService.DeleteWorkout:output_type -> google.protobuf.Empty
+	23,  // 125: gymlog.v1.WorkoutService.ListWorkouts:output_type -> gymlog.v1.ListWorkoutsResponse
+	26,  // 126: gymlog.v1.WorkoutSessionService.CreateWorkoutSession:output_type -> gymlog.v1.WorkoutSession
+	26,  // 127: gymlog.v1.WorkoutSessionService.GetWorkoutSession:output_type -> gymlog.v1.WorkoutSession
+	26,  // 128: gymlog.v1.WorkoutSessionService.UpdateWorkoutSession:output_type -> gymlog.v1.WorkoutSession
+	81,  // 129: gymlog.v1.WorkoutSessionService.DeleteWorkoutSession:output_type -> google.protobuf.Empty
+	32,  // 130: gymlog.v1.WorkoutSessionService.ListWorkoutSessions:output_type -> gymlog.v1.ListWorkoutSessionsResponse
+	26,  // 131: gymlog.v1.WorkoutSessionService.StartExercise:output_type -> gymlog.v1.WorkoutSession
+	26,  // 132: gymlog.v1.WorkoutSessionService.FinishExercise:output_type -> gymlog.v1.WorkoutSession
+	26,  // 133: gymlog.v1.WorkoutSessionService.UpdateSet:output_type -> gymlog.v1.WorkoutSession
+	55,  // 134: gymlog.v1.MetricsService.GetUserMetrics:output_type -> gymlog.v1.UserMetrics
+	52,  // 135: gymlog.v1.MetricsService.GetWorkoutMetrics:output_type -> gymlog.v1.WorkoutMetrics
+	58,  // 136: gymlog.v1.MetricsService.GetVolumeTrends:output_type -> gymlog.v1.TrendMetrics
+	111, // [111:137] is the sub-list for method output_type
+	85,  // [85:111] is the sub-list for method input_type
+	85,  // [85:85] is the sub-list for extension type_name
+	85,  // [85:85] is the sub-list for extension extendee
+	0,   // [0:85] is the sub-list for field type_name
 }
 
 func init() { file_gymlog_v1_gymlog_proto_init() }
@@ -5417,7 +5575,7 @@ func file_gymlog_v1_gymlog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gymlog_v1_gymlog_proto_rawDesc), len(file_gymlog_v1_gymlog_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   78,
+			NumMessages:   80,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

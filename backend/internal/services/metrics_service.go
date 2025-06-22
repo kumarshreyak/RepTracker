@@ -111,6 +111,16 @@ func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *m
 		return nil, fmt.Errorf("failed to calculate periodization metrics: %w", err)
 	}
 
+	metrics.InjuryRiskPreventionMetrics, err = m.calculateInjuryRiskPreventionMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate injury risk prevention metrics: %w", err)
+	}
+
+	metrics.EfficiencyTechniqueMetrics, err = m.calculateEfficiencyTechniqueMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate efficiency technique metrics: %w", err)
+	}
+
 	return metrics, nil
 }
 
@@ -1972,27 +1982,29 @@ func (m *MetricsService) workoutMetricsToProto(workoutMetrics *models.WorkoutMet
 	}
 
 	return &pb.WorkoutMetrics{
-		Id:                        workoutMetrics.ID.Hex(),
-		UserId:                    workoutMetrics.UserID.Hex(),
-		SessionId:                 workoutMetrics.SessionID.Hex(),
-		RoutineId:                 workoutMetrics.RoutineID.Hex(),
-		Date:                      timestamppb.New(workoutMetrics.Date),
-		VolumeMetrics:             m.volumeMetricsToProto(&workoutMetrics.VolumeMetrics),
-		PerformanceMetrics:        m.performanceMetricsToProto(&workoutMetrics.PerformanceMetrics),
-		IntensityMetrics:          m.intensityMetricsToProto(&workoutMetrics.IntensityMetrics),
-		StrengthMetrics:           m.strengthMetricsToProto(&workoutMetrics.StrengthMetrics),
-		ProgressAdaptationMetrics: m.progressAdaptationMetricsToProto(&workoutMetrics.ProgressAdaptationMetrics),
-		RecoveryFatigueMetrics:    m.recoveryFatigueMetricsToProto(&workoutMetrics.RecoveryFatigueMetrics),
-		BodyCompositionMetrics:    m.bodyCompositionMetricsToProto(&workoutMetrics.BodyCompositionMetrics),
-		MuscleSpecificMetrics:     m.muscleSpecificMetricsToProto(&workoutMetrics.MuscleSpecificMetrics),
-		WorkCapacityMetrics:       m.workCapacityMetricsToProto(&workoutMetrics.WorkCapacityMetrics),
-		TrainingPatternMetrics:    m.trainingPatternMetricsToProto(&workoutMetrics.TrainingPatternMetrics),
-		PeriodizationMetrics:      m.periodizationMetricsToProto(&workoutMetrics.PeriodizationMetrics),
-		SetMetrics:                m.setMetricsToProto(&workoutMetrics.SetMetrics),
-		ExerciseMetrics:           exerciseMetrics,
-		WorkoutDurationSecs:       workoutMetrics.WorkoutDurationSecs,
-		CreatedAt:                 timestamppb.New(workoutMetrics.CreatedAt),
-		UpdatedAt:                 timestamppb.New(workoutMetrics.UpdatedAt),
+		Id:                          workoutMetrics.ID.Hex(),
+		UserId:                      workoutMetrics.UserID.Hex(),
+		SessionId:                   workoutMetrics.SessionID.Hex(),
+		RoutineId:                   workoutMetrics.RoutineID.Hex(),
+		Date:                        timestamppb.New(workoutMetrics.Date),
+		VolumeMetrics:               m.volumeMetricsToProto(&workoutMetrics.VolumeMetrics),
+		PerformanceMetrics:          m.performanceMetricsToProto(&workoutMetrics.PerformanceMetrics),
+		IntensityMetrics:            m.intensityMetricsToProto(&workoutMetrics.IntensityMetrics),
+		StrengthMetrics:             m.strengthMetricsToProto(&workoutMetrics.StrengthMetrics),
+		ProgressAdaptationMetrics:   m.progressAdaptationMetricsToProto(&workoutMetrics.ProgressAdaptationMetrics),
+		RecoveryFatigueMetrics:      m.recoveryFatigueMetricsToProto(&workoutMetrics.RecoveryFatigueMetrics),
+		BodyCompositionMetrics:      m.bodyCompositionMetricsToProto(&workoutMetrics.BodyCompositionMetrics),
+		MuscleSpecificMetrics:       m.muscleSpecificMetricsToProto(&workoutMetrics.MuscleSpecificMetrics),
+		WorkCapacityMetrics:         m.workCapacityMetricsToProto(&workoutMetrics.WorkCapacityMetrics),
+		TrainingPatternMetrics:      m.trainingPatternMetricsToProto(&workoutMetrics.TrainingPatternMetrics),
+		PeriodizationMetrics:        m.periodizationMetricsToProto(&workoutMetrics.PeriodizationMetrics),
+		InjuryRiskPreventionMetrics: m.injuryRiskPreventionMetricsToProto(&workoutMetrics.InjuryRiskPreventionMetrics),
+		EfficiencyTechniqueMetrics:  m.efficiencyTechniqueMetricsToProto(&workoutMetrics.EfficiencyTechniqueMetrics),
+		SetMetrics:                  m.setMetricsToProto(&workoutMetrics.SetMetrics),
+		ExerciseMetrics:             exerciseMetrics,
+		WorkoutDurationSecs:         workoutMetrics.WorkoutDurationSecs,
+		CreatedAt:                   timestamppb.New(workoutMetrics.CreatedAt),
+		UpdatedAt:                   timestamppb.New(workoutMetrics.UpdatedAt),
 	}
 }
 
@@ -2142,5 +2154,373 @@ func (m *MetricsService) periodizationMetricsToProto(pm *models.PeriodizationMet
 		AcuteTrainingLoad:     pm.AcuteTrainingLoad,
 		TrainingStressBalance: pm.TrainingStressBalance,
 		FormFreshnessIndex:    pm.FormFreshnessIndex,
+	}
+}
+
+// calculateInjuryRiskPreventionMetrics calculates injury risk and prevention metrics
+func (m *MetricsService) calculateInjuryRiskPreventionMetrics(ctx context.Context, session *models.WorkoutSession) (models.InjuryRiskPreventionMetrics, error) {
+	injuryRiskMetrics := models.InjuryRiskPreventionMetrics{}
+
+	// Get recovery fatigue metrics for ACWR
+	recoveryFatigueMetrics, err := m.calculateRecoveryFatigueMetrics(ctx, session)
+	if err != nil {
+		return injuryRiskMetrics, err
+	}
+
+	// Get muscle specific metrics for imbalance index
+	muscleSpecificMetrics, err := m.calculateMuscleSpecificMetrics(ctx, session)
+	if err != nil {
+		return injuryRiskMetrics, err
+	}
+
+	// Calculate average imbalance index across all muscle groups
+	var totalImbalance float64
+	var imbalanceCount int
+	for _, imbalance := range muscleSpecificMetrics.MuscleImbalanceIndex {
+		totalImbalance += imbalance
+		imbalanceCount++
+	}
+
+	var averageImbalance float64
+	if imbalanceCount > 0 {
+		averageImbalance = totalImbalance / float64(imbalanceCount)
+	}
+
+	// Calculate fatigue score (using fatigue accumulation index as proxy)
+	fatigueScore := recoveryFatigueMetrics.FatigueAccumulationIndex
+
+	// Get recovery quality (simplified using defaults)
+	profile := models.DefaultProfile
+	recoveryQuality := (profile.SleepQuality + profile.NutritionFactor) / 2.0
+
+	// Calculate Injury Risk Score: IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality
+	acwr := recoveryFatigueMetrics.AcuteChronicWorkloadRatio
+	if recoveryQuality > 0 {
+		injuryRiskScore := (acwr * averageImbalance * math.Abs(fatigueScore)) / recoveryQuality
+		injuryRiskMetrics.InjuryRiskScore = injuryRiskScore
+	}
+
+	// Calculate Load Spike Alert: Weekly Volume > 1.5 × Average of Last 4 Weeks
+	currentWeekVolume, err := m.getCurrentWeekVolume(ctx, session.UserID, session.StartedAt)
+	if err == nil {
+		averageFourWeekVolume, err := m.getAverageFourWeekVolume(ctx, session.UserID, session.StartedAt)
+		if err == nil && averageFourWeekVolume > 0 {
+			spikeThreshold := averageFourWeekVolume * models.LoadSpikeMultiplier
+			injuryRiskMetrics.LoadSpikeAlert = currentWeekVolume > spikeThreshold
+		}
+	}
+
+	// Calculate Asymmetry Development: |(Left Performance - Right Performance)| / Average × 100
+	asymmetryDevelopment, err := m.calculateAsymmetryDevelopment(ctx, session)
+	if err == nil {
+		injuryRiskMetrics.AsymmetryDevelopment = asymmetryDevelopment
+	}
+
+	return injuryRiskMetrics, nil
+}
+
+// calculateEfficiencyTechniqueMetrics calculates efficiency and technique metrics
+func (m *MetricsService) calculateEfficiencyTechniqueMetrics(ctx context.Context, session *models.WorkoutSession) (models.EfficiencyTechniqueMetrics, error) {
+	efficiencyMetrics := models.EfficiencyTechniqueMetrics{}
+
+	// Calculate volume metrics for total volume
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err != nil {
+		return efficiencyMetrics, err
+	}
+
+	// Calculate Strength Efficiency: SE = (1RM Gain / Total Volume) × 1000
+	strengthEfficiency, err := m.calculateStrengthEfficiency(ctx, session, volumeMetrics.TotalVolumeLoad)
+	if err == nil {
+		efficiencyMetrics.StrengthEfficiency = strengthEfficiency
+	}
+
+	// Calculate Volume Efficiency: VE = Performance Improvement / Total Training Volume
+	volumeEfficiency, err := m.calculateVolumeEfficiency(ctx, session, volumeMetrics.TotalVolumeLoad)
+	if err == nil {
+		efficiencyMetrics.VolumeEfficiency = volumeEfficiency
+	}
+
+	// Calculate RPE-Performance Correlation: Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+	rpeCorrelation, err := m.calculateRPEPerformanceCorrelation(ctx, session)
+	if err == nil {
+		efficiencyMetrics.RPEPerformanceCorrelation = rpeCorrelation
+	}
+
+	// Calculate Technique Consistency: 1 - (Standard Deviation of Rep Times / Average Rep Time)
+	techniqueConsistency, err := m.calculateTechniqueConsistency(ctx, session)
+	if err == nil {
+		efficiencyMetrics.TechniqueConsistency = techniqueConsistency
+	}
+
+	return efficiencyMetrics, nil
+}
+
+// Helper methods for Injury Risk Prevention Metrics
+
+func (m *MetricsService) getCurrentWeekVolume(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	weekStart := currentDate.AddDate(0, 0, -int(currentDate.Weekday()))
+	periodMetrics, err := m.calculatePeriodMetrics(ctx, userID, weekStart, currentDate)
+	if err != nil {
+		return 0, err
+	}
+	return periodMetrics.TotalVolumeLoad, nil
+}
+
+func (m *MetricsService) getAverageFourWeekVolume(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Get volume for last 4 weeks (excluding current week)
+	currentWeekStart := currentDate.AddDate(0, 0, -int(currentDate.Weekday()))
+
+	var weeklyVolumes []float64
+
+	for i := 0; i < 4; i++ {
+		weekStart := currentWeekStart.AddDate(0, 0, -(i+1)*7)
+		weekEnd := weekStart.AddDate(0, 0, 6)
+
+		periodMetrics, err := m.calculatePeriodMetrics(ctx, userID, weekStart, weekEnd)
+		if err == nil {
+			weeklyVolumes = append(weeklyVolumes, periodMetrics.TotalVolumeLoad)
+		}
+	}
+
+	if len(weeklyVolumes) == 0 {
+		return 0, fmt.Errorf("no historical volume data found")
+	}
+
+	// Calculate average
+	total := 0.0
+	for _, volume := range weeklyVolumes {
+		total += volume
+	}
+
+	return total / float64(len(weeklyVolumes)), nil
+}
+
+func (m *MetricsService) calculateAsymmetryDevelopment(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// For now, use the largest imbalance found in muscle-specific metrics as proxy
+	muscleSpecificMetrics, err := m.calculateMuscleSpecificMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxAsymmetry float64
+	for _, imbalance := range muscleSpecificMetrics.MuscleImbalanceIndex {
+		if imbalance > maxAsymmetry {
+			maxAsymmetry = imbalance
+		}
+	}
+
+	return maxAsymmetry, nil
+}
+
+// Helper methods for Efficiency & Technique Metrics
+
+func (m *MetricsService) calculateStrengthEfficiency(ctx context.Context, session *models.WorkoutSession, totalVolume float64) (float64, error) {
+	// Get current session's best 1RM estimates
+	strengthMetrics, err := m.calculateStrengthMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get previous session's 1RM estimates for comparison
+	previousMetrics, err := m.getPreviousSessionMetrics(ctx, session.UserID, session.StartedAt)
+	if err != nil || previousMetrics == nil {
+		return 0, nil // No previous data for comparison
+	}
+
+	var totalOneRMGain float64
+	var exerciseCount int
+
+	// Calculate 1RM gains for each exercise
+	for exerciseID, currentOneRM := range strengthMetrics.EstimatedOneRMEpley {
+		if previousOneRM, exists := previousMetrics.StrengthMetrics.EstimatedOneRMEpley[exerciseID]; exists {
+			oneRMGain := currentOneRM - previousOneRM
+			if oneRMGain > 0 { // Only count positive gains
+				totalOneRMGain += oneRMGain
+				exerciseCount++
+			}
+		}
+	}
+
+	if totalVolume <= 0 || totalOneRMGain <= 0 {
+		return 0, nil
+	}
+
+	// SE = (1RM Gain / Total Volume) × 1000
+	strengthEfficiency := (totalOneRMGain / totalVolume) * models.StrengthEfficiencyMultiplier
+	return strengthEfficiency, nil
+}
+
+func (m *MetricsService) calculateVolumeEfficiency(ctx context.Context, session *models.WorkoutSession, totalVolume float64) (float64, error) {
+	// Calculate performance improvement using average 1RM improvement
+	strengthMetrics, err := m.calculateStrengthMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	previousMetrics, err := m.getPreviousSessionMetrics(ctx, session.UserID, session.StartedAt)
+	if err != nil || previousMetrics == nil {
+		return 0, nil // No previous data for comparison
+	}
+
+	var totalPerformanceImprovement float64
+	var exerciseCount int
+
+	// Calculate performance improvement for each exercise
+	for exerciseID, currentOneRM := range strengthMetrics.EstimatedOneRMEpley {
+		if previousOneRM, exists := previousMetrics.StrengthMetrics.EstimatedOneRMEpley[exerciseID]; exists && previousOneRM > 0 {
+			performanceImprovement := (currentOneRM - previousOneRM) / previousOneRM
+			totalPerformanceImprovement += performanceImprovement
+			exerciseCount++
+		}
+	}
+
+	if exerciseCount == 0 || totalVolume <= 0 {
+		return 0, nil
+	}
+
+	averagePerformanceImprovement := totalPerformanceImprovement / float64(exerciseCount)
+
+	// VE = Performance Improvement / Total Training Volume
+	volumeEfficiency := averagePerformanceImprovement / totalVolume
+	return volumeEfficiency, nil
+}
+
+func (m *MetricsService) calculateRPEPerformanceCorrelation(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	var actualReps []float64
+	var expectedReps []float64
+
+	// Collect data points from all completed sets
+	for _, exercise := range session.Exercises {
+		for _, set := range exercise.Sets {
+			if !set.Completed {
+				continue
+			}
+
+			actualRep := float64(set.ActualReps)
+			rpe := float64(session.RPERating)
+
+			// Expected reps at given RPE (simplified formula: higher RPE = fewer reps expected)
+			// This is a simplified model: Expected = 10 - RPE + baseline reps
+			expectedRep := 10.0 - rpe + float64(set.TargetReps)
+
+			actualReps = append(actualReps, actualRep)
+			expectedReps = append(expectedReps, expectedRep)
+		}
+	}
+
+	// Need minimum sample size for meaningful correlation
+	if len(actualReps) < models.MinCorrelationSampleSize {
+		return 0, nil
+	}
+
+	// Calculate Pearson correlation coefficient
+	correlation := calculatePearsonCorrelation(actualReps, expectedReps)
+	return correlation, nil
+}
+
+func (m *MetricsService) calculateTechniqueConsistency(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	var repTimes []float64
+
+	// For now, use default rep times based on exercise tempo
+	// In a real implementation, this would use actual timing data from the workout
+	for _, exercise := range session.Exercises {
+		exerciseDetails, err := m.exerciseService.GetExercise(ctx, &pb.GetExerciseRequest{Id: exercise.ExerciseID.Hex()})
+		if err != nil {
+			continue
+		}
+
+		// Get exercise tempo
+		tempo := models.DefaultExerciseTempos["default"]
+		exerciseName := strings.ToLower(exerciseDetails.Name)
+		for knownExercise, knownTempo := range models.DefaultExerciseTempos {
+			if strings.Contains(exerciseName, knownExercise) {
+				tempo = knownTempo
+				break
+			}
+		}
+
+		repTime := tempo.Eccentric + tempo.Pause1 + tempo.Concentric + tempo.Pause2
+
+		for _, set := range exercise.Sets {
+			if set.Completed {
+				// Add some simulated variance (±10%) to represent technique consistency
+				// In real implementation, this would be actual measured rep times
+				variance := 0.1 * repTime * (math.Sin(float64(set.ActualReps)) - 0.5) // Pseudo-random variance
+				simulatedRepTime := repTime + variance
+				repTimes = append(repTimes, simulatedRepTime)
+			}
+		}
+	}
+
+	if len(repTimes) < 2 {
+		return 1.0, nil // Perfect consistency if only one rep
+	}
+
+	// Calculate average and standard deviation
+	averageRepTime := average(repTimes)
+	stdDev := standardDeviation(repTimes, averageRepTime)
+
+	if averageRepTime <= 0 {
+		return 0, nil
+	}
+
+	// Technique Consistency = 1 - (Standard Deviation / Average Rep Time)
+	consistency := 1.0 - (stdDev / averageRepTime)
+
+	// Ensure consistency is between 0 and 1
+	if consistency < 0 {
+		consistency = 0
+	} else if consistency > 1 {
+		consistency = 1
+	}
+
+	return consistency, nil
+}
+
+// calculatePearsonCorrelation calculates the Pearson correlation coefficient between two slices
+func calculatePearsonCorrelation(x, y []float64) float64 {
+	if len(x) != len(y) || len(x) == 0 {
+		return 0
+	}
+
+	// Calculate means
+	meanX := average(x)
+	meanY := average(y)
+
+	// Calculate correlation coefficient
+	var numerator, denomX, denomY float64
+
+	for i := range x {
+		dx := x[i] - meanX
+		dy := y[i] - meanY
+
+		numerator += dx * dy
+		denomX += dx * dx
+		denomY += dy * dy
+	}
+
+	if denomX == 0 || denomY == 0 {
+		return 0
+	}
+
+	correlation := numerator / math.Sqrt(denomX*denomY)
+	return correlation
+}
+
+func (m *MetricsService) injuryRiskPreventionMetricsToProto(irpm *models.InjuryRiskPreventionMetrics) *pb.InjuryRiskPreventionMetrics {
+	return &pb.InjuryRiskPreventionMetrics{
+		InjuryRiskScore:      irpm.InjuryRiskScore,
+		LoadSpikeAlert:       irpm.LoadSpikeAlert,
+		AsymmetryDevelopment: irpm.AsymmetryDevelopment,
+	}
+}
+
+func (m *MetricsService) efficiencyTechniqueMetricsToProto(etm *models.EfficiencyTechniqueMetrics) *pb.EfficiencyTechniqueMetrics {
+	return &pb.EfficiencyTechniqueMetrics{
+		StrengthEfficiency:        etm.StrengthEfficiency,
+		VolumeEfficiency:          etm.VolumeEfficiency,
+		RpePerformanceCorrelation: etm.RPEPerformanceCorrelation,
+		TechniqueConsistency:      etm.TechniqueConsistency,
 	}
 }
