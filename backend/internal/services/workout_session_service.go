@@ -26,15 +26,17 @@ type WorkoutSessionService struct {
 	sessionColl     *mongo.Collection
 	workoutService  *WorkoutService
 	exerciseService *ExerciseService
+	metricsService  *MetricsService
 }
 
 // NewWorkoutSessionService creates a new WorkoutSessionService instance
-func NewWorkoutSessionService(db *database.MongoDB, workoutService *WorkoutService, exerciseService *ExerciseService) *WorkoutSessionService {
+func NewWorkoutSessionService(db *database.MongoDB, workoutService *WorkoutService, exerciseService *ExerciseService, metricsService *MetricsService) *WorkoutSessionService {
 	return &WorkoutSessionService{
 		db:              db,
 		sessionColl:     db.GetCollection("workout_sessions"),
 		workoutService:  workoutService,
 		exerciseService: exerciseService,
+		metricsService:  metricsService,
 	}
 }
 
@@ -260,6 +262,9 @@ func (s *WorkoutSessionService) UpdateWorkoutSession(ctx context.Context, req *p
 	if req.Notes != "" {
 		update["notes"] = req.Notes
 	}
+	if req.RpeRating > 0 {
+		update["rpe_rating"] = req.RpeRating
+	}
 	if req.IsActive != update["is_active"] {
 		update["is_active"] = req.IsActive
 	}
@@ -274,6 +279,27 @@ func (s *WorkoutSessionService) UpdateWorkoutSession(ctx context.Context, req *p
 	}
 	if result.MatchedCount == 0 {
 		return nil, status.Error(codes.NotFound, "workout session not found")
+	}
+
+	// If session was finished, calculate and save metrics
+	if req.FinishedAt != nil {
+		// Get the updated session
+		var updatedSession models.WorkoutSession
+		err = s.sessionColl.FindOne(ctx, bson.M{"_id": objectID}).Decode(&updatedSession)
+		if err == nil && s.metricsService != nil {
+			// Calculate workout metrics
+			workoutMetrics, err := s.metricsService.CalculateWorkoutMetrics(ctx, &updatedSession)
+			if err == nil {
+				// Save workout metrics
+				err = s.metricsService.SaveWorkoutMetrics(ctx, workoutMetrics)
+				if err == nil {
+					// Update user metrics
+					_ = s.metricsService.UpdateUserMetrics(ctx, updatedSession.UserID)
+				}
+			}
+			// Note: We don't return errors here to avoid failing the session update
+			// Metrics calculation is secondary to the main workout functionality
+		}
 	}
 
 	return s.GetWorkoutSession(ctx, &pb.GetWorkoutSessionRequest{Id: req.Id})
@@ -575,6 +601,7 @@ func (s *WorkoutSessionService) modelToProto(session *models.WorkoutSession) *pb
 		FinishedAt:      finishedAt,
 		DurationSeconds: session.DurationSeconds,
 		Notes:           session.Notes,
+		RpeRating:       session.RPERating,
 		IsActive:        session.IsActive,
 		CreatedAt:       timestamppb.New(session.CreatedAt),
 		UpdatedAt:       timestamppb.New(session.UpdatedAt),

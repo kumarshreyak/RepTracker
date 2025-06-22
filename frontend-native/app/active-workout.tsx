@@ -43,6 +43,8 @@ export default function ActiveWorkoutScreen() {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [showRPEModal, setShowRPEModal] = useState(false);
+  const [rpeRating, setRpeRating] = useState<number | null>(null);
   const setsScrollRef = useRef<ScrollView>(null);
 
   // Timer effect
@@ -287,8 +289,16 @@ export default function ActiveWorkoutScreen() {
   const confirmEndWorkout = async () => {
     if (!activeWorkout || !user?.id) return;
 
+    // Show RPE modal instead of immediately saving
+    setShowRPEModal(true);
+  };
+
+  const saveWorkoutWithRPE = async (selectedRPE: number | null) => {
+    if (!activeWorkout || !user?.id) return;
+
     try {
       setSaving(true);
+      setShowRPEModal(false);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
       const finishedAt = new Date();
@@ -322,6 +332,7 @@ export default function ActiveWorkoutScreen() {
         finishedAt: finishedAt.toISOString(),
         durationSeconds,
         isActive: false,
+        rpeRating: selectedRPE || 0,
         notes: activeWorkout.notes || `Completed ${activeWorkout.exercises.filter(ex => ex.completed).length}/${activeWorkout.exercises.length} exercises`,
       };
 
@@ -615,6 +626,64 @@ export default function ActiveWorkoutScreen() {
           </Typography>
         </View>
       </TouchableOpacity>
+
+      {/* RPE Rating Modal */}
+      {showRPEModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.rpeModal}>
+            <Typography variant="heading-small" color="contentPrimary" style={styles.rpeTitle}>
+              Rate workout difficulty
+            </Typography>
+            <Typography variant="paragraph-medium" color="contentSecondary" style={styles.rpeSubtitle}>
+              How hard was this workout? (1-10 scale)
+            </Typography>
+            
+            <View style={styles.rpeButtonGrid}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
+                <TouchableOpacity
+                  key={rating}
+                  style={[
+                    styles.rpeButton,
+                    rpeRating === rating && styles.rpeButtonSelected
+                  ]}
+                  onPress={() => setRpeRating(rating)}
+                >
+                  <Typography 
+                    variant="heading-small" 
+                    color={rpeRating === rating ? "contentOnColor" : "contentPrimary"}
+                  >
+                    {rating}
+                  </Typography>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.rpeButtonRow}>
+              <TouchableOpacity 
+                style={styles.rpeSkipButton} 
+                onPress={() => saveWorkoutWithRPE(null)}
+              >
+                <Typography variant="label-medium" color="contentSecondary">
+                  Skip
+                </Typography>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.rpeSaveButton,
+                  !rpeRating && styles.rpeSaveButtonDisabled
+                ]} 
+                onPress={() => saveWorkoutWithRPE(rpeRating)}
+                disabled={!rpeRating}
+              >
+                <Typography variant="label-medium" color="contentOnColor">
+                  {saving ? "SAVING..." : "SAVE RATING"}
+                </Typography>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -807,5 +876,85 @@ const styles = StyleSheet.create({
   },
   fabIcon: {
     marginRight: 8,
+  },
+  
+  // RPE Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  rpeModal: {
+    backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    marginHorizontal: 20,
+    minWidth: 300,
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  rpeTitle: {
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  rpeSubtitle: {
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  rpeButtonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 32,
+  },
+  rpeButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderWidth: 2,
+    borderColor: getColor('borderOpaque'),
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rpeButtonSelected: {
+    backgroundColor: getColor('backgroundAccent'),
+    borderColor: getColor('backgroundAccent'),
+  },
+  rpeButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  rpeSkipButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    backgroundColor: getColor('backgroundSecondary'),
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rpeSaveButton: {
+    flex: 2,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    backgroundColor: getColor('backgroundAccent'),
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rpeSaveButtonDisabled: {
+    backgroundColor: getColor('backgroundTertiary'),
   },
 }); 

@@ -104,6 +104,7 @@ type WorkoutSession struct {
 	FinishedAt      *time.Time               `bson:"finished_at,omitempty" json:"finished_at,omitempty"`
 	DurationSeconds int32                    `bson:"duration_seconds" json:"duration_seconds"`
 	Notes           string                   `bson:"notes,omitempty" json:"notes,omitempty"`
+	RPERating       int32                    `bson:"rpe_rating,omitempty" json:"rpe_rating,omitempty"`
 	IsActive        bool                     `bson:"is_active" json:"is_active"`
 	CreatedAt       time.Time                `bson:"created_at" json:"created_at"`
 	UpdatedAt       time.Time                `bson:"updated_at" json:"updated_at"`

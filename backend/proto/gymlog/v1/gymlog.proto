@@ -1,0 +1,590 @@
+syntax = "proto3";
+
+package gymlog.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "gymlog-backend/proto/gymlog/v1";
+
+// User related messages
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string first_name = 4;
+  string last_name = 5;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+}
+
+message ListUsersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  string next_page_token = 2;
+}
+
+// Exercise related messages
+message Exercise {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  repeated string equipment = 5;
+  repeated string primary_muscles = 6;
+  repeated string secondary_muscles = 7;
+  repeated string instructions = 8;
+  string video = 9;
+  repeated string variations_on = 10;
+  repeated string variation_on = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message CreateExerciseRequest {
+  string name = 1;
+  string description = 2;
+  string category = 3;
+  repeated string equipment = 4;
+  repeated string primary_muscles = 5;
+  repeated string secondary_muscles = 6;
+  repeated string instructions = 7;
+  string video = 8;
+  repeated string variations_on = 9;
+  repeated string variation_on = 10;
+}
+
+message GetExerciseRequest {
+  string id = 1;
+}
+
+message UpdateExerciseRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  repeated string equipment = 5;
+  repeated string primary_muscles = 6;
+  repeated string secondary_muscles = 7;
+  repeated string instructions = 8;
+  string video = 9;
+  repeated string variations_on = 10;
+  repeated string variation_on = 11;
+}
+
+message DeleteExerciseRequest {
+  string id = 1;
+}
+
+message ListExercisesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  repeated string categories = 3;
+  repeated string equipment = 4;
+  repeated string primary_muscles = 5;
+  repeated string secondary_muscles = 6;
+  string search = 7;
+}
+
+message ListExercisesResponse {
+  repeated Exercise exercises = 1;
+  string next_page_token = 2;
+}
+
+message GetQuickAddExercisesRequest {
+  string user_id = 1;
+  int32 limit = 2; // default 5
+}
+
+message GetQuickAddExercisesResponse {
+  repeated Exercise exercises = 1;
+}
+
+// Workout related messages
+message WorkoutSet {
+  int32 reps = 1;
+  float weight = 2;
+  float duration_seconds = 3;
+  float distance = 4;
+  string notes = 5;
+}
+
+message WorkoutExercise {
+  string exercise_id = 1;
+  Exercise exercise = 2; // populated in responses
+  repeated WorkoutSet sets = 3;
+  string notes = 4;
+  int32 rest_seconds = 5;
+}
+
+message Workout {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string description = 4;
+  repeated WorkoutExercise exercises = 5;
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp finished_at = 7;
+  int32 duration_seconds = 8;
+  string notes = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message CreateWorkoutRequest {
+  string user_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated WorkoutExercise exercises = 4;
+  google.protobuf.Timestamp started_at = 5;
+  string notes = 6;
+}
+
+message GetWorkoutRequest {
+  string id = 1;
+}
+
+message UpdateWorkoutRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated WorkoutExercise exercises = 4;
+  google.protobuf.Timestamp finished_at = 5;
+  int32 duration_seconds = 6;
+  string notes = 7;
+}
+
+message DeleteWorkoutRequest {
+  string id = 1;
+}
+
+message ListWorkoutsRequest {
+  string user_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  google.protobuf.Timestamp start_date = 4;
+  google.protobuf.Timestamp end_date = 5;
+}
+
+message ListWorkoutsResponse {
+  repeated Workout workouts = 1;
+  string next_page_token = 2;
+}
+
+// Workout Session related messages (for active workout tracking)
+message WorkoutSessionSet {
+  int32 target_reps = 1;
+  float target_weight = 2;
+  int32 actual_reps = 3;
+  float actual_weight = 4;
+  float duration_seconds = 5;
+  float distance = 6;
+  string notes = 7;
+  bool completed = 8;
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp finished_at = 10;
+}
+
+message WorkoutSessionExercise {
+  string exercise_id = 1;
+  Exercise exercise = 2; // populated in responses
+  repeated WorkoutSessionSet sets = 3;
+  string notes = 4;
+  int32 rest_seconds = 5;
+  bool completed = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+
+message WorkoutSession {
+  string id = 1;
+  string user_id = 2;
+  string routine_id = 3; // Reference to the original routine/workout
+  string name = 4;
+  string description = 5;
+  repeated WorkoutSessionExercise exercises = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+  int32 duration_seconds = 9;
+  string notes = 10;
+  bool is_active = 11; // true if session is in progress
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  int32 rpe_rating = 14; // Rate of Perceived Exertion (1-10 scale)
+}
+
+message CreateWorkoutSessionRequest {
+  string user_id = 1;
+  string routine_id = 2; // The routine/workout to start
+  string name = 3;
+  string description = 4;
+  string notes = 5;
+}
+
+message GetWorkoutSessionRequest {
+  string id = 1;
+}
+
+message UpdateWorkoutSessionRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated WorkoutSessionExercise exercises = 4;
+  google.protobuf.Timestamp finished_at = 5;
+  int32 duration_seconds = 6;
+  string notes = 7;
+  bool is_active = 8;
+  int32 rpe_rating = 9; // Rate of Perceived Exertion (1-10 scale)
+}
+
+message DeleteWorkoutSessionRequest {
+  string id = 1;
+}
+
+message ListWorkoutSessionsRequest {
+  string user_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  google.protobuf.Timestamp start_date = 4;
+  google.protobuf.Timestamp end_date = 5;
+  bool active_only = 6; // filter for active sessions only
+}
+
+message ListWorkoutSessionsResponse {
+  repeated WorkoutSession sessions = 1;
+  string next_page_token = 2;
+}
+
+message StartExerciseRequest {
+  string session_id = 1;
+  int32 exercise_index = 2; // index in the exercises array
+}
+
+message FinishExerciseRequest {
+  string session_id = 1;
+  int32 exercise_index = 2;
+  string notes = 3;
+}
+
+message UpdateSetRequest {
+  string session_id = 1;
+  int32 exercise_index = 2;
+  int32 set_index = 3;
+  int32 actual_reps = 4;
+  float actual_weight = 5;
+  float duration_seconds = 6;
+  float distance = 7;
+  string notes = 8;
+  bool completed = 9;
+}
+
+// Metrics related messages
+message VolumeMetrics {
+  double total_volume_load = 1;
+  double tonnage = 2;
+  double relative_volume = 3;
+  int32 effective_reps = 4;
+  int32 hard_sets = 5;
+  map<string, double> muscle_group_volume = 6;
+}
+
+message PerformanceMetrics {
+  double average_rpe = 1;
+  int32 max_rpe = 2;
+  map<int32, int32> rpe_distribution = 3;
+}
+
+message IntensityMetrics {
+  double average_intensity = 1;      // Avg Intensity = Σ(Weight × Reps) / Σ(1RM × Reps) × 100
+  double relative_intensity = 2;     // Weight Lifted / Body Weight
+  double rpe_adjusted_load = 3;      // Weight × (RPE/10)^2
+  map<string, double> intensity_distribution = 4; // Zone percentages: Light <60%, Moderate 60-80%, Heavy >80%
+  double load_density = 5;           // Total Volume / Total Workout Time (minutes)
+}
+
+message StrengthMetrics {
+  map<string, double> estimated_one_rm_epley = 1;   // Exercise ID -> 1RM using Epley formula
+  map<string, double> estimated_one_rm_brzycki = 2; // Exercise ID -> 1RM using Brzycki formula
+  double wilks_score = 3;                           // Wilks coefficient for powerlifting comparison
+  double push_pull_ratio = 4;                       // Push volume / Pull volume ratio
+  double power_output = 5;                          // (Weight × Distance × Reps) / Time
+}
+
+message PlateauStatus {
+  bool is_plateaued = 1;           // True if Progress Rate < 1% for 3+ consecutive weeks
+  int32 consecutive_weeks = 2;     // Number of consecutive weeks with <1% progress
+  double last_progress_rate = 3;   // Most recent progress rate
+  int32 weeks_since_progress = 4;  // Weeks since last significant progress
+}
+
+message ProgressAdaptationMetrics {
+  double progressive_overload_index = 1;                // POI = (Current Week Volume × Avg Intensity) / (Previous Week Volume × Avg Intensity)
+  map<string, double> week_over_week_progress_rate = 2; // Exercise ID -> Progress Rate = (Current 1RM - Previous 1RM) / Previous 1RM × 100
+  map<string, PlateauStatus> plateau_detection = 3;    // Exercise ID -> Plateau status
+  map<string, double> strength_gain_velocity = 4;      // Exercise ID -> SGV = (Current 1RM - Initial 1RM) / Training Weeks
+  map<string, double> adaptation_rate = 5;             // Exercise ID -> Adaptation Rate = Δ Performance / Δ Volume
+}
+
+message RecoveryFatigueMetrics {
+  double acute_chronic_workload_ratio = 1; // ACWR = Acute Load (7 days) / Chronic Load (28 days), optimal: 0.8-1.3
+  double training_strain_score = 2;        // TSS = (Volume × Intensity × RPE) / 1000
+  double recovery_need_index = 3;          // RNI = (Volume × Intensity% × RPE) / (Hours Since Last Session × 10)
+  double fatigue_accumulation_index = 4;   // FAI = Σ(Daily TSS) - Σ(Daily Recovery Score)
+  double overtraining_risk_score = 5;      // OTS = (ACWR × RPE Trend × Performance Decline) / Recovery Quality, high risk if > 2.0
+  double recovery_score = 6;               // Recovery Score = Hours Rest × Sleep Quality × Nutrition Factor
+}
+
+message BodyCompositionMetrics {
+  double bmi = 1;                      // BMI = Weight (kg) / Height (m)²
+  double strength_to_weight_ratio = 2; // SWR = Total of Big 3 Lifts / Body Weight
+  double allometric_scaling_score = 3; // Scaled Strength = Lift Weight / Body Weight^(2/3)
+  double ponderal_index = 4;           // PI = Weight (kg) / Height (m)³
+}
+
+message SetMetrics {
+  int32 total_sets = 1;
+  int32 completed_sets = 2;
+  double completion_rate = 3;
+}
+
+message ExerciseMetrics {
+  string exercise_id = 1;
+  string exercise_name = 2;
+  double volume_load = 3;
+  double tonnage = 4;
+  int32 set_count = 5;
+  int32 total_reps = 6;
+  double average_weight = 7;
+  double max_weight = 8;
+  repeated string primary_muscles = 9;
+  repeated string secondary_muscles = 10;
+}
+
+message MuscleSpecificMetrics {
+  map<string, double> muscle_group_distribution = 1; // MG Distribution% = (MG Volume / Total Volume) × 100
+  map<string, double> muscle_imbalance_index = 2;    // Imbalance = |Left Side Strength - Right Side Strength| / Average Strength × 100
+  map<string, double> antagonist_ratio = 3;          // Antagonist Ratio = Antagonist Strength / Agonist Strength (e.g., Hamstring/Quad ratio ideal: 0.6-0.8)
+  map<string, double> stimulus_to_fatigue_ratio = 4; // SFR = (Performance Gain / Baseline) / (RPE × Volume)
+}
+
+message WorkCapacityMetrics {
+  double total_work_capacity = 1;       // TWC = Σ(Sets × Reps × Weight × (1 - Rest Time/300))
+  double density_training_index = 2;    // Density = Total Volume / Total Time
+  double density_progress_percent = 3;  // Progress% = (Current Density - Previous Density) / Previous Density × 100
+  double time_under_tension = 4;        // TUT = Σ(Reps × Tempo in seconds)
+  double mechanical_tension_score = 5;  // MTS = Weight × TUT × (RPE/10)
+}
+
+message TrainingPatternMetrics {
+  double optimal_frequency = 1;         // Optimal Frequency = Recovery Time + 24-48 hours
+  double recovery_time = 2;             // Recovery Time = 24 × (Volume/10) × (Intensity/70) × (RPE/7)
+  double exercise_selection_index = 3;  // Diversity Index = Unique Exercises / Total Exercises × 100
+  double consistency_score = 4;         // Consistency = (Actual Workouts / Planned Workouts) × 100
+  double workout_completion_rate = 5;   // Completion Rate = (Completed Sets / Planned Sets) × 100
+}
+
+message PeriodizationMetrics {
+  double chronic_training_load = 1;     // CTL = Exponentially Weighted Average of daily TSS over 42 days
+  double acute_training_load = 2;       // ATL = Exponentially Weighted Average of daily TSS over 7 days
+  double training_stress_balance = 3;   // TSB = CTL - ATL
+  double form_freshness_index = 4;      // FFI = TSB / CTL × 100
+}
+
+message InjuryRiskPreventionMetrics {
+  double injury_risk_score = 1;        // IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality, high risk if > 1.5
+  bool load_spike_alert = 2;            // Spike = True if Weekly Volume > 1.5 × Average of Last 4 Weeks
+  double asymmetry_development = 3;     // Asymmetry = |(Left Performance - Right Performance)| / Average × 100
+}
+
+message EfficiencyTechniqueMetrics {
+  double strength_efficiency = 1;        // SE = (1RM Gain / Total Volume) × 1000
+  double volume_efficiency = 2;          // VE = Performance Improvement / Total Training Volume
+  double rpe_performance_correlation = 3; // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+  double technique_consistency = 4;       // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
+}
+
+message WorkoutMetrics {
+  string id = 1;
+  string user_id = 2;
+  string session_id = 3;
+  string routine_id = 4;
+  google.protobuf.Timestamp date = 5;
+  VolumeMetrics volume_metrics = 6;
+  PerformanceMetrics performance_metrics = 7;
+  IntensityMetrics intensity_metrics = 8;
+  StrengthMetrics strength_metrics = 9;
+  ProgressAdaptationMetrics progress_adaptation_metrics = 10;
+  RecoveryFatigueMetrics recovery_fatigue_metrics = 11;
+  BodyCompositionMetrics body_composition_metrics = 12;
+  MuscleSpecificMetrics muscle_specific_metrics = 13;
+  WorkCapacityMetrics work_capacity_metrics = 14;
+  TrainingPatternMetrics training_pattern_metrics = 15;
+  PeriodizationMetrics periodization_metrics = 16;
+  InjuryRiskPreventionMetrics injury_risk_prevention_metrics = 17;
+  EfficiencyTechniqueMetrics efficiency_technique_metrics = 18;
+  SetMetrics set_metrics = 19;
+  repeated ExerciseMetrics exercise_metrics = 20;
+  int32 workout_duration_secs = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp updated_at = 23;
+}
+
+message PeriodMetrics {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date = 2;
+  int32 total_workouts = 3;
+  double total_volume_load = 4;
+  double total_tonnage = 5;
+  double average_workout_time = 6;
+  map<string, double> muscle_group_volume = 7;
+  repeated double volume_progression = 8;
+}
+
+message VolumeLandmarks {
+  map<string, double> mev = 1; // Minimum Effective Volume
+  map<string, double> mav = 2; // Maximum Adaptive Volume
+  map<string, double> mrv = 3; // Maximum Recoverable Volume
+}
+
+message UserMetrics {
+  string id = 1;
+  string user_id = 2;
+  PeriodMetrics weekly_metrics = 3;
+  PeriodMetrics monthly_metrics = 4;
+  PeriodMetrics all_time_metrics = 5;
+  VolumeLandmarks volume_landmarks = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message VolumeProgressionPoint {
+  google.protobuf.Timestamp date = 1;
+  double volume_load = 2;
+  double tonnage = 3;
+}
+
+message DoubleList {
+  repeated double values = 1;
+}
+
+message TrendMetrics {
+  string period = 1; // "weekly" or "monthly"
+  repeated VolumeProgressionPoint volume_progression = 2;
+  double volume_growth_rate = 3;
+  map<string, DoubleList> muscle_group_trends = 4;
+  repeated double performance_trends = 5;
+}
+
+message GetUserMetricsRequest {
+  string user_id = 1;
+  string period = 2; // "weekly", "monthly", "all"
+}
+
+message GetVolumeTrendsRequest {
+  string user_id = 1;
+  string period = 2; // "weekly", "monthly"
+}
+
+message GetWorkoutMetricsRequest {
+  string session_id = 1;
+}
+
+// Services
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+service ExerciseService {
+  rpc CreateExercise(CreateExerciseRequest) returns (Exercise);
+  rpc GetExercise(GetExerciseRequest) returns (Exercise);
+  rpc UpdateExercise(UpdateExerciseRequest) returns (Exercise);
+  rpc DeleteExercise(DeleteExerciseRequest) returns (google.protobuf.Empty);
+  rpc ListExercises(ListExercisesRequest) returns (ListExercisesResponse);
+  rpc GetQuickAddExercises(GetQuickAddExercisesRequest) returns (GetQuickAddExercisesResponse);
+}
+
+service WorkoutService {
+  rpc CreateWorkout(CreateWorkoutRequest) returns (Workout);
+  rpc GetWorkout(GetWorkoutRequest) returns (Workout);
+  rpc UpdateWorkout(UpdateWorkoutRequest) returns (Workout);
+  rpc DeleteWorkout(DeleteWorkoutRequest) returns (google.protobuf.Empty);
+  rpc ListWorkouts(ListWorkoutsRequest) returns (ListWorkoutsResponse);
+}
+
+service WorkoutSessionService {
+  rpc CreateWorkoutSession(CreateWorkoutSessionRequest) returns (WorkoutSession);
+  rpc GetWorkoutSession(GetWorkoutSessionRequest) returns (WorkoutSession);
+  rpc UpdateWorkoutSession(UpdateWorkoutSessionRequest) returns (WorkoutSession);
+  rpc DeleteWorkoutSession(DeleteWorkoutSessionRequest) returns (google.protobuf.Empty);
+  rpc ListWorkoutSessions(ListWorkoutSessionsRequest) returns (ListWorkoutSessionsResponse);
+  rpc StartExercise(StartExerciseRequest) returns (WorkoutSession);
+  rpc FinishExercise(FinishExerciseRequest) returns (WorkoutSession);
+  rpc UpdateSet(UpdateSetRequest) returns (WorkoutSession);
+}
+
+service MetricsService {
+  rpc GetUserMetrics(GetUserMetricsRequest) returns (UserMetrics);
+  rpc GetWorkoutMetrics(GetWorkoutMetricsRequest) returns (WorkoutMetrics);
+  rpc GetVolumeTrends(GetVolumeTrendsRequest) returns (TrendMetrics);
+}
+
+// Insights related messages
+message WorkoutInsight {
+  string id = 1;
+  string user_id = 2;
+  string type = 3; // progress, volume, strength, recovery, balance, efficiency, motivation, risk
+  string insight = 4;
+  string based_on = 5; // e.g., "Last 7 days", "Previous workout"
+  int32 priority = 6; // 1-5, 5 being most important
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message GenerateInsightsRequest {
+  string user_id = 1;
+}
+
+message GenerateInsightsResponse {
+  repeated WorkoutInsight insights = 1;
+}
+
+message GetRecentInsightsRequest {
+  string user_id = 1;
+  int32 limit = 2; // default 5
+}
+
+message GetRecentInsightsResponse {
+  repeated WorkoutInsight insights = 1;
+}
+
+// Insights Service
+service InsightsService {
+  rpc GenerateInsights(GenerateInsightsRequest) returns (GenerateInsightsResponse);
+  rpc GetRecentInsights(GetRecentInsightsRequest) returns (GetRecentInsightsResponse);
+} 
