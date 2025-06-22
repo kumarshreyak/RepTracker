@@ -61,6 +61,8 @@ The server will start both:
 - `UserService` - User management
 - `ExerciseService` - Exercise library
 - `WorkoutService` - Workout tracking
+- `WorkoutSessionService` - Active workout session management
+- `MetricsService` - Workout analytics and volume tracking
 
 ## Database Schema
 
@@ -88,6 +90,10 @@ The server will start both:
   "created_at": "Date"
 }
 ```
+
+## Documentation
+
+- **[METRICS.md](METRICS.md)** - Comprehensive guide to the workout metrics system, including all calculated metrics, formulas, API endpoints, and usage examples
 
 ## Authentication Flow
 

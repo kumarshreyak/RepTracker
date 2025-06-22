@@ -24,6 +24,7 @@ type Server struct {
 	exerciseService       *services.ExerciseService
 	workoutService        *services.WorkoutService
 	workoutSessionService *services.WorkoutSessionService
+	metricsService        *services.MetricsService
 	db                    *database.MongoDB
 }
 
@@ -243,12 +244,13 @@ type UpdateSetRequest struct {
 	Completed       bool    `json:"completed"`
 }
 
-func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, db *database.MongoDB) *Server {
+func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, db *database.MongoDB) *Server {
 	return &Server{
 		userService:           userService,
 		exerciseService:       exerciseService,
 		workoutService:        workoutService,
 		workoutSessionService: workoutSessionService,
+		metricsService:        metricsService,
 		db:                    db,
 	}
 }
@@ -293,6 +295,11 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/start", s.handleStartExercise).Methods("POST")
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/finish", s.handleFinishExercise).Methods("POST")
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}", s.handleUpdateSet).Methods("PUT")
+
+	// Metrics routes
+	api.HandleFunc("/users/{userId}/metrics", s.handleGetUserMetrics).Methods("GET")
+	api.HandleFunc("/users/{userId}/metrics/trends", s.handleGetVolumeTrends).Methods("GET")
+	api.HandleFunc("/workout-sessions/{sessionId}/metrics", s.handleGetWorkoutMetrics).Methods("GET")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -1381,4 +1388,75 @@ func (s *Server) handleDeleteWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Metrics HTTP handlers
+
+func (s *Server) handleGetUserMetrics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "all"
+	}
+
+	ctx := context.Background()
+	req := &pb.GetUserMetricsRequest{
+		UserId: userID,
+		Period: period,
+	}
+
+	metrics, err := s.metricsService.GetUserMetrics(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get user metrics: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(metrics)
+}
+
+func (s *Server) handleGetVolumeTrends(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "weekly"
+	}
+
+	ctx := context.Background()
+	req := &pb.GetVolumeTrendsRequest{
+		UserId: userID,
+		Period: period,
+	}
+
+	trends, err := s.metricsService.GetVolumeTrends(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get volume trends: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(trends)
+}
+
+func (s *Server) handleGetWorkoutMetrics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sessionID := vars["sessionId"]
+
+	ctx := context.Background()
+	req := &pb.GetWorkoutMetricsRequest{
+		SessionId: sessionID,
+	}
+
+	metrics, err := s.metricsService.GetWorkoutMetrics(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get workout metrics: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(metrics)
 }

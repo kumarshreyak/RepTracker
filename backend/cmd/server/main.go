@@ -39,7 +39,8 @@ func main() {
 	userService := services.NewUserService(db)
 	exerciseService := services.NewExerciseService(db)
 	workoutService := services.NewWorkoutService(db)
-	workoutSessionService := services.NewWorkoutSessionService(db, workoutService, exerciseService)
+	metricsService := services.NewMetricsService(db, exerciseService)
+	workoutSessionService := services.NewWorkoutSessionService(db, workoutService, exerciseService, metricsService)
 
 	// Get port from environment (Cloud Run uses PORT)
 	port := os.Getenv("PORT")
@@ -48,7 +49,7 @@ func main() {
 	}
 
 	// Start HTTP server with all services
-	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, workoutSessionService, db)
+	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, workoutSessionService, metricsService, db)
 	log.Printf("Starting HTTP server on port %s...", port)
 	if err := httpServer.Start(port); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)

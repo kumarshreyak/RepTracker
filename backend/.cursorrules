@@ -22,6 +22,24 @@ Before working with exercise-related code:
 3. **Follow the type system**: Use `ExerciseCategory`, `EquipmentType`, `MuscleType`, and `MuscleGroup`
 4. **Use validation functions** - Always validate user input with `IsValid*` functions
 
+### Workout Metrics System
+**MANDATORY: Always refer to `@METRICS.md` when working with workout analytics, volume calculations, or metrics-related features**
+
+Before working with metrics-related code:
+1. **READ METRICS.md** - Review the complete metrics system documentation
+2. **Use established formulas** - All volume calculations, RPE metrics, and landmarks are documented
+3. **Follow integration patterns** - Metrics are auto-calculated on workout completion
+4. **Use proper data models** - All metrics structs and their purposes are documented
+5. **Reference API examples** - Both gRPC and REST endpoint usage patterns included
+
+#### Metrics Development Guidelines:
+- **Volume calculations**: Use documented formulas for Total Volume Load, Tonnage, etc.
+- **Muscle group volume**: Apply correct multipliers (Primary: 1.0, Secondary: 0.6)
+- **RPE-based metrics**: Use session-level RPE for Effective Reps and Hard Sets
+- **Volume landmarks**: Follow MEV/MAV/MRV calculation patterns with proper fallbacks
+- **Auto-triggering**: Metrics calculate automatically on workout session completion
+- **Error handling**: Follow non-blocking patterns - metrics failures don't break workouts
+
 #### Quick Reference:
 - **Categories**: `models.CategoryStrength`, `models.CategoryCardio`, etc.
 - **Equipment**: `models.EquipmentBarbell`, `models.EquipmentDumbbell`, etc.
@@ -39,6 +57,14 @@ if !models.IsValidCategory(userInput) {
 // ❌ INCORRECT - Using string literals
 filter["category"] = "strength"
 ```
+
+#### Metrics Quick Reference:
+- **Total Volume Load**: `Σ(Sets × Reps × Weight)` for all completed sets
+- **Muscle Group Volume**: Apply multipliers - Primary: 1.0, Secondary: 0.6
+- **Effective Reps/Hard Sets**: Count when session RPE ≥ 7
+- **Volume Landmarks**: MEV (75% avg), MAV (avg + 0.5×std), MRV (avg + 1.5×std)
+- **Auto-calculation**: Triggered when `UpdateWorkoutSession` sets `FinishedAt`
+- **API Endpoints**: `/api/users/{userId}/metrics`, `/api/users/{userId}/metrics/trends`
 
 ### MongoDB Usage
 - **Collection names**: Use lowercase, plural names (e.g., `exercises`, `users`, `workouts`)
@@ -68,6 +94,7 @@ filter["category"] = "strength"
 - **exercise_constants.go**: Type definitions for categories, equipment, and muscles
 - **exercise_filters.go**: Filter and query models for advanced searches
 - **user.go**: Core data models including the updated Exercise struct
+- **METRICS.md**: Comprehensive guide to the workout metrics system with all formulas, calculations, and API usage
 
 ### Best Practices
 1. **Type safety**: Leverage Go's type system with the defined constants
@@ -76,7 +103,9 @@ filter["category"] = "strength"
 4. **Performance**: Use appropriate indexes and limit query results
 5. **Security**: Sanitize user input and use parameterized queries
 
-## Example: Working with Exercises
+## Examples
+
+### Working with Exercises
 
 ```go
 import "gymlog-backend/pkg/models"
@@ -114,4 +143,40 @@ func GetArmExercises(ctx context.Context) ([]*models.Exercise, error) {
 }
 ```
 
-**Remember: Always use the typed constants and validation functions. When in doubt, check EXERCISE_CONSTANTS_README.md for proper usage patterns.** 
+### Working with Metrics
+
+```go
+import "gymlog-backend/internal/services"
+
+// Manually calculate metrics for a completed session
+func ProcessCompletedWorkout(ctx context.Context, session *models.WorkoutSession) error {
+    // Metrics are auto-calculated when FinishedAt is set, but manual calculation:
+    workoutMetrics, err := metricsService.CalculateWorkoutMetrics(ctx, session)
+    if err != nil {
+        return fmt.Errorf("failed to calculate metrics: %w", err)
+    }
+    
+    // Save metrics to database
+    err = metricsService.SaveWorkoutMetrics(ctx, workoutMetrics)
+    if err != nil {
+        return fmt.Errorf("failed to save metrics: %w", err)
+    }
+    
+    // Update user's aggregate metrics
+    return metricsService.UpdateUserMetrics(ctx, session.UserID)
+}
+
+// Get user's volume landmarks for training recommendations
+func GetTrainingRecommendations(ctx context.Context, userID primitive.ObjectID) (*models.VolumeLandmarks, error) {
+    userMetrics, err := metricsService.getUserMetrics(ctx, userID, "all")
+    if err != nil {
+        return nil, err
+    }
+    
+    return &userMetrics.VolumeLandmarks, nil
+}
+```
+
+**Remember: 
+- Always use the typed constants and validation functions. When in doubt, check EXERCISE_CONSTANTS_README.md for proper usage patterns.
+- For metrics-related work, always refer to METRICS.md for formulas, data models, and integration patterns.** 

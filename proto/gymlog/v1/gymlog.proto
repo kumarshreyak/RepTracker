@@ -302,6 +302,125 @@ message UpdateSetRequest {
   bool completed = 9;
 }
 
+// Metrics related messages
+message VolumeMetrics {
+  double total_volume_load = 1;
+  double tonnage = 2;
+  double relative_volume = 3;
+  int32 effective_reps = 4;
+  int32 hard_sets = 5;
+  map<string, double> muscle_group_volume = 6;
+}
+
+message PerformanceMetrics {
+  double average_rpe = 1;
+  int32 max_rpe = 2;
+  map<int32, int32> rpe_distribution = 3;
+}
+
+message IntensityMetrics {
+  double average_intensity = 1;      // Avg Intensity = Σ(Weight × Reps) / Σ(1RM × Reps) × 100
+  double relative_intensity = 2;     // Weight Lifted / Body Weight
+  double rpe_adjusted_load = 3;      // Weight × (RPE/10)^2
+  map<string, double> intensity_distribution = 4; // Zone percentages: Light <60%, Moderate 60-80%, Heavy >80%
+  double load_density = 5;           // Total Volume / Total Workout Time (minutes)
+}
+
+message SetMetrics {
+  int32 total_sets = 1;
+  int32 completed_sets = 2;
+  double completion_rate = 3;
+}
+
+message ExerciseMetrics {
+  string exercise_id = 1;
+  string exercise_name = 2;
+  double volume_load = 3;
+  double tonnage = 4;
+  int32 set_count = 5;
+  int32 total_reps = 6;
+  double average_weight = 7;
+  double max_weight = 8;
+  repeated string primary_muscles = 9;
+  repeated string secondary_muscles = 10;
+}
+
+message WorkoutMetrics {
+  string id = 1;
+  string user_id = 2;
+  string session_id = 3;
+  string routine_id = 4;
+  google.protobuf.Timestamp date = 5;
+  VolumeMetrics volume_metrics = 6;
+  PerformanceMetrics performance_metrics = 7;
+  IntensityMetrics intensity_metrics = 8;
+  SetMetrics set_metrics = 9;
+  repeated ExerciseMetrics exercise_metrics = 10;
+  int32 workout_duration_secs = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message PeriodMetrics {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date = 2;
+  int32 total_workouts = 3;
+  double total_volume_load = 4;
+  double total_tonnage = 5;
+  double average_workout_time = 6;
+  map<string, double> muscle_group_volume = 7;
+  repeated double volume_progression = 8;
+}
+
+message VolumeLandmarks {
+  map<string, double> mev = 1; // Minimum Effective Volume
+  map<string, double> mav = 2; // Maximum Adaptive Volume
+  map<string, double> mrv = 3; // Maximum Recoverable Volume
+}
+
+message UserMetrics {
+  string id = 1;
+  string user_id = 2;
+  PeriodMetrics weekly_metrics = 3;
+  PeriodMetrics monthly_metrics = 4;
+  PeriodMetrics all_time_metrics = 5;
+  VolumeLandmarks volume_landmarks = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message VolumeProgressionPoint {
+  google.protobuf.Timestamp date = 1;
+  double volume_load = 2;
+  double tonnage = 3;
+}
+
+message DoubleList {
+  repeated double values = 1;
+}
+
+message TrendMetrics {
+  string period = 1; // "weekly" or "monthly"
+  repeated VolumeProgressionPoint volume_progression = 2;
+  double volume_growth_rate = 3;
+  map<string, DoubleList> muscle_group_trends = 4;
+  repeated double performance_trends = 5;
+}
+
+message GetUserMetricsRequest {
+  string user_id = 1;
+  string period = 2; // "weekly", "monthly", "all"
+}
+
+message GetVolumeTrendsRequest {
+  string user_id = 1;
+  string period = 2; // "weekly", "monthly"
+}
+
+message GetWorkoutMetricsRequest {
+  string session_id = 1;
+}
+
 // Services
 service UserService {
   rpc CreateUser(CreateUserRequest) returns (User);
@@ -336,4 +455,10 @@ service WorkoutSessionService {
   rpc StartExercise(StartExerciseRequest) returns (WorkoutSession);
   rpc FinishExercise(FinishExerciseRequest) returns (WorkoutSession);
   rpc UpdateSet(UpdateSetRequest) returns (WorkoutSession);
+}
+
+service MetricsService {
+  rpc GetUserMetrics(GetUserMetricsRequest) returns (UserMetrics);
+  rpc GetWorkoutMetrics(GetWorkoutMetricsRequest) returns (WorkoutMetrics);
+  rpc GetVolumeTrends(GetVolumeTrendsRequest) returns (TrendMetrics);
 } 
