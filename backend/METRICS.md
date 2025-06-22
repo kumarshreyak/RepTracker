@@ -532,34 +532,57 @@ type InjuryRiskPreventionMetrics struct {
 }
 
 type EfficiencyTechniqueMetrics struct {
-    StrengthEfficiency        float64 `bson:"strengthEfficiency" json:"strengthEfficiency"`               // SE = (1RM Gain / Total Volume) × 1000
-    VolumeEfficiency          float64 `bson:"volumeEfficiency" json:"volumeEfficiency"`                   // VE = Performance Improvement / Total Training Volume
-    RPEPerformanceCorrelation float64 `bson:"rpePerformanceCorrelation" json:"rpePerformanceCorrelation"` // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
-    TechniqueConsistency      float64 `bson:"techniqueConsistency" json:"techniqueConsistency"`           // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
+	StrengthEfficiency        float64 `bson:"strengthEfficiency" json:"strengthEfficiency"`               // SE = (1RM Gain / Total Volume) × 1000
+	VolumeEfficiency          float64 `bson:"volumeEfficiency" json:"volumeEfficiency"`                   // VE = Performance Improvement / Total Training Volume
+	RPEPerformanceCorrelation float64 `bson:"rpePerformanceCorrelation" json:"rpePerformanceCorrelation"` // Correlation = Pearson(Actual Reps, 10 - RPE + Expected Reps at RPE)
+	TechniqueConsistency      float64 `bson:"techniqueConsistency" json:"techniqueConsistency"`           // Consistency = 1 - (Standard Deviation of Rep Times / Average Rep Time)
+}
+
+type CompoundMetrics struct {
+	FitnessAge                 float64 `bson:"fitnessAge" json:"fitnessAge"`                                 // Fitness Age = Chronological Age × (Population Average Score / User Score)
+	OverallFitnessScore        float64 `bson:"overallFitnessScore" json:"overallFitnessScore"`               // OFS = (Strength Score × 0.3 + Volume Score × 0.2 + Consistency × 0.2 + Progress × 0.3) × 100
+	TrainingEfficiencyQuotient float64 `bson:"trainingEfficiencyQuotient" json:"trainingEfficiencyQuotient"` // TEQ = (Performance Gains / (Time Invested × Fatigue Generated)) × 100
+}
+
+type PredictiveAnalyticsMetrics struct {
+	PlateauProbability          float64            `bson:"plateauProbability" json:"plateauProbability"`                   // Plateau Probability = 1 / (1 + e^(Progress Rate - 0.02))
+	PerformanceTrajectory       map[string]float64 `bson:"performanceTrajectory" json:"performanceTrajectory"`             // Exercise ID -> Future Performance = Current + (Weekly Gain Rate × Weeks × Decay Factor^Weeks)
+	GoalAchievementTimeline     map[string]float64 `bson:"goalAchievementTimeline" json:"goalAchievementTimeline"`         // Exercise ID -> Weeks to Goal = (Goal - Current) / (Average Weekly Progress × Expected Decay)
+	DetrainingRisk              float64            `bson:"detrainingRisk" json:"detrainingRisk"`                           // Detraining Risk = Days Since Last Workout / (CTL / 10)
+	ProjectedPerformance4Weeks  map[string]float64 `bson:"projectedPerformance4Weeks" json:"projectedPerformance4Weeks"`   // Exercise ID -> 4-week performance projection
+	ProjectedPerformance12Weeks map[string]float64 `bson:"projectedPerformance12Weeks" json:"projectedPerformance12Weeks"` // Exercise ID -> 12-week performance projection
+	ProjectedPerformance26Weeks map[string]float64 `bson:"projectedPerformance26Weeks" json:"projectedPerformance26Weeks"` // Exercise ID -> 26-week performance projection
 }
 
 type WorkoutMetrics struct {
-    ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
-    UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
-    SessionID                 primitive.ObjectID        `bson:"sessionId" json:"sessionId"`
-    RoutineID                 primitive.ObjectID        `bson:"routineId" json:"routineId"`
-    Date                      time.Time                 `bson:"date" json:"date"`
-    VolumeMetrics             VolumeMetrics             `bson:"volumeMetrics" json:"volumeMetrics"`
-    PerformanceMetrics        PerformanceMetrics        `bson:"performanceMetrics" json:"performanceMetrics"`
-    IntensityMetrics          IntensityMetrics          `bson:"intensityMetrics" json:"intensityMetrics"`
-    StrengthMetrics           StrengthMetrics           `bson:"strengthMetrics" json:"strengthMetrics"`
-    ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
-    MuscleSpecificMetrics     MuscleSpecificMetrics     `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
-    WorkCapacityMetrics       WorkCapacityMetrics       `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
-    TrainingPatternMetrics    TrainingPatternMetrics    `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
-    PeriodizationMetrics      PeriodizationMetrics      `bson:"periodizationMetrics" json:"periodizationMetrics"`
-    SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
-    ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
-    WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
-    CreatedAt                 time.Time                 `bson:"createdAt" json:"createdAt"`
-    UpdatedAt                 time.Time                 `bson:"updatedAt" json:"updatedAt"`
-    InjuryRiskPreventionMetrics InjuryRiskPreventionMetrics `bson:"injuryRiskPreventionMetrics" json:"injuryRiskPreventionMetrics"`
-    EfficiencyTechniqueMetrics EfficiencyTechniqueMetrics `bson:"efficiencyTechniqueMetrics" json:"efficiencyTechniqueMetrics"`
+	ID                             primitive.ObjectID             `bson:"_id,omitempty" json:"id"`
+	UserID                         primitive.ObjectID             `bson:"userId" json:"userId"`
+	SessionID                      primitive.ObjectID             `bson:"sessionId" json:"sessionId"`
+	RoutineID                      primitive.ObjectID             `bson:"routineId" json:"routineId"`
+	Date                           time.Time                      `bson:"date" json:"date"`
+	VolumeMetrics                  VolumeMetrics                  `bson:"volumeMetrics" json:"volumeMetrics"`
+	PerformanceMetrics             PerformanceMetrics             `bson:"performanceMetrics" json:"performanceMetrics"`
+	IntensityMetrics               IntensityMetrics               `bson:"intensityMetrics" json:"intensityMetrics"`
+	StrengthMetrics                StrengthMetrics                `bson:"strengthMetrics" json:"strengthMetrics"`
+	ProgressAdaptationMetrics      ProgressAdaptationMetrics      `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
+	RecoveryFatigueMetrics         RecoveryFatigueMetrics         `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
+	BodyCompositionMetrics         BodyCompositionMetrics         `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
+	MuscleSpecificMetrics          MuscleSpecificMetrics          `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
+	WorkCapacityMetrics            WorkCapacityMetrics            `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
+	TrainingPatternMetrics         TrainingPatternMetrics         `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
+	PeriodizationMetrics           PeriodizationMetrics           `bson:"periodizationMetrics" json:"periodizationMetrics"`
+	InjuryRiskPreventionMetrics    InjuryRiskPreventionMetrics    `bson:"injuryRiskPreventionMetrics" json:"injuryRiskPreventionMetrics"`
+	EfficiencyTechniqueMetrics     EfficiencyTechniqueMetrics     `bson:"efficiencyTechniqueMetrics" json:"efficiencyTechniqueMetrics"`
+	ComparativeNormativeMetrics    ComparativeNormativeMetrics    `bson:"comparativeNormativeMetrics" json:"comparativeNormativeMetrics"`
+	PsychologicalBehavioralMetrics PsychologicalBehavioralMetrics `bson:"psychologicalBehavioralMetrics" json:"psychologicalBehavioralMetrics"`
+	TimeBasedAnalyticsMetrics      TimeBasedAnalyticsMetrics      `bson:"timeBasedAnalyticsMetrics" json:"timeBasedAnalyticsMetrics"`
+	CompoundMetrics                CompoundMetrics                `bson:"compoundMetrics" json:"compoundMetrics"`
+	PredictiveAnalyticsMetrics     PredictiveAnalyticsMetrics     `bson:"predictiveAnalyticsMetrics" json:"predictiveAnalyticsMetrics"`
+	SetMetrics                     SetMetrics                     `bson:"setMetrics" json:"setMetrics"`
+	ExerciseMetrics                []ExerciseMetrics              `bson:"exerciseMetrics" json:"exerciseMetrics"`
+	WorkoutDurationSecs            int32                          `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
+	CreatedAt                      time.Time                      `bson:"createdAt" json:"createdAt"`
+	UpdatedAt                      time.Time                      `bson:"updatedAt" json:"updatedAt"`
 }
 ```
 
@@ -825,6 +848,140 @@ const (
 )
 ```
 
+### Comparative & Normative Metrics
+
+#### 47. Percentile Ranking
+**Formula**: `Percentile = (Number of people below score / Total people) × 100`
+- User's strength performance compared to similar demographics
+- Adjusted for age, weight, and gender categories
+- Based on Wilks score for overall strength comparison
+- Provides context for training progress relative to population
+
+#### 48. Training Age-Adjusted Expectations
+**Formula**: `Expected Strength = Base Strength × (1 + 0.1 × sqrt(Training Years))`
+- Strength expectations based on training experience
+- Accounts for diminishing returns as training age increases
+- Per-exercise predictions using body weight multipliers
+- Helps set realistic training goals based on experience level
+
+#### 49. Genetic Potential Estimate
+**Formula**: `Potential = Current Max × (1.5 - 0.5 × (Current/Elite Standard))`
+- Rough estimate of genetic strength potential
+- Based on distance from elite performance standards
+- Per-exercise potential calculations using body weight ratios
+- Provides long-term training targets and expectations
+
+### Psychological & Behavioral Metrics
+
+#### 50. RPE Accuracy
+**Formula**: `RPE Accuracy = 1 - |Predicted Reps at RPE - Actual Reps| / Actual Reps`
+- Measures how well perceived exertion matches actual performance
+- Higher accuracy indicates better self-awareness and pacing
+- Helps calibrate effort perception for optimal training
+- Improved accuracy leads to better autoregulation
+
+#### 51. Motivation Index
+**Formula**: `MI = (Consistency × Voluntary Extra Sets × (10 - Avg RPE)) / 100`
+- Measures training motivation through behavioral indicators
+- Considers workout consistency and voluntary effort
+- Accounts for willingness to push through challenging training
+- Values between 0-1, with higher indicating greater motivation
+
+#### 52. Burnout Risk Score
+**Formula**: `BRS = (Decreasing Performance + Increasing RPE + Decreased Frequency) / 3`
+- Early warning system for training burnout
+- Combines performance, effort, and frequency trends
+- Values >0.7 indicate elevated burnout risk
+- Helps prevent overtraining and maintain long-term progress
+
+### Time-Based Analytics Metrics
+
+#### 53. Optimal Training Time
+**Formula**: `Performance Score by Hour = Average (1RM% × Completion Rate × (10 - RPE))`
+- Identifies the hour of day with best training performance
+- Based on historical performance across different times
+- Helps optimize training schedule for peak performance
+- Accounts for strength, completion, and subjective factors
+
+#### 54. Optimal Rest Periods
+**Formula**: `Optimal Rest = 2^(Intensity%/25) minutes`
+- Exercise-specific rest period recommendations
+- Based on training intensity and exercise demands
+- Ranges from 1-10 minutes with intensity-based scaling
+- Helps optimize recovery between sets for performance
+
+#### 55. Session Duration Efficiency
+**Formula**: `SDE = Total Effective Volume / Session Duration`
+- Measures training efficiency in volume per minute
+- Higher values indicate more productive time usage
+- Helps identify optimal workout duration and pacing
+- Useful for time-constrained training situations
+
+### Compound Metrics
+
+#### 56. Fitness Age
+**Formula**: `Fitness Age = Chronological Age × (Population Average Score / User Score)`
+- Biological fitness age compared to chronological age
+- Based on overall fitness score relative to population average (75.0 baseline)
+- Lower fitness age indicates better-than-average fitness for chronological age
+- Higher fitness age suggests room for fitness improvement
+
+#### 57. Overall Fitness Score (OFS)
+**Formula**: `OFS = (Strength Score × 0.3 + Volume Score × 0.2 + Consistency × 0.2 + Progress × 0.3) × 100`
+- Comprehensive fitness assessment combining multiple factors
+- **Strength Score (30%)**: Based on Wilks score normalized to 0-100 scale
+- **Volume Score (20%)**: Based on proximity to optimal volume landmarks (MAV)
+- **Consistency Score (20%)**: Based on training adherence and frequency
+- **Progress Score (30%)**: Based on week-over-week strength improvements
+- Scale: 0-100, with higher scores indicating better overall fitness
+
+#### 58. Training Efficiency Quotient (TEQ)
+**Formula**: `TEQ = (Performance Gains / (Time Invested × Fatigue Generated)) × 100`
+- Measures efficiency of training in terms of gains per unit effort
+- **Performance Gains**: Average 1RM improvement across exercises
+- **Time Invested**: Workout duration in hours
+- **Fatigue Generated**: RPE normalized to 0-1 scale
+- Higher values indicate more efficient training methods
+
+### Predictive Analytics Metrics
+
+#### 59. Plateau Probability
+**Formula**: `Plateau Probability = 1 / (1 + e^(Progress Rate - 0.02))`
+- Probability of hitting a training plateau based on current progress
+- Uses sigmoid function with 2% progress rate threshold
+- Values closer to 1.0 indicate higher plateau risk
+- Based on average progress rate across all exercises
+
+#### 60. Performance Trajectory
+**Formula**: `Future Performance = Current + (Weekly Gain Rate × Weeks × Decay Factor^Weeks)`
+- Projects future performance based on current trends
+- **Decay Factor**: 0.95 (95% retention of gains over time)
+- Calculated for multiple time horizons: 4, 12, and 26 weeks
+- Per-exercise projections based on historical 1RM improvements
+
+#### 61. Goal Achievement Timeline
+**Formula**: `Weeks to Goal = (Goal - Current) / (Average Weekly Progress × Expected Decay)`
+- Estimates time needed to reach performance goals
+- Assumes 10% improvement goal by default
+- Accounts for diminishing returns through decay factor
+- Returns 999 weeks for exercises with no measurable progress
+
+#### 62. Detraining Risk
+**Formula**: `Detraining Risk = Days Since Last Workout / (CTL / 10)`
+- Risk of fitness loss due to training breaks
+- Based on time since last session and chronic training load
+- Values >1.0 indicate elevated detraining risk
+- Helps identify when to resume training after breaks
+
+#### 63. Projected Performance (Multiple Horizons)
+**Formulas**: 
+- **4-week projection**: `Current + (Weekly Gain × 4 × 0.95^4)`
+- **12-week projection**: `Current + (Weekly Gain × 12 × 0.95^12)`
+- **26-week projection**: `Current + (Weekly Gain × 26 × 0.95^26)`
+- Short, medium, and long-term performance forecasts
+- Incorporates performance decay over time
+- Per-exercise projections for goal setting and planning
+
 ## Usage Examples
 
 ### Frontend Integration
@@ -1000,6 +1157,189 @@ if workoutMetrics.EfficiencyTechniqueMetrics.TechniqueConsistency > 0.8 {
     fmt.Printf("✅ Excellent technique consistency")
 } else if workoutMetrics.EfficiencyTechniqueMetrics.TechniqueConsistency < 0.6 {
     fmt.Printf("📊 Technique inconsistency detected - focus on movement quality")
+}
+
+// Access Comparative & Normative metrics
+fmt.Printf("Percentile Ranking: %.1f%%", workoutMetrics.ComparativeNormativeMetrics.PercentileRanking)
+fmt.Printf("Performance Category: %s", workoutMetrics.ComparativeNormativeMetrics.PerformanceCategory)
+fmt.Printf("Relative to Expectations: %.2f", workoutMetrics.ComparativeNormativeMetrics.RelativeToExpectations)
+
+// Access training age-adjusted expectations
+fmt.Printf("Training Age-Adjusted Expected Strength:")
+for exerciseID, expected := range workoutMetrics.ComparativeNormativeMetrics.TrainingAgeAdjustedExpected {
+    fmt.Printf("  Exercise %s: %.2f kg expected", exerciseID, expected)
+}
+
+// Access genetic potential estimates
+fmt.Printf("Genetic Potential Estimates:")
+for exerciseID, potential := range workoutMetrics.ComparativeNormativeMetrics.GeneticPotentialEstimate {
+    fmt.Printf("  Exercise %s: %.2f kg potential", exerciseID, potential)
+}
+
+// Interpret comparative metrics
+if workoutMetrics.ComparativeNormativeMetrics.PercentileRanking >= 85.0 {
+    fmt.Printf("🏆 Elite performance level - top 15%% of population")
+} else if workoutMetrics.ComparativeNormativeMetrics.PercentileRanking >= 60.0 {
+    fmt.Printf("💪 Advanced performance level")
+} else if workoutMetrics.ComparativeNormativeMetrics.PercentileRanking >= 25.0 {
+    fmt.Printf("📈 Intermediate performance level")
+} else {
+    fmt.Printf("🚀 Beginner level - lots of room for growth")
+}
+
+if workoutMetrics.ComparativeNormativeMetrics.RelativeToExpectations > 1.2 {
+    fmt.Printf("⭐ Exceeding expectations for training age")
+} else if workoutMetrics.ComparativeNormativeMetrics.RelativeToExpectations < 0.8 {
+    fmt.Printf("📊 Below expectations - review training approach")
+}
+
+// Access Psychological & Behavioral metrics
+fmt.Printf("RPE Accuracy: %.3f", workoutMetrics.PsychologicalBehavioralMetrics.RPEAccuracy)
+fmt.Printf("Motivation Index: %.3f", workoutMetrics.PsychologicalBehavioralMetrics.MotivationIndex)
+fmt.Printf("Burnout Risk Score: %.3f", workoutMetrics.PsychologicalBehavioralMetrics.BurnoutRiskScore)
+fmt.Printf("Training Adherence: %.1f%%", workoutMetrics.PsychologicalBehavioralMetrics.TrainingAdherence)
+fmt.Printf("Consistency Trend: %.3f", workoutMetrics.PsychologicalBehavioralMetrics.ConsistencyTrend)
+
+// Interpret psychological metrics
+if workoutMetrics.PsychologicalBehavioralMetrics.RPEAccuracy > 0.8 {
+    fmt.Printf("✅ Excellent RPE accuracy - great body awareness")
+} else if workoutMetrics.PsychologicalBehavioralMetrics.RPEAccuracy < 0.5 {
+    fmt.Printf("📊 Poor RPE accuracy - work on effort calibration")
+}
+
+if workoutMetrics.PsychologicalBehavioralMetrics.MotivationIndex > 0.7 {
+    fmt.Printf("🔥 High motivation - great training drive")
+} else if workoutMetrics.PsychologicalBehavioralMetrics.MotivationIndex < 0.3 {
+    fmt.Printf("💡 Low motivation - consider program variety or goals review")
+}
+
+if workoutMetrics.PsychologicalBehavioralMetrics.BurnoutRiskScore > 0.7 {
+    fmt.Printf("⚠️ High burnout risk - consider deload or rest")
+} else if workoutMetrics.PsychologicalBehavioralMetrics.BurnoutRiskScore < 0.3 {
+    fmt.Printf("✅ Low burnout risk - sustainable training pace")
+}
+
+if workoutMetrics.PsychologicalBehavioralMetrics.ConsistencyTrend > 0.1 {
+    fmt.Printf("📈 Improving consistency - great progress")
+} else if workoutMetrics.PsychologicalBehavioralMetrics.ConsistencyTrend < -0.1 {
+    fmt.Printf("📉 Declining consistency - address barriers to training")
+}
+
+// Access Time-Based Analytics metrics
+fmt.Printf("Optimal Training Time: %d:00", workoutMetrics.TimeBasedAnalyticsMetrics.OptimalTrainingTimeHour)
+fmt.Printf("Time of Day Preference: %s", workoutMetrics.TimeBasedAnalyticsMetrics.TimeOfDayPreference)
+fmt.Printf("Session Duration Efficiency: %.2f reps/min", workoutMetrics.TimeBasedAnalyticsMetrics.SessionDurationEfficiency)
+fmt.Printf("Workout Timing Consistency: %.3f", workoutMetrics.TimeBasedAnalyticsMetrics.WorkoutTimingConsistency)
+
+// Access performance by hour
+fmt.Printf("Performance by Hour:")
+for hour, performance := range workoutMetrics.TimeBasedAnalyticsMetrics.PerformanceByHour {
+    fmt.Printf("  %s:00 - %.3f performance score", hour, performance)
+}
+
+// Access optimal rest periods
+fmt.Printf("Optimal Rest Periods:")
+for exerciseID, restTime := range workoutMetrics.TimeBasedAnalyticsMetrics.OptimalRestPeriods {
+    fmt.Printf("  Exercise %s: %.1f minutes", exerciseID, restTime)
+}
+
+// Interpret time-based metrics
+preferredTime := workoutMetrics.TimeBasedAnalyticsMetrics.OptimalTrainingTimeHour
+if preferredTime >= 6 && preferredTime < 12 {
+    fmt.Printf("🌅 Morning training shows best performance")
+} else if preferredTime >= 12 && preferredTime < 18 {
+    fmt.Printf("☀️ Afternoon training shows best performance")
+} else {
+    fmt.Printf("🌙 Evening training shows best performance")
+}
+
+if workoutMetrics.TimeBasedAnalyticsMetrics.SessionDurationEfficiency > 1.0 {
+    fmt.Printf("⚡ High training efficiency - good volume per minute")
+} else if workoutMetrics.TimeBasedAnalyticsMetrics.SessionDurationEfficiency < 0.5 {
+    fmt.Printf("⏰ Low training efficiency - consider workout pacing")
+}
+
+if workoutMetrics.TimeBasedAnalyticsMetrics.WorkoutTimingConsistency > 0.8 {
+    fmt.Printf("🕒 Consistent workout timing - excellent routine")
+} else if workoutMetrics.TimeBasedAnalyticsMetrics.WorkoutTimingConsistency < 0.5 {
+	fmt.Printf("📅 Inconsistent workout timing - try to establish routine")
+}
+
+// Access Compound Metrics
+fmt.Printf("Fitness Age: %.1f years", workoutMetrics.CompoundMetrics.FitnessAge)
+fmt.Printf("Overall Fitness Score: %.1f/100", workoutMetrics.CompoundMetrics.OverallFitnessScore)
+fmt.Printf("Training Efficiency Quotient: %.1f", workoutMetrics.CompoundMetrics.TrainingEfficiencyQuotient)
+
+// Interpret compound metrics
+if workoutMetrics.CompoundMetrics.FitnessAge < 25.0 {
+	fmt.Printf("🌟 Excellent fitness age - you're aging like fine wine!")
+} else if workoutMetrics.CompoundMetrics.FitnessAge < 35.0 {
+	fmt.Printf("💪 Good fitness age - above average fitness level")
+} else {
+	fmt.Printf("📈 Room for improvement - focus on consistency and progress")
+}
+
+if workoutMetrics.CompoundMetrics.OverallFitnessScore >= 80.0 {
+	fmt.Printf("🏆 Excellent overall fitness - top tier performance")
+} else if workoutMetrics.CompoundMetrics.OverallFitnessScore >= 60.0 {
+	fmt.Printf("👍 Good overall fitness - solid foundation")
+} else if workoutMetrics.CompoundMetrics.OverallFitnessScore >= 40.0 {
+	fmt.Printf("📊 Average fitness level - potential for growth")
+} else {
+	fmt.Printf("🚀 Building fitness foundation - keep up the great work!")
+}
+
+if workoutMetrics.CompoundMetrics.TrainingEfficiencyQuotient >= 100.0 {
+	fmt.Printf("⚡ Highly efficient training - great gains per effort")
+} else if workoutMetrics.CompoundMetrics.TrainingEfficiencyQuotient >= 50.0 {
+	fmt.Printf("✅ Efficient training approach")
+} else {
+	fmt.Printf("💡 Consider optimizing training efficiency")
+}
+
+// Access Predictive Analytics Metrics
+fmt.Printf("Plateau Probability: %.1f%%", workoutMetrics.PredictiveAnalyticsMetrics.PlateauProbability*100)
+fmt.Printf("Detraining Risk: %.2f", workoutMetrics.PredictiveAnalyticsMetrics.DetrainingRisk)
+
+// Access performance projections
+fmt.Printf("Performance Projections:")
+for exerciseID, projection := range workoutMetrics.PredictiveAnalyticsMetrics.ProjectedPerformance4Weeks {
+	fmt.Printf("  Exercise %s - 4 weeks: %.1f kg", exerciseID, projection)
+}
+
+for exerciseID, projection := range workoutMetrics.PredictiveAnalyticsMetrics.ProjectedPerformance12Weeks {
+	fmt.Printf("  Exercise %s - 12 weeks: %.1f kg", exerciseID, projection)
+}
+
+for exerciseID, projection := range workoutMetrics.PredictiveAnalyticsMetrics.ProjectedPerformance26Weeks {
+	fmt.Printf("  Exercise %s - 26 weeks: %.1f kg", exerciseID, projection)
+}
+
+// Access goal achievement timelines
+fmt.Printf("Goal Achievement Timelines (10% improvement):")
+for exerciseID, weeks := range workoutMetrics.PredictiveAnalyticsMetrics.GoalAchievementTimeline {
+	if weeks < 999 {
+		fmt.Printf("  Exercise %s: %.1f weeks to reach goal", exerciseID, weeks)
+	} else {
+		fmt.Printf("  Exercise %s: Goal may take very long - focus on consistency", exerciseID)
+	}
+}
+
+// Interpret predictive metrics
+if workoutMetrics.PredictiveAnalyticsMetrics.PlateauProbability > 0.7 {
+	fmt.Printf("⚠️ High plateau risk - consider program variation or deload")
+} else if workoutMetrics.PredictiveAnalyticsMetrics.PlateauProbability > 0.5 {
+	fmt.Printf("📊 Moderate plateau risk - monitor progress closely")
+} else {
+	fmt.Printf("✅ Low plateau risk - continue current approach")
+}
+
+if workoutMetrics.PredictiveAnalyticsMetrics.DetrainingRisk > 1.0 {
+	fmt.Printf("⚠️ High detraining risk - consider resuming training soon")
+} else if workoutMetrics.PredictiveAnalyticsMetrics.DetrainingRisk > 0.5 {
+	fmt.Printf("📅 Moderate detraining risk - maintain regular training")
+} else {
+	fmt.Printf("✅ Low detraining risk - good training consistency")
 }
 ```
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -119,6 +120,31 @@ func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *m
 	metrics.EfficiencyTechniqueMetrics, err = m.calculateEfficiencyTechniqueMetrics(ctx, session)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate efficiency technique metrics: %w", err)
+	}
+
+	metrics.ComparativeNormativeMetrics, err = m.calculateComparativeNormativeMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate comparative normative metrics: %w", err)
+	}
+
+	metrics.PsychologicalBehavioralMetrics, err = m.calculatePsychologicalBehavioralMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate psychological behavioral metrics: %w", err)
+	}
+
+	metrics.TimeBasedAnalyticsMetrics, err = m.calculateTimeBasedAnalyticsMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate time based analytics metrics: %w", err)
+	}
+
+	metrics.CompoundMetrics, err = m.calculateCompoundMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate compound metrics: %w", err)
+	}
+
+	metrics.PredictiveAnalyticsMetrics, err = m.calculatePredictiveAnalyticsMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate predictive analytics metrics: %w", err)
 	}
 
 	return metrics, nil
@@ -2000,11 +2026,15 @@ func (m *MetricsService) workoutMetricsToProto(workoutMetrics *models.WorkoutMet
 		PeriodizationMetrics:        m.periodizationMetricsToProto(&workoutMetrics.PeriodizationMetrics),
 		InjuryRiskPreventionMetrics: m.injuryRiskPreventionMetricsToProto(&workoutMetrics.InjuryRiskPreventionMetrics),
 		EfficiencyTechniqueMetrics:  m.efficiencyTechniqueMetricsToProto(&workoutMetrics.EfficiencyTechniqueMetrics),
-		SetMetrics:                  m.setMetricsToProto(&workoutMetrics.SetMetrics),
-		ExerciseMetrics:             exerciseMetrics,
-		WorkoutDurationSecs:         workoutMetrics.WorkoutDurationSecs,
-		CreatedAt:                   timestamppb.New(workoutMetrics.CreatedAt),
-		UpdatedAt:                   timestamppb.New(workoutMetrics.UpdatedAt),
+		// TODO: Add new metrics to protobuf definitions:
+		// - ComparativeNormativeMetrics
+		// - PsychologicalBehavioralMetrics
+		// - TimeBasedAnalyticsMetrics
+		SetMetrics:          m.setMetricsToProto(&workoutMetrics.SetMetrics),
+		ExerciseMetrics:     exerciseMetrics,
+		WorkoutDurationSecs: workoutMetrics.WorkoutDurationSecs,
+		CreatedAt:           timestamppb.New(workoutMetrics.CreatedAt),
+		UpdatedAt:           timestamppb.New(workoutMetrics.UpdatedAt),
 	}
 }
 
@@ -2524,3 +2554,1243 @@ func (m *MetricsService) efficiencyTechniqueMetricsToProto(etm *models.Efficienc
 		TechniqueConsistency:      etm.TechniqueConsistency,
 	}
 }
+
+// calculateComparativeNormativeMetrics calculates comparative and normative metrics
+func (m *MetricsService) calculateComparativeNormativeMetrics(ctx context.Context, session *models.WorkoutSession) (models.ComparativeNormativeMetrics, error) {
+	comparativeMetrics := models.ComparativeNormativeMetrics{
+		TrainingAgeAdjustedExpected: make(map[string]float64),
+		GeneticPotentialEstimate:    make(map[string]float64),
+	}
+
+	// Get user profile data (using defaults for now)
+	profile := models.DefaultProfile
+
+	// Calculate training age (in years) - simplified for now, using months since first workout
+	trainingAge, err := m.calculateTrainingAge(ctx, session.UserID)
+	if err != nil || trainingAge <= 0 {
+		trainingAge = 1.0 // Default to 1 year if can't calculate
+	}
+
+	// Get strength metrics for current session
+	strengthMetrics, err := m.calculateStrengthMetrics(ctx, session)
+	if err != nil {
+		return comparativeMetrics, err
+	}
+
+	// Calculate demographic category for percentile ranking
+	demographicCategory := m.getDemographicCategory(25, profile.IsMale, profile.BodyWeight) // Default age 25
+
+	// Get overall percentile ranking based on total strength (simplified using Wilks score)
+	percentileRanking := m.calculatePercentileRanking(strengthMetrics.WilksScore, demographicCategory)
+	comparativeMetrics.PercentileRanking = percentileRanking
+
+	// Calculate performance category based on percentile and training age
+	performanceCategory := m.categorizePerformance(percentileRanking, trainingAge)
+	comparativeMetrics.PerformanceCategory = performanceCategory
+
+	// Calculate training age-adjusted expectations and genetic potential for each exercise
+	for exerciseID, currentOneRM := range strengthMetrics.EstimatedOneRMEpley {
+		// Get exercise details to determine lift type
+		exerciseDetails, err := m.exerciseService.GetExercise(ctx, &pb.GetExerciseRequest{Id: exerciseID})
+		if err != nil {
+			continue
+		}
+
+		// Get base strength for this exercise type
+		baseStrength := m.getBaseStrengthForExercise(exerciseDetails.Name, profile.BodyWeight, profile.IsMale)
+
+		// Calculate training age-adjusted expected strength
+		// Expected Strength = Base Strength × (1 + 0.1 × sqrt(Training Years))
+		expectedStrength := baseStrength * (1 + 0.1*math.Sqrt(trainingAge))
+		comparativeMetrics.TrainingAgeAdjustedExpected[exerciseID] = expectedStrength
+
+		// Calculate genetic potential estimate
+		// Potential = Current Max × (1.5 - 0.5 × (Current/Elite Standard))
+		eliteStandard := m.getEliteStandardForExercise(exerciseDetails.Name, profile.BodyWeight, profile.IsMale)
+		if eliteStandard > 0 && currentOneRM > 0 {
+			currentToEliteRatio := currentOneRM / eliteStandard
+			potentialMultiplier := 1.5 - 0.5*currentToEliteRatio
+			// Ensure multiplier is reasonable (between 1.0 and 1.5)
+			if potentialMultiplier < 1.0 {
+				potentialMultiplier = 1.0
+			} else if potentialMultiplier > 1.5 {
+				potentialMultiplier = 1.5
+			}
+			geneticPotential := currentOneRM * potentialMultiplier
+			comparativeMetrics.GeneticPotentialEstimate[exerciseID] = geneticPotential
+		}
+	}
+
+	// Calculate relative to expectations (overall performance vs expected for training age)
+	if len(comparativeMetrics.TrainingAgeAdjustedExpected) > 0 {
+		var totalCurrent, totalExpected float64
+		var exerciseCount int
+
+		for exerciseID, expected := range comparativeMetrics.TrainingAgeAdjustedExpected {
+			if current, exists := strengthMetrics.EstimatedOneRMEpley[exerciseID]; exists {
+				totalCurrent += current
+				totalExpected += expected
+				exerciseCount++
+			}
+		}
+
+		if totalExpected > 0 {
+			relativeToExpectations := totalCurrent / totalExpected
+			comparativeMetrics.RelativeToExpectations = relativeToExpectations
+		}
+	}
+
+	return comparativeMetrics, nil
+}
+
+// calculatePsychologicalBehavioralMetrics calculates psychological and behavioral metrics
+func (m *MetricsService) calculatePsychologicalBehavioralMetrics(ctx context.Context, session *models.WorkoutSession) (models.PsychologicalBehavioralMetrics, error) {
+	psychBehavioralMetrics := models.PsychologicalBehavioralMetrics{}
+
+	// Calculate RPE Accuracy: 1 - |Predicted Reps at RPE - Actual Reps| / Actual Reps
+	rpeAccuracy, err := m.calculateRPEAccuracy(ctx, session)
+	if err == nil {
+		psychBehavioralMetrics.RPEAccuracy = rpeAccuracy
+	}
+
+	// Calculate historical data for behavioral metrics
+	recentSessions, err := m.getRecentSessions(ctx, session.UserID, session.StartedAt, 30) // Last 30 days
+	if err != nil {
+		// If we can't get historical data, use current session only
+		recentSessions = []*models.WorkoutMetrics{{
+			VolumeMetrics: models.VolumeMetrics{TotalVolumeLoad: 1000}, // Placeholder
+			SetMetrics:    models.SetMetrics{CompletionRate: 1.0},
+		}}
+	}
+
+	// Calculate Training Adherence: (Completed Workouts / Planned Workouts) × 100
+	trainingAdherence := m.calculateTrainingAdherence(recentSessions)
+	psychBehavioralMetrics.TrainingAdherence = trainingAdherence
+
+	// Calculate Consistency Trend: positive = improving consistency
+	consistencyTrend := m.calculateConsistencyTrend(recentSessions)
+	psychBehavioralMetrics.ConsistencyTrend = consistencyTrend
+
+	// Calculate Motivation Index: MI = (Consistency × Voluntary Extra Sets × (10 - Avg RPE)) / 100
+	motivationIndex := m.calculateMotivationIndex(session, trainingAdherence)
+	psychBehavioralMetrics.MotivationIndex = motivationIndex
+
+	// Calculate Burnout Risk Score: BRS = (Decreasing Performance + Increasing RPE + Decreased Frequency) / 3
+	burnoutRiskScore, err := m.calculateBurnoutRiskScore(ctx, session, recentSessions)
+	if err == nil {
+		psychBehavioralMetrics.BurnoutRiskScore = burnoutRiskScore
+	}
+
+	return psychBehavioralMetrics, nil
+}
+
+// calculateTimeBasedAnalyticsMetrics calculates time-based analytics metrics
+func (m *MetricsService) calculateTimeBasedAnalyticsMetrics(ctx context.Context, session *models.WorkoutSession) (models.TimeBasedAnalyticsMetrics, error) {
+	timeAnalyticsMetrics := models.TimeBasedAnalyticsMetrics{
+		PerformanceByHour:  make(map[string]float64),
+		OptimalRestPeriods: make(map[string]float64),
+	}
+
+	// Calculate session duration efficiency: SDE = Total Effective Volume / Session Duration
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err == nil && session.DurationSeconds > 0 {
+		sessionDurationMinutes := float64(session.DurationSeconds) / 60.0
+		sde := float64(volumeMetrics.EffectiveReps) / sessionDurationMinutes
+		timeAnalyticsMetrics.SessionDurationEfficiency = sde
+	}
+
+	// Get historical session data for time-based analysis
+	historicalSessions, err := m.getHistoricalSessionsWithTime(ctx, session.UserID, session.StartedAt, 60) // Last 60 days
+	if err != nil || len(historicalSessions) < models.MinSessionsForTimeAnalysis {
+		// Not enough data for time analysis, use current session only
+		currentHour := session.StartedAt.Hour()
+		timeAnalyticsMetrics.OptimalTrainingTimeHour = int32(currentHour)
+		timeAnalyticsMetrics.TimeOfDayPreference = m.categorizeTimeOfDay(currentHour)
+		timeAnalyticsMetrics.WorkoutTimingConsistency = 1.0
+
+		// Calculate optimal rest periods for current session exercises
+		intensityMetrics, err := m.calculateIntensityMetrics(ctx, session)
+		if err == nil {
+			timeAnalyticsMetrics.OptimalRestPeriods = m.calculateOptimalRestPeriods(session, intensityMetrics.AverageIntensity)
+		}
+
+		return timeAnalyticsMetrics, nil
+	}
+
+	// Calculate performance by hour: Performance Score = (1RM% × Completion Rate × (10 - RPE))
+	performanceByHour := m.calculatePerformanceByHour(historicalSessions)
+	timeAnalyticsMetrics.PerformanceByHour = performanceByHour
+
+	// Find optimal training time hour
+	optimalHour, _ := m.findOptimalTrainingHour(performanceByHour)
+	timeAnalyticsMetrics.OptimalTrainingTimeHour = int32(optimalHour)
+
+	// Categorize time of day preference
+	timeOfDayPreference := m.determineTimeOfDayPreference(performanceByHour)
+	timeAnalyticsMetrics.TimeOfDayPreference = timeOfDayPreference
+
+	// Calculate workout timing consistency
+	timingConsistency := m.calculateWorkoutTimingConsistency(historicalSessions)
+	timeAnalyticsMetrics.WorkoutTimingConsistency = timingConsistency
+
+	// Calculate optimal rest periods for current session
+	intensityMetrics, err := m.calculateIntensityMetrics(ctx, session)
+	if err == nil {
+		optimalRestPeriods := m.calculateOptimalRestPeriods(session, intensityMetrics.AverageIntensity)
+		timeAnalyticsMetrics.OptimalRestPeriods = optimalRestPeriods
+	}
+
+	return timeAnalyticsMetrics, nil
+}
+
+// Helper methods for Comparative & Normative Metrics
+
+func (m *MetricsService) calculateTrainingAge(ctx context.Context, userID primitive.ObjectID) (float64, error) {
+	// Find the earliest workout session for this user
+	filter := bson.M{"userId": userID}
+	opts := options.FindOne().SetSort(bson.D{{"date", 1}})
+
+	var earliestMetrics models.WorkoutMetrics
+	err := m.metricsColl.FindOne(ctx, filter, opts).Decode(&earliestMetrics)
+	if err == mongo.ErrNoDocuments {
+		return 0, nil // No training history
+	} else if err != nil {
+		return 0, err
+	}
+
+	// Calculate training age in years
+	trainingAge := time.Since(earliestMetrics.Date).Hours() / (24 * 365.25) // Account for leap years
+	return trainingAge, nil
+}
+
+func (m *MetricsService) getDemographicCategory(age int, isMale bool, bodyWeight float64) models.DemographicCategory {
+	// Get age group
+	ageGroup := "60+"
+	if ageCategory, exists := models.AgeCategoryMap[age]; exists {
+		ageGroup = ageCategory
+	}
+
+	// Get gender
+	gender := "female"
+	if isMale {
+		gender = "male"
+	}
+
+	// Get weight category
+	weightCategory := "heavy"
+	for category, bounds := range models.WeightCategoryMap {
+		if bodyWeight >= bounds[0] && bodyWeight < bounds[1] {
+			weightCategory = category
+			break
+		}
+	}
+
+	return models.DemographicCategory{
+		AgeGroup: ageGroup,
+		Gender:   gender,
+		Weight:   weightCategory,
+	}
+}
+
+func (m *MetricsService) calculatePercentileRanking(wilksScore float64, demographic models.DemographicCategory) float64 {
+	// Simplified percentile calculation based on Wilks score
+	// In a real implementation, this would query a database of user performances
+
+	// Rough Wilks score benchmarks for different demographics
+	var benchmarks []float64
+
+	if demographic.Gender == "male" {
+		// Male benchmarks (approximate Wilks scores)
+		benchmarks = []float64{200, 250, 300, 350, 400, 450, 500, 550, 600}
+	} else {
+		// Female benchmarks (approximate Wilks scores)
+		benchmarks = []float64{150, 200, 250, 300, 350, 400, 450, 500, 550}
+	}
+
+	// Calculate percentile based on where user falls in benchmarks
+	percentile := 0.0
+	for i, benchmark := range benchmarks {
+		if wilksScore <= benchmark {
+			percentile = float64(i+1) / float64(len(benchmarks)) * 100.0
+			break
+		}
+	}
+
+	if percentile == 0 {
+		percentile = 100.0 // Above all benchmarks
+	}
+
+	return percentile
+}
+
+func (m *MetricsService) categorizePerformance(percentile, trainingAge float64) string {
+	thresholds := models.DefaultPerformanceThresholds
+
+	// Adjust thresholds based on training age
+	// Beginners should have lower expectations
+	ageAdjustment := math.Min(trainingAge/2.0, 1.0) // Cap at 1.0 after 2 years
+
+	adjustedBeginnerThreshold := thresholds.BeginnerPercentile + (20.0 * (1.0 - ageAdjustment))
+	adjustedIntermediateThreshold := thresholds.IntermediatePercentile + (10.0 * (1.0 - ageAdjustment))
+	adjustedAdvancedThreshold := thresholds.AdvancedPercentile + (5.0 * (1.0 - ageAdjustment))
+
+	if percentile < adjustedBeginnerThreshold {
+		return "Beginner"
+	} else if percentile < adjustedIntermediateThreshold {
+		return "Intermediate"
+	} else if percentile < adjustedAdvancedThreshold {
+		return "Advanced"
+	} else {
+		return "Elite"
+	}
+}
+
+func (m *MetricsService) getBaseStrengthForExercise(exerciseName string, bodyWeight float64, isMale bool) float64 {
+	exerciseType := m.mapExerciseToStandard(exerciseName)
+
+	// Base strength coefficients (rough novice level)
+	var baseCoefficients models.EliteStandards
+	if isMale {
+		baseCoefficients = models.EliteStandards{
+			SquatCoefficient:    1.0, // 1x bodyweight squat for novice male
+			BenchCoefficient:    0.8, // 0.8x bodyweight bench for novice male
+			DeadliftCoefficient: 1.2, // 1.2x bodyweight deadlift for novice male
+			OverheadCoefficient: 0.6, // 0.6x bodyweight press for novice male
+		}
+	} else {
+		baseCoefficients = models.EliteStandards{
+			SquatCoefficient:    0.8, // 0.8x bodyweight squat for novice female
+			BenchCoefficient:    0.5, // 0.5x bodyweight bench for novice female
+			DeadliftCoefficient: 1.0, // 1.0x bodyweight deadlift for novice female
+			OverheadCoefficient: 0.4, // 0.4x bodyweight press for novice female
+		}
+	}
+
+	switch exerciseType {
+	case "squat":
+		return bodyWeight * baseCoefficients.SquatCoefficient
+	case "bench":
+		return bodyWeight * baseCoefficients.BenchCoefficient
+	case "deadlift":
+		return bodyWeight * baseCoefficients.DeadliftCoefficient
+	case "overhead":
+		return bodyWeight * baseCoefficients.OverheadCoefficient
+	default:
+		return bodyWeight * 0.8 // Default multiplier
+	}
+}
+
+func (m *MetricsService) getEliteStandardForExercise(exerciseName string, bodyWeight float64, isMale bool) float64 {
+	exerciseType := m.mapExerciseToStandard(exerciseName)
+
+	var eliteStandards models.EliteStandards
+	if isMale {
+		eliteStandards = models.EliteStandardsMale
+	} else {
+		eliteStandards = models.EliteStandardsFemale
+	}
+
+	switch exerciseType {
+	case "squat":
+		return bodyWeight * eliteStandards.SquatCoefficient
+	case "bench":
+		return bodyWeight * eliteStandards.BenchCoefficient
+	case "deadlift":
+		return bodyWeight * eliteStandards.DeadliftCoefficient
+	case "overhead":
+		return bodyWeight * eliteStandards.OverheadCoefficient
+	default:
+		return bodyWeight * 2.0 // Default elite multiplier
+	}
+}
+
+func (m *MetricsService) mapExerciseToStandard(exerciseName string) string {
+	exerciseNameLower := strings.ToLower(exerciseName)
+
+	if standardType, exists := models.ExerciseToStandardMap[exerciseNameLower]; exists {
+		return standardType
+	}
+
+	// Fallback: check if exercise name contains key terms
+	for exercise, standard := range models.ExerciseToStandardMap {
+		if strings.Contains(exerciseNameLower, exercise) {
+			return standard
+		}
+	}
+
+	return "default"
+}
+
+// Helper methods for Psychological & Behavioral Metrics
+
+func (m *MetricsService) calculateRPEAccuracy(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	var accuracySum float64
+	var setCount int
+
+	for _, exercise := range session.Exercises {
+		for _, set := range exercise.Sets {
+			if !set.Completed {
+				continue
+			}
+
+			actualReps := float64(set.ActualReps)
+			rpe := float64(session.RPERating)
+
+			// Predict reps at given RPE using simplified RPE-rep relationship
+			// At RPE 10, should be 1 rep; at RPE 7, should be 3-4 reps; etc.
+			predictedReps := 11.0 - rpe
+			if predictedReps < 1 {
+				predictedReps = 1
+			}
+
+			// Calculate accuracy: 1 - |Predicted - Actual| / Actual
+			if actualReps > 0 {
+				accuracy := 1.0 - math.Abs(predictedReps-actualReps)/actualReps
+				if accuracy < 0 {
+					accuracy = 0
+				}
+				accuracySum += accuracy
+				setCount++
+			}
+		}
+	}
+
+	if setCount == 0 {
+		return 0, nil
+	}
+
+	return accuracySum / float64(setCount), nil
+}
+
+func (m *MetricsService) getRecentSessions(ctx context.Context, userID primitive.ObjectID, currentDate time.Time, days int) ([]*models.WorkoutMetrics, error) {
+	startDate := currentDate.AddDate(0, 0, -days)
+
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": startDate, "$lt": currentDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var sessions []*models.WorkoutMetrics
+	for cursor.Next(ctx) {
+		var session models.WorkoutMetrics
+		if err := cursor.Decode(&session); err != nil {
+			continue
+		}
+		sessions = append(sessions, &session)
+	}
+
+	return sessions, nil
+}
+
+func (m *MetricsService) calculateTrainingAdherence(sessions []*models.WorkoutMetrics) float64 {
+	if len(sessions) == 0 {
+		return 100.0 // No data, assume perfect adherence
+	}
+
+	// Calculate average completion rate across sessions
+	var totalCompletionRate float64
+	for _, session := range sessions {
+		totalCompletionRate += session.SetMetrics.CompletionRate
+	}
+
+	return (totalCompletionRate / float64(len(sessions))) * 100.0
+}
+
+func (m *MetricsService) calculateConsistencyTrend(sessions []*models.WorkoutMetrics) float64 {
+	if len(sessions) < models.MinWorkoutsForTrend {
+		return 0.0 // Not enough data for trend
+	}
+
+	// Split sessions into first half and second half
+	midPoint := len(sessions) / 2
+	firstHalf := sessions[:midPoint]
+	secondHalf := sessions[midPoint:]
+
+	// Calculate average completion rate for each half
+	var firstHalfAvg, secondHalfAvg float64
+
+	for _, session := range firstHalf {
+		firstHalfAvg += session.SetMetrics.CompletionRate
+	}
+	firstHalfAvg /= float64(len(firstHalf))
+
+	for _, session := range secondHalf {
+		secondHalfAvg += session.SetMetrics.CompletionRate
+	}
+	secondHalfAvg /= float64(len(secondHalf))
+
+	// Return trend (positive = improving consistency)
+	return secondHalfAvg - firstHalfAvg
+}
+
+func (m *MetricsService) calculateMotivationIndex(session *models.WorkoutSession, adherence float64) float64 {
+	// Count voluntary extra sets (sets beyond minimum for each exercise)
+	var voluntaryExtraSets float64
+	for _, exercise := range session.Exercises {
+		if len(exercise.Sets) > 3 { // Assume 3 sets is baseline
+			voluntaryExtraSets += float64(len(exercise.Sets) - 3)
+		}
+	}
+
+	// Apply bonus for extra sets
+	extraSetsBonus := voluntaryExtraSets * models.VoluntaryExtraSetsBonus
+
+	// Calculate motivation score
+	consistency := adherence / 100.0
+	averageRPE := float64(session.RPERating)
+
+	// MI = (Consistency × Voluntary Extra Sets × (10 - Avg RPE)) / 100
+	motivationIndex := (consistency * extraSetsBonus * (10.0 - averageRPE)) / 100.0
+
+	// Ensure reasonable bounds
+	if motivationIndex < 0 {
+		motivationIndex = 0
+	} else if motivationIndex > 1 {
+		motivationIndex = 1
+	}
+
+	return motivationIndex
+}
+
+func (m *MetricsService) calculateBurnoutRiskScore(ctx context.Context, session *models.WorkoutSession, recentSessions []*models.WorkoutMetrics) (float64, error) {
+	if len(recentSessions) < 3 {
+		return 0.0, nil // Not enough data
+	}
+
+	// Calculate decreasing performance trend
+	var performanceValues []float64
+	for _, s := range recentSessions {
+		// Use total volume as performance proxy
+		performanceValues = append(performanceValues, s.VolumeMetrics.TotalVolumeLoad)
+	}
+
+	performanceDecline := 0.0
+	if len(performanceValues) >= 2 {
+		recent := average(performanceValues[len(performanceValues)/2:])
+		earlier := average(performanceValues[:len(performanceValues)/2])
+		if earlier > 0 {
+			performanceDecline = math.Max(0, (earlier-recent)/earlier)
+		}
+	}
+
+	// Calculate increasing RPE trend
+	var rpeValues []float64
+	for _, s := range recentSessions {
+		rpeValues = append(rpeValues, s.PerformanceMetrics.AverageRPE)
+	}
+
+	rpeIncrease := 0.0
+	if len(rpeValues) >= 2 {
+		recent := average(rpeValues[len(rpeValues)/2:])
+		earlier := average(rpeValues[:len(rpeValues)/2])
+		rpeIncrease = math.Max(0, (recent-earlier)/10.0) // Normalize to 0-1
+	}
+
+	// Calculate decreased frequency (sessions per week declining)
+	// Simplified: compare recent session count to earlier period
+	totalWeeks := float64(len(recentSessions)) / 7.0 * 30.0 // Rough estimate
+	if totalWeeks < 1 {
+		totalWeeks = 1
+	}
+	currentFrequency := float64(len(recentSessions)) / totalWeeks
+	optimalFrequency := 3.0 // 3 sessions per week as baseline
+
+	frequencyDecline := math.Max(0, (optimalFrequency-currentFrequency)/optimalFrequency)
+
+	// BRS = (Decreasing Performance + Increasing RPE + Decreased Frequency) / 3
+	burnoutRisk := (performanceDecline + rpeIncrease + frequencyDecline) / 3.0
+
+	return burnoutRisk, nil
+}
+
+// Helper methods for Time-Based Analytics Metrics
+
+func (m *MetricsService) getHistoricalSessionsWithTime(ctx context.Context, userID primitive.ObjectID, currentDate time.Time, days int) ([]models.WorkoutMetrics, error) {
+	startDate := currentDate.AddDate(0, 0, -days)
+
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": startDate, "$lt": currentDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var sessions []models.WorkoutMetrics
+	if err := cursor.All(ctx, &sessions); err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
+}
+
+func (m *MetricsService) categorizeTimeOfDay(hour int) string {
+	if hour >= 6 && hour < 12 {
+		return "Morning"
+	} else if hour >= 12 && hour < 18 {
+		return "Afternoon"
+	} else {
+		return "Evening"
+	}
+}
+
+func (m *MetricsService) calculatePerformanceByHour(sessions []models.WorkoutMetrics) map[string]float64 {
+	hourlyData := make(map[int][]float64)
+
+	for _, session := range sessions {
+		hour := session.Date.Hour()
+
+		// Calculate performance score: (1RM% × Completion Rate × (10 - RPE))
+		// Use volume as proxy for 1RM% and normalize
+		volumeScore := math.Min(session.VolumeMetrics.TotalVolumeLoad/1000.0, 1.0) // Normalize to 0-1
+		completionRate := session.SetMetrics.CompletionRate
+		rpeScore := (10.0 - session.PerformanceMetrics.AverageRPE) / 10.0 // Normalize to 0-1
+
+		performanceScore := volumeScore * completionRate * rpeScore
+		hourlyData[hour] = append(hourlyData[hour], performanceScore)
+	}
+
+	// Calculate averages for each hour
+	result := make(map[string]float64)
+	for hour, scores := range hourlyData {
+		if len(scores) > 0 {
+			avgScore := average(scores)
+			result[fmt.Sprintf("%d", hour)] = avgScore
+		}
+	}
+
+	return result
+}
+
+func (m *MetricsService) findOptimalTrainingHour(performanceByHour map[string]float64) (int, float64) {
+	bestHour := 12 // Default to noon
+	bestPerformance := 0.0
+
+	for hourStr, performance := range performanceByHour {
+		hour, err := strconv.Atoi(hourStr)
+		if err != nil {
+			continue
+		}
+
+		if performance > bestPerformance {
+			bestPerformance = performance
+			bestHour = hour
+		}
+	}
+
+	return bestHour, bestPerformance
+}
+
+func (m *MetricsService) determineTimeOfDayPreference(performanceByHour map[string]float64) string {
+	morningScore := 0.0
+	morningCount := 0
+	afternoonScore := 0.0
+	afternoonCount := 0
+	eveningScore := 0.0
+	eveningCount := 0
+
+	for hourStr, performance := range performanceByHour {
+		hour, err := strconv.Atoi(hourStr)
+		if err != nil {
+			continue
+		}
+
+		if hour >= 6 && hour < 12 {
+			morningScore += performance
+			morningCount++
+		} else if hour >= 12 && hour < 18 {
+			afternoonScore += performance
+			afternoonCount++
+		} else {
+			eveningScore += performance
+			eveningCount++
+		}
+	}
+
+	// Calculate averages
+	if morningCount > 0 {
+		morningScore /= float64(morningCount)
+	}
+	if afternoonCount > 0 {
+		afternoonScore /= float64(afternoonCount)
+	}
+	if eveningCount > 0 {
+		eveningScore /= float64(eveningCount)
+	}
+
+	// Find best performing time period
+	if morningScore >= afternoonScore && morningScore >= eveningScore {
+		return "Morning"
+	} else if afternoonScore >= eveningScore {
+		return "Afternoon"
+	} else {
+		return "Evening"
+	}
+}
+
+func (m *MetricsService) calculateWorkoutTimingConsistency(sessions []models.WorkoutMetrics) float64 {
+	if len(sessions) < 2 {
+		return 1.0 // Perfect consistency with only one session
+	}
+
+	// Extract workout hours
+	var hours []float64
+	for _, session := range sessions {
+		hour := float64(session.Date.Hour()) + float64(session.Date.Minute())/60.0
+		hours = append(hours, hour)
+	}
+
+	// Calculate standard deviation of workout times
+	avgHour := average(hours)
+	stdDev := standardDeviation(hours, avgHour)
+
+	// Convert to consistency score (lower std dev = higher consistency)
+	// Use window of acceptable variation
+	consistency := 1.0 - math.Min(stdDev/models.TimingConsistencyWindow, 1.0)
+
+	if consistency < 0 {
+		consistency = 0
+	}
+
+	return consistency
+}
+
+func (m *MetricsService) calculateOptimalRestPeriods(session *models.WorkoutSession, averageIntensity float64) map[string]float64 {
+	optimalRest := make(map[string]float64)
+
+	for _, exercise := range session.Exercises {
+		exerciseID := exercise.ExerciseID.Hex()
+
+		// Calculate intensity for this exercise based on heaviest set
+		var maxIntensity float64
+		for _, set := range exercise.Sets {
+			if !set.Completed {
+				continue
+			}
+
+			// Estimate intensity as percentage of max (simplified)
+			weight := float64(set.ActualWeight)
+			reps := set.ActualReps
+
+			// Use 1RM estimation to get intensity percentage
+			oneRM := m.calculateOneRM(weight, reps)
+			intensity := 0.0
+			if oneRM > 0 {
+				intensity = (weight / oneRM) * 100.0
+			}
+
+			if intensity > maxIntensity {
+				maxIntensity = intensity
+			}
+		}
+
+		// Use provided average if exercise intensity can't be calculated
+		if maxIntensity == 0 {
+			maxIntensity = averageIntensity
+		}
+
+		// Calculate optimal rest: 2^(Intensity%/25) minutes
+		restTime := math.Pow(models.OptimalRestTimeMultiplier, maxIntensity/models.RestTimeIntensityDivisor)
+
+		// Apply bounds
+		if restTime < models.MinRestTimeMins {
+			restTime = models.MinRestTimeMins
+		} else if restTime > models.MaxRestTimeMins {
+			restTime = models.MaxRestTimeMins
+		}
+
+		optimalRest[exerciseID] = restTime
+	}
+
+	return optimalRest
+}
+
+// calculateCompoundMetrics calculates compound fitness metrics
+func (m *MetricsService) calculateCompoundMetrics(ctx context.Context, session *models.WorkoutSession) (models.CompoundMetrics, error) {
+	compoundMetrics := models.CompoundMetrics{}
+
+	// Get user profile data (using defaults for now)
+	// profile := models.DefaultProfile // TODO: use when user profile is available
+	chronologicalAge := 30.0 // Default age (TODO: get from user profile when available)
+
+	// Calculate Overall Fitness Score components
+	strengthScore, err := m.calculateStrengthScore(ctx, session)
+	if err != nil {
+		strengthScore = 50.0 // Default if calculation fails
+	}
+
+	volumeScore, err := m.calculateVolumeScore(ctx, session)
+	if err != nil {
+		volumeScore = 50.0 // Default if calculation fails
+	}
+
+	consistencyScore, err := m.calculateConsistencyScore(ctx, session)
+	if err != nil {
+		consistencyScore = 50.0 // Default if calculation fails
+	}
+
+	progressScore, err := m.calculateProgressScore(ctx, session)
+	if err != nil {
+		progressScore = 50.0 // Default if calculation fails
+	}
+
+	// Calculate Overall Fitness Score: OFS = (Strength × 0.3 + Volume × 0.2 + Consistency × 0.2 + Progress × 0.3) × 100
+	overallFitnessScore := (strengthScore*models.StrengthScoreWeight +
+		volumeScore*models.VolumeScoreWeight +
+		consistencyScore*models.ConsistencyScoreWeight +
+		progressScore*models.ProgressScoreWeight) * 100.0
+
+	compoundMetrics.OverallFitnessScore = overallFitnessScore
+
+	// Calculate Fitness Age: Fitness Age = Chronological Age × (Population Average Score / User Score)
+	if overallFitnessScore > 0 {
+		fitnessAge := chronologicalAge * (models.DefaultPopulationAverageScore / overallFitnessScore)
+		compoundMetrics.FitnessAge = fitnessAge
+	} else {
+		compoundMetrics.FitnessAge = chronologicalAge // Default if score is 0
+	}
+
+	// Calculate Training Efficiency Quotient: TEQ = (Performance Gains / (Time Invested × Fatigue Generated)) × 100
+	teq, err := m.calculateTrainingEfficiencyQuotient(ctx, session)
+	if err != nil {
+		teq = 50.0 // Default if calculation fails
+	}
+	compoundMetrics.TrainingEfficiencyQuotient = teq
+
+	return compoundMetrics, nil
+}
+
+// calculatePredictiveAnalyticsMetrics calculates predictive analytics metrics
+func (m *MetricsService) calculatePredictiveAnalyticsMetrics(ctx context.Context, session *models.WorkoutSession) (models.PredictiveAnalyticsMetrics, error) {
+	predictiveMetrics := models.PredictiveAnalyticsMetrics{
+		PerformanceTrajectory:       make(map[string]float64),
+		GoalAchievementTimeline:     make(map[string]float64),
+		ProjectedPerformance4Weeks:  make(map[string]float64),
+		ProjectedPerformance12Weeks: make(map[string]float64),
+		ProjectedPerformance26Weeks: make(map[string]float64),
+	}
+
+	// Calculate Plateau Probability for overall progress
+	plateauProbability, err := m.calculatePlateauProbability(ctx, session)
+	if err == nil {
+		predictiveMetrics.PlateauProbability = plateauProbability
+	}
+
+	// Calculate Detraining Risk
+	detrainingRisk, err := m.calculateDetrainingRisk(ctx, session)
+	if err == nil {
+		predictiveMetrics.DetrainingRisk = detrainingRisk
+	}
+
+	// Calculate performance projections for each exercise
+	for _, exercise := range session.Exercises {
+		exerciseID := exercise.ExerciseID.Hex()
+
+		// Get current performance (best 1RM)
+		currentPerformance, err := m.getBestOneRMForPeriod(ctx, session.UserID, exerciseID, time.Time{}, session.StartedAt)
+		if err != nil || currentPerformance == 0 {
+			continue // Skip if no current performance data
+		}
+
+		// Calculate weekly gain rate
+		weeklyGainRate, err := m.calculateWeeklyGainRate(ctx, session.UserID, exerciseID, session.StartedAt)
+		if err != nil {
+			weeklyGainRate = 0.0 // Default to no gains if calculation fails
+		}
+
+		// Calculate performance trajectory projections
+		projections := m.calculatePerformanceProjections(currentPerformance, weeklyGainRate)
+		predictiveMetrics.ProjectedPerformance4Weeks[exerciseID] = projections[0]
+		predictiveMetrics.ProjectedPerformance12Weeks[exerciseID] = projections[1]
+		predictiveMetrics.ProjectedPerformance26Weeks[exerciseID] = projections[2]
+
+		// Store 26-week projection as general performance trajectory
+		predictiveMetrics.PerformanceTrajectory[exerciseID] = projections[2]
+
+		// Calculate goal achievement timeline (assuming 10% improvement goal)
+		goalImprovement := currentPerformance * 1.1 // 10% improvement goal
+		if weeklyGainRate > models.MinWeeklyProgress {
+			weeksToGoal := (goalImprovement - currentPerformance) / (weeklyGainRate * models.PerformanceDecayFactor)
+			predictiveMetrics.GoalAchievementTimeline[exerciseID] = weeksToGoal
+		} else {
+			predictiveMetrics.GoalAchievementTimeline[exerciseID] = 999.0 // Very long time if no progress
+		}
+	}
+
+	return predictiveMetrics, nil
+}
+
+// Helper methods for Compound Metrics
+
+func (m *MetricsService) calculateStrengthScore(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get strength metrics
+	strengthMetrics, err := m.calculateStrengthMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	// Use Wilks score as strength indicator, normalized to 0-100 scale
+	// Average Wilks score for recreational lifters is around 300-400
+	// Scale: 0-200 = 0-25, 200-400 = 25-75, 400+ = 75-100
+	wilksScore := strengthMetrics.WilksScore
+
+	var strengthScore float64
+	if wilksScore <= 200 {
+		strengthScore = (wilksScore / 200.0) * 25.0
+	} else if wilksScore <= 400 {
+		strengthScore = 25.0 + ((wilksScore-200.0)/200.0)*50.0
+	} else {
+		strengthScore = 75.0 + math.Min((wilksScore-400.0)/200.0*25.0, 25.0)
+	}
+
+	return strengthScore, nil
+}
+
+func (m *MetricsService) calculateVolumeScore(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get volume metrics
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get volume landmarks for comparison
+	volumeLandmarks, err := m.CalculateVolumeLandmarks(ctx, session.UserID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate average volume relative to MAV across muscle groups
+	var totalScore float64
+	var muscleGroupCount int
+
+	for muscleGroup, volume := range volumeMetrics.MuscleGroupVolume {
+		if mav, exists := volumeLandmarks.MAV[muscleGroup]; exists && mav > 0 {
+			// Score based on proximity to MAV (optimal volume)
+			ratio := volume / mav
+			var score float64
+
+			if ratio <= 0.5 {
+				score = ratio * 2.0 * 50.0 // Below MEV range: 0-50
+			} else if ratio <= 1.0 {
+				score = 50.0 + (ratio-0.5)*2.0*25.0 // MEV to MAV: 50-75
+			} else if ratio <= 1.5 {
+				score = 75.0 + (1.5-ratio)*2.0*25.0 // MAV to MRV: 75-50
+			} else {
+				score = math.Max(25.0, 50.0-(ratio-1.5)*25.0) // Above MRV: declining
+			}
+
+			totalScore += score
+			muscleGroupCount++
+		}
+	}
+
+	if muscleGroupCount == 0 {
+		return 50.0, nil // Default score if no data
+	}
+
+	return totalScore / float64(muscleGroupCount), nil
+}
+
+func (m *MetricsService) calculateConsistencyScore(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get recent sessions for consistency calculation
+	recentSessions, err := m.getRecentSessions(ctx, session.UserID, session.StartedAt, 30) // Last 30 days
+	if err != nil || len(recentSessions) == 0 {
+		return 50.0, nil // Default score if no data
+	}
+
+	// Calculate training adherence
+	adherence := m.calculateTrainingAdherence(recentSessions)
+
+	// Calculate frequency consistency (sessions per week)
+	totalWeeks := 30.0 / 7.0 // 30 days = ~4.3 weeks
+	sessionFrequency := float64(len(recentSessions)) / totalWeeks
+
+	// Optimal frequency is 3-4 sessions per week
+	var frequencyScore float64
+	if sessionFrequency >= 3.0 && sessionFrequency <= 4.0 {
+		frequencyScore = 100.0 // Optimal
+	} else if sessionFrequency >= 2.0 && sessionFrequency <= 5.0 {
+		frequencyScore = 75.0 // Good
+	} else if sessionFrequency >= 1.0 && sessionFrequency <= 6.0 {
+		frequencyScore = 50.0 // Acceptable
+	} else {
+		frequencyScore = 25.0 // Poor
+	}
+
+	// Combine adherence and frequency (weighted average)
+	consistencyScore := (adherence + frequencyScore) / 2.0
+
+	return consistencyScore, nil
+}
+
+func (m *MetricsService) calculateProgressScore(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get progress adaptation metrics
+	progressMetrics, err := m.calculateProgressAdaptationMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate average progress rate across exercises
+	var totalProgressRate float64
+	var exerciseCount int
+
+	for _, progressRate := range progressMetrics.WeekOverWeekProgressRate {
+		totalProgressRate += progressRate
+		exerciseCount++
+	}
+
+	if exerciseCount == 0 {
+		return 50.0, nil // Default score if no data
+	}
+
+	averageProgressRate := totalProgressRate / float64(exerciseCount)
+
+	// Convert progress rate to score (0-100 scale)
+	// 0% progress = 25, 1% progress = 50, 2% progress = 75, 3%+ progress = 100
+	var progressScore float64
+	if averageProgressRate <= 0 {
+		progressScore = 25.0
+	} else if averageProgressRate <= 1.0 {
+		progressScore = 25.0 + (averageProgressRate/1.0)*25.0
+	} else if averageProgressRate <= 2.0 {
+		progressScore = 50.0 + ((averageProgressRate-1.0)/1.0)*25.0
+	} else {
+		progressScore = 75.0 + math.Min((averageProgressRate-2.0)/1.0*25.0, 25.0)
+	}
+
+	return progressScore, nil
+}
+
+func (m *MetricsService) calculateTrainingEfficiencyQuotient(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get performance gains from strength metrics
+	strengthMetrics, err := m.calculateStrengthMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get previous session for comparison
+	previousMetrics, err := m.getPreviousSessionMetrics(ctx, session.UserID, session.StartedAt)
+	if err != nil || previousMetrics == nil {
+		return 50.0, nil // Default if no previous data
+	}
+
+	// Calculate average performance gain across exercises
+	var totalGain float64
+	var exerciseCount int
+
+	for exerciseID, currentOneRM := range strengthMetrics.EstimatedOneRMEpley {
+		if previousOneRM, exists := previousMetrics.StrengthMetrics.EstimatedOneRMEpley[exerciseID]; exists && previousOneRM > 0 {
+			gain := (currentOneRM - previousOneRM) / previousOneRM
+			totalGain += gain
+			exerciseCount++
+		}
+	}
+
+	if exerciseCount == 0 {
+		return 50.0, nil // Default if no comparison data
+	}
+
+	averageGain := totalGain / float64(exerciseCount)
+
+	// Calculate time invested (in hours)
+	timeInvested := float64(session.DurationSeconds) / 3600.0 // Convert to hours
+
+	// Calculate fatigue generated (using RPE as proxy)
+	fatigueGenerated := float64(session.RPERating) / 10.0 // Normalize to 0-1
+
+	// Avoid division by zero
+	if timeInvested <= 0 || fatigueGenerated <= 0 {
+		return 50.0, nil
+	}
+
+	// Calculate TEQ: (Performance Gains / (Time Invested × Fatigue Generated)) × 100
+	teq := (averageGain / (timeInvested * fatigueGenerated)) * models.TEQMultiplier
+
+	// Cap at reasonable bounds (0-200)
+	if teq < 0 {
+		teq = 0
+	} else if teq > 200 {
+		teq = 200
+	}
+
+	return teq, nil
+}
+
+// Helper methods for Predictive Analytics
+
+func (m *MetricsService) calculatePlateauProbability(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get progress adaptation metrics for plateau detection
+	progressMetrics, err := m.calculateProgressAdaptationMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate average progress rate across exercises
+	var totalProgressRate float64
+	var exerciseCount int
+
+	for _, progressRate := range progressMetrics.WeekOverWeekProgressRate {
+		totalProgressRate += progressRate / 100.0 // Convert percentage to decimal
+		exerciseCount++
+	}
+
+	if exerciseCount == 0 {
+		return 0.5, nil // 50% probability if no data
+	}
+
+	averageProgressRate := totalProgressRate / float64(exerciseCount)
+
+	// Calculate plateau probability using sigmoid function: 1 / (1 + e^(Progress Rate - 0.02))
+	plateauProbability := 1.0 / (1.0 + math.Exp(averageProgressRate-models.PlateauThreshold))
+
+	return plateauProbability, nil
+}
+
+func (m *MetricsService) calculateDetrainingRisk(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	// Get hours since last session
+	hoursSinceLastSession, err := m.getHoursSinceLastSession(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		return 0, err
+	}
+
+	// Convert to days
+	daysSinceLastSession := hoursSinceLastSession / 24.0
+
+	// Get Chronic Training Load for context
+	periodizationMetrics, err := m.calculatePeriodizationMetrics(ctx, session)
+	if err != nil {
+		return 0, err
+	}
+
+	ctl := periodizationMetrics.ChronicTrainingLoad
+	if ctl <= 0 {
+		ctl = 10.0 // Default CTL to avoid division by zero
+	}
+
+	// Calculate detraining risk: Days Since Last Workout / (CTL / 10)
+	detrainingRisk := daysSinceLastSession / (ctl / models.CTLDivisor)
+
+	// Cap at reasonable bounds (0-2.0, where >1.0 indicates high risk)
+	if detrainingRisk < 0 {
+		detrainingRisk = 0
+	} else if detrainingRisk > 2.0 {
+		detrainingRisk = 2.0
+	}
+
+	return detrainingRisk, nil
+}
+
+func (m *MetricsService) calculateWeeklyGainRate(ctx context.Context, userID primitive.ObjectID, exerciseID string, currentDate time.Time) (float64, error) {
+	// Get 1RM data for the last 8 weeks to calculate trend
+	eightWeeksAgo := currentDate.AddDate(0, 0, -56) // 8 weeks * 7 days
+
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": eightWeeksAgo, "$lte": currentDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var oneRMValues []float64
+	var dates []time.Time
+
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+
+		if oneRM, exists := metrics.StrengthMetrics.EstimatedOneRMEpley[exerciseID]; exists && oneRM > 0 {
+			oneRMValues = append(oneRMValues, oneRM)
+			dates = append(dates, metrics.Date)
+		}
+	}
+
+	if len(oneRMValues) < 2 {
+		return 0, nil // Not enough data for trend
+	}
+
+	// Calculate linear regression to find weekly gain rate
+	weeklyGainRate := m.calculateLinearTrend(oneRMValues, dates)
+
+	return weeklyGainRate, nil
+}
+
+func (m *MetricsService) calculatePerformanceProjections(currentPerformance, weeklyGainRate float64) [3]float64 {
+	var projections [3]float64
+	timeHorizons := []int{models.ShortTermProjection, models.MediumTermProjection, models.LongTermProjection}
+
+	for i, weeks := range timeHorizons {
+		// Future Performance = Current + (Weekly Gain Rate × Weeks × Decay Factor^Weeks)
+		decayFactor := math.Pow(models.PerformanceDecayFactor, float64(weeks))
+		futurePerformance := currentPerformance + (weeklyGainRate * float64(weeks) * decayFactor)
+
+		// Ensure performance doesn't decrease below current level
+		if futurePerformance < currentPerformance {
+			futurePerformance = currentPerformance
+		}
+
+		projections[i] = futurePerformance
+	}
+
+	return projections
+}
+
+func (m *MetricsService) calculateLinearTrend(values []float64, dates []time.Time) float64 {
+	if len(values) != len(dates) || len(values) < 2 {
+		return 0
+	}
+
+	// Convert dates to weeks since first date
+	firstDate := dates[0]
+	var weeks []float64
+	for _, date := range dates {
+		weeksSince := date.Sub(firstDate).Hours() / (24 * 7) // Convert to weeks
+		weeks = append(weeks, weeksSince)
+	}
+
+	// Calculate linear regression slope (weekly gain rate)
+	n := float64(len(values))
+	sumX := 0.0
+	sumY := 0.0
+	sumXY := 0.0
+	sumXX := 0.0
+
+	for i := 0; i < len(values); i++ {
+		x := weeks[i]
+		y := values[i]
+		sumX += x
+		sumY += y
+		sumXY += x * y
+		sumXX += x * x
+	}
+
+	// Slope = (n * Σ(xy) - Σ(x) * Σ(y)) / (n * Σ(x²) - (Σ(x))²)
+	denominator := n*sumXX - sumX*sumX
+	if denominator == 0 {
+		return 0
+	}
+
+	slope := (n*sumXY - sumX*sumY) / denominator
+	return slope
+}
+
+// TODO: Add protobuf conversion methods when protobuf definitions are added:
+// - comparativeNormativeMetricsToProto()
+// - psychologicalBehavioralMetricsToProto()
+// - timeBasedAnalyticsMetricsToProto()
+// - compoundMetricsToProto()
+// - predictiveAnalyticsMetricsToProto()

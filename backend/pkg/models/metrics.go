@@ -72,29 +72,34 @@ type ExerciseMetrics struct {
 }
 
 type WorkoutMetrics struct {
-	ID                          primitive.ObjectID          `bson:"_id,omitempty" json:"id"`
-	UserID                      primitive.ObjectID          `bson:"userId" json:"userId"`
-	SessionID                   primitive.ObjectID          `bson:"sessionId" json:"sessionId"`
-	RoutineID                   primitive.ObjectID          `bson:"routineId" json:"routineId"`
-	Date                        time.Time                   `bson:"date" json:"date"`
-	VolumeMetrics               VolumeMetrics               `bson:"volumeMetrics" json:"volumeMetrics"`
-	PerformanceMetrics          PerformanceMetrics          `bson:"performanceMetrics" json:"performanceMetrics"`
-	IntensityMetrics            IntensityMetrics            `bson:"intensityMetrics" json:"intensityMetrics"`
-	StrengthMetrics             StrengthMetrics             `bson:"strengthMetrics" json:"strengthMetrics"`
-	ProgressAdaptationMetrics   ProgressAdaptationMetrics   `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
-	RecoveryFatigueMetrics      RecoveryFatigueMetrics      `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
-	BodyCompositionMetrics      BodyCompositionMetrics      `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
-	MuscleSpecificMetrics       MuscleSpecificMetrics       `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
-	WorkCapacityMetrics         WorkCapacityMetrics         `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
-	TrainingPatternMetrics      TrainingPatternMetrics      `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
-	PeriodizationMetrics        PeriodizationMetrics        `bson:"periodizationMetrics" json:"periodizationMetrics"`
-	InjuryRiskPreventionMetrics InjuryRiskPreventionMetrics `bson:"injuryRiskPreventionMetrics" json:"injuryRiskPreventionMetrics"`
-	EfficiencyTechniqueMetrics  EfficiencyTechniqueMetrics  `bson:"efficiencyTechniqueMetrics" json:"efficiencyTechniqueMetrics"`
-	SetMetrics                  SetMetrics                  `bson:"setMetrics" json:"setMetrics"`
-	ExerciseMetrics             []ExerciseMetrics           `bson:"exerciseMetrics" json:"exerciseMetrics"`
-	WorkoutDurationSecs         int32                       `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
-	CreatedAt                   time.Time                   `bson:"createdAt" json:"createdAt"`
-	UpdatedAt                   time.Time                   `bson:"updatedAt" json:"updatedAt"`
+	ID                             primitive.ObjectID             `bson:"_id,omitempty" json:"id"`
+	UserID                         primitive.ObjectID             `bson:"userId" json:"userId"`
+	SessionID                      primitive.ObjectID             `bson:"sessionId" json:"sessionId"`
+	RoutineID                      primitive.ObjectID             `bson:"routineId" json:"routineId"`
+	Date                           time.Time                      `bson:"date" json:"date"`
+	VolumeMetrics                  VolumeMetrics                  `bson:"volumeMetrics" json:"volumeMetrics"`
+	PerformanceMetrics             PerformanceMetrics             `bson:"performanceMetrics" json:"performanceMetrics"`
+	IntensityMetrics               IntensityMetrics               `bson:"intensityMetrics" json:"intensityMetrics"`
+	StrengthMetrics                StrengthMetrics                `bson:"strengthMetrics" json:"strengthMetrics"`
+	ProgressAdaptationMetrics      ProgressAdaptationMetrics      `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
+	RecoveryFatigueMetrics         RecoveryFatigueMetrics         `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
+	BodyCompositionMetrics         BodyCompositionMetrics         `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
+	MuscleSpecificMetrics          MuscleSpecificMetrics          `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
+	WorkCapacityMetrics            WorkCapacityMetrics            `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
+	TrainingPatternMetrics         TrainingPatternMetrics         `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
+	PeriodizationMetrics           PeriodizationMetrics           `bson:"periodizationMetrics" json:"periodizationMetrics"`
+	InjuryRiskPreventionMetrics    InjuryRiskPreventionMetrics    `bson:"injuryRiskPreventionMetrics" json:"injuryRiskPreventionMetrics"`
+	EfficiencyTechniqueMetrics     EfficiencyTechniqueMetrics     `bson:"efficiencyTechniqueMetrics" json:"efficiencyTechniqueMetrics"`
+	ComparativeNormativeMetrics    ComparativeNormativeMetrics    `bson:"comparativeNormativeMetrics" json:"comparativeNormativeMetrics"`
+	PsychologicalBehavioralMetrics PsychologicalBehavioralMetrics `bson:"psychologicalBehavioralMetrics" json:"psychologicalBehavioralMetrics"`
+	TimeBasedAnalyticsMetrics      TimeBasedAnalyticsMetrics      `bson:"timeBasedAnalyticsMetrics" json:"timeBasedAnalyticsMetrics"`
+	CompoundMetrics                CompoundMetrics                `bson:"compoundMetrics" json:"compoundMetrics"`
+	PredictiveAnalyticsMetrics     PredictiveAnalyticsMetrics     `bson:"predictiveAnalyticsMetrics" json:"predictiveAnalyticsMetrics"`
+	SetMetrics                     SetMetrics                     `bson:"setMetrics" json:"setMetrics"`
+	ExerciseMetrics                []ExerciseMetrics              `bson:"exerciseMetrics" json:"exerciseMetrics"`
+	WorkoutDurationSecs            int32                          `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
+	CreatedAt                      time.Time                      `bson:"createdAt" json:"createdAt"`
+	UpdatedAt                      time.Time                      `bson:"updatedAt" json:"updatedAt"`
 }
 
 type PeriodMetrics struct {
@@ -370,4 +375,177 @@ const (
 	StrengthEfficiencyMultiplier = 1000.0 // Multiplier for strength efficiency calculation
 	MinCorrelationSampleSize     = 5      // Minimum sets needed for correlation calculation
 	DefaultRepTime               = 3.0    // Default rep time in seconds for technique consistency
+)
+
+// Comparative & Normative Metrics
+type ComparativeNormativeMetrics struct {
+	PercentileRanking           float64            `bson:"percentileRanking" json:"percentileRanking"`                     // Percentile = (Number of people below score / Total people) × 100
+	TrainingAgeAdjustedExpected map[string]float64 `bson:"trainingAgeAdjustedExpected" json:"trainingAgeAdjustedExpected"` // Exercise ID -> Expected Strength = Base Strength × (1 + 0.1 × sqrt(Training Years))
+	GeneticPotentialEstimate    map[string]float64 `bson:"geneticPotentialEstimate" json:"geneticPotentialEstimate"`       // Exercise ID -> Potential = Current Max × (1.5 - 0.5 × (Current/Elite Standard))
+	PerformanceCategory         string             `bson:"performanceCategory" json:"performanceCategory"`                 // Beginner, Intermediate, Advanced, Elite based on percentile and training age
+	RelativeToExpectations      float64            `bson:"relativeToExpectations" json:"relativeToExpectations"`           // Current Performance / Expected Performance for training age
+}
+
+// Psychological & Behavioral Metrics
+type PsychologicalBehavioralMetrics struct {
+	RPEAccuracy       float64 `bson:"rpeAccuracy" json:"rpeAccuracy"`             // RPE Accuracy = 1 - |Predicted Reps at RPE - Actual Reps| / Actual Reps
+	MotivationIndex   float64 `bson:"motivationIndex" json:"motivationIndex"`     // MI = (Consistency × Voluntary Extra Sets × (10 - Avg RPE)) / 100
+	BurnoutRiskScore  float64 `bson:"burnoutRiskScore" json:"burnoutRiskScore"`   // BRS = (Decreasing Performance + Increasing RPE + Decreased Frequency) / 3
+	TrainingAdherence float64 `bson:"trainingAdherence" json:"trainingAdherence"` // Adherence = (Completed Workouts / Planned Workouts) × 100
+	ConsistencyTrend  float64 `bson:"consistencyTrend" json:"consistencyTrend"`   // Trend in workout consistency over time (positive = improving)
+}
+
+// Time-Based Analytics Metrics
+type TimeBasedAnalyticsMetrics struct {
+	OptimalTrainingTimeHour   int32              `bson:"optimalTrainingTimeHour" json:"optimalTrainingTimeHour"`     // Hour of day with best performance (0-23)
+	PerformanceByHour         map[string]float64 `bson:"performanceByHour" json:"performanceByHour"`                 // Hour -> Performance Score = (1RM% × Completion Rate × (10 - RPE))
+	OptimalRestPeriods        map[string]float64 `bson:"optimalRestPeriods" json:"optimalRestPeriods"`               // Exercise ID -> Optimal Rest = 2^(Intensity%/25) minutes
+	SessionDurationEfficiency float64            `bson:"sessionDurationEfficiency" json:"sessionDurationEfficiency"` // SDE = Total Effective Volume / Session Duration
+	TimeOfDayPreference       string             `bson:"timeOfDayPreference" json:"timeOfDayPreference"`             // Morning, Afternoon, Evening based on performance patterns
+	WorkoutTimingConsistency  float64            `bson:"workoutTimingConsistency" json:"workoutTimingConsistency"`   // Consistency in workout timing (1.0 = always same time, 0.0 = random)
+}
+
+// Performance categorization thresholds for comparative metrics
+type PerformanceThresholds struct {
+	BeginnerPercentile     float64 // Below this percentile = Beginner
+	IntermediatePercentile float64 // Below this percentile = Intermediate
+	AdvancedPercentile     float64 // Below this percentile = Advanced
+	// Above Advanced = Elite
+}
+
+var DefaultPerformanceThresholds = PerformanceThresholds{
+	BeginnerPercentile:     25.0, // Bottom 25%
+	IntermediatePercentile: 60.0, // Bottom 60%
+	AdvancedPercentile:     85.0, // Bottom 85%
+}
+
+// Elite strength standards for genetic potential calculation (in kg for major lifts)
+// Based on IPF world records and elite powerlifting standards adjusted for body weight
+type EliteStandards struct {
+	SquatCoefficient    float64 // Multiplier × body weight = elite squat
+	BenchCoefficient    float64 // Multiplier × body weight = elite bench
+	DeadliftCoefficient float64 // Multiplier × body weight = elite deadlift
+	OverheadCoefficient float64 // Multiplier × body weight = elite overhead press
+}
+
+var EliteStandardsMale = EliteStandards{
+	SquatCoefficient:    2.5, // Elite male: 2.5x body weight squat
+	BenchCoefficient:    2.0, // Elite male: 2.0x body weight bench
+	DeadliftCoefficient: 3.0, // Elite male: 3.0x body weight deadlift
+	OverheadCoefficient: 1.5, // Elite male: 1.5x body weight overhead press
+}
+
+var EliteStandardsFemale = EliteStandards{
+	SquatCoefficient:    2.0, // Elite female: 2.0x body weight squat
+	BenchCoefficient:    1.5, // Elite female: 1.5x body weight bench
+	DeadliftCoefficient: 2.5, // Elite female: 2.5x body weight deadlift
+	OverheadCoefficient: 1.0, // Elite female: 1.0x body weight overhead press
+}
+
+// Age and gender categories for percentile ranking
+type DemographicCategory struct {
+	AgeGroup string // "18-29", "30-39", "40-49", "50-59", "60+"
+	Gender   string // "male", "female"
+	Weight   string // "light", "medium", "heavy" based on body weight
+}
+
+// Constants for Psychological & Behavioral Metrics
+const (
+	MinWorkoutsForTrend      = 5    // Minimum workouts needed for trend analysis
+	BurnoutRiskThreshold     = 0.7  // High burnout risk if score > 0.7
+	LowMotivationThreshold   = 0.3  // Low motivation if index < 0.3
+	OptimalConsistencyTarget = 0.85 // Target consistency rate (85%)
+	VoluntaryExtraSetsBonus  = 1.2  // Bonus multiplier for extra sets
+)
+
+// Constants for Time-Based Analytics
+const (
+	MinSessionsForTimeAnalysis = 10   // Minimum sessions needed for time-of-day analysis
+	OptimalRestTimeMultiplier  = 2.0  // Base multiplier for rest time calculation
+	RestTimeIntensityDivisor   = 25.0 // Divisor for intensity in rest time formula
+	MinRestTimeMins            = 1.0  // Minimum rest time in minutes
+	MaxRestTimeMins            = 10.0 // Maximum rest time in minutes
+	TimingConsistencyWindow    = 2.0  // Hours window for considering "consistent" timing
+)
+
+// Age category mappings for demographic analysis
+var AgeCategoryMap = map[int]string{
+	18: "18-29", 19: "18-29", 20: "18-29", 21: "18-29", 22: "18-29", 23: "18-29", 24: "18-29", 25: "18-29", 26: "18-29", 27: "18-29", 28: "18-29", 29: "18-29",
+	30: "30-39", 31: "30-39", 32: "30-39", 33: "30-39", 34: "30-39", 35: "30-39", 36: "30-39", 37: "30-39", 38: "30-39", 39: "30-39",
+	40: "40-49", 41: "40-49", 42: "40-49", 43: "40-49", 44: "40-49", 45: "40-49", 46: "40-49", 47: "40-49", 48: "40-49", 49: "40-49",
+	50: "50-59", 51: "50-59", 52: "50-59", 53: "50-59", 54: "50-59", 55: "50-59", 56: "50-59", 57: "50-59", 58: "50-59", 59: "50-59",
+}
+
+// Weight category mappings (in kg)
+var WeightCategoryMap = map[string][2]float64{
+	"light":  {0, 70},    // Under 70kg
+	"medium": {70, 90},   // 70-90kg
+	"heavy":  {90, 1000}, // Over 90kg
+}
+
+// Exercise name mappings for elite standards lookup
+var ExerciseToStandardMap = map[string]string{
+	"squat":          "squat",
+	"back squat":     "squat",
+	"front squat":    "squat",
+	"bench press":    "bench",
+	"incline bench":  "bench",
+	"deadlift":       "deadlift",
+	"sumo deadlift":  "deadlift",
+	"overhead press": "overhead",
+	"military press": "overhead",
+	"push press":     "overhead",
+}
+
+// Compound Metrics
+type CompoundMetrics struct {
+	FitnessAge                 float64 `bson:"fitnessAge" json:"fitnessAge"`                                 // Fitness Age = Chronological Age × (Population Average Score / User Score)
+	OverallFitnessScore        float64 `bson:"overallFitnessScore" json:"overallFitnessScore"`               // OFS = (Strength Score × 0.3 + Volume Score × 0.2 + Consistency × 0.2 + Progress × 0.3) × 100
+	TrainingEfficiencyQuotient float64 `bson:"trainingEfficiencyQuotient" json:"trainingEfficiencyQuotient"` // TEQ = (Performance Gains / (Time Invested × Fatigue Generated)) × 100
+}
+
+// Predictive Analytics Metrics
+type PredictiveAnalyticsMetrics struct {
+	PlateauProbability          float64            `bson:"plateauProbability" json:"plateauProbability"`                   // Plateau Probability = 1 / (1 + e^(Progress Rate - 0.02))
+	PerformanceTrajectory       map[string]float64 `bson:"performanceTrajectory" json:"performanceTrajectory"`             // Exercise ID -> Future Performance = Current + (Weekly Gain Rate × Weeks × Decay Factor^Weeks)
+	GoalAchievementTimeline     map[string]float64 `bson:"goalAchievementTimeline" json:"goalAchievementTimeline"`         // Exercise ID -> Weeks to Goal = (Goal - Current) / (Average Weekly Progress × Expected Decay)
+	DetrainingRisk              float64            `bson:"detrainingRisk" json:"detrainingRisk"`                           // Detraining Risk = Days Since Last Workout / (CTL / 10)
+	ProjectedPerformance4Weeks  map[string]float64 `bson:"projectedPerformance4Weeks" json:"projectedPerformance4Weeks"`   // Exercise ID -> 4-week performance projection
+	ProjectedPerformance12Weeks map[string]float64 `bson:"projectedPerformance12Weeks" json:"projectedPerformance12Weeks"` // Exercise ID -> 12-week performance projection
+	ProjectedPerformance26Weeks map[string]float64 `bson:"projectedPerformance26Weeks" json:"projectedPerformance26Weeks"` // Exercise ID -> 26-week performance projection
+}
+
+// Constants for Compound Metrics
+const (
+	// Fitness Age calculation constants
+	DefaultPopulationAverageScore = 75.0 // Population average fitness score baseline
+
+	// Overall Fitness Score weights
+	StrengthScoreWeight    = 0.3 // 30% weight for strength component
+	VolumeScoreWeight      = 0.2 // 20% weight for volume component
+	ConsistencyScoreWeight = 0.2 // 20% weight for consistency component
+	ProgressScoreWeight    = 0.3 // 30% weight for progress component
+
+	// Training Efficiency Quotient constants
+	TEQMultiplier = 100.0 // Multiplier for TEQ calculation
+)
+
+// Constants for Predictive Analytics
+const (
+	// Plateau prediction constants
+	PlateauThreshold = 0.02 // 2% progress rate threshold for plateau probability
+
+	// Performance trajectory constants
+	PerformanceDecayFactor = 0.95 // Weekly decay factor for performance gains (95% retention)
+
+	// Goal achievement constants
+	MinWeeklyProgress = 0.001 // Minimum weekly progress to avoid division by zero
+
+	// Detraining risk constants
+	CTLDivisor = 10.0 // Divisor for CTL in detraining risk calculation
+
+	// Projection time horizons (in weeks)
+	ShortTermProjection  = 4  // 4 weeks
+	MediumTermProjection = 12 // 12 weeks (3 months)
+	LongTermProjection   = 26 // 26 weeks (6 months)
 )
