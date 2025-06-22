@@ -16,6 +16,7 @@ import (
 	"gymlog-backend/pkg/database"
 	pb "gymlog-backend/proto/gymlog/v1"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -25,6 +26,7 @@ type Server struct {
 	workoutService        *services.WorkoutService
 	workoutSessionService *services.WorkoutSessionService
 	metricsService        *services.MetricsService
+	insightsService       *services.InsightsService
 	db                    *database.MongoDB
 }
 
@@ -244,13 +246,33 @@ type UpdateSetRequest struct {
 	Completed       bool    `json:"completed"`
 }
 
-func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, db *database.MongoDB) *Server {
+// Insights types
+type WorkoutInsightResponse struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"userId"`
+	Type      string    `json:"type"`
+	Insight   string    `json:"insight"`
+	BasedOn   string    `json:"basedOn"`
+	Priority  int32     `json:"priority"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type GenerateInsightsResponse struct {
+	Insights []WorkoutInsightResponse `json:"insights"`
+}
+
+type GetRecentInsightsResponse struct {
+	Insights []WorkoutInsightResponse `json:"insights"`
+}
+
+func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, db *database.MongoDB) *Server {
 	return &Server{
 		userService:           userService,
 		exerciseService:       exerciseService,
 		workoutService:        workoutService,
 		workoutSessionService: workoutSessionService,
 		metricsService:        metricsService,
+		insightsService:       insightsService,
 		db:                    db,
 	}
 }
@@ -300,6 +322,10 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/users/{userId}/metrics", s.handleGetUserMetrics).Methods("GET")
 	api.HandleFunc("/users/{userId}/metrics/trends", s.handleGetVolumeTrends).Methods("GET")
 	api.HandleFunc("/workout-sessions/{sessionId}/metrics", s.handleGetWorkoutMetrics).Methods("GET")
+
+	// Insights routes
+	api.HandleFunc("/users/{userId}/insights", s.handleGenerateInsights).Methods("POST")
+	api.HandleFunc("/users/{userId}/insights", s.handleGetRecentInsights).Methods("GET")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -1459,4 +1485,97 @@ func (s *Server) handleGetWorkoutMetrics(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metrics)
+}
+
+// Insights HTTP handlers
+
+func (s *Server) handleGenerateInsights(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	ctx := context.Background()
+
+	// Convert userID string to ObjectID
+	userObjID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	insights, err := s.insightsService.GenerateWorkoutInsights(ctx, userObjID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate insights: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to response format
+	insightResponses := make([]WorkoutInsightResponse, len(insights))
+	for i, insight := range insights {
+		insightResponses[i] = WorkoutInsightResponse{
+			ID:        insight.ID.Hex(),
+			UserID:    insight.UserID.Hex(),
+			Type:      string(insight.Type),
+			Insight:   insight.Insight,
+			BasedOn:   insight.BasedOn,
+			Priority:  int32(insight.Priority),
+			CreatedAt: insight.CreatedAt,
+		}
+	}
+
+	response := GenerateInsightsResponse{
+		Insights: insightResponses,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleGetRecentInsights(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	// Parse limit parameter
+	limit := 5 // default
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.ParseInt(l, 10, 32); err == nil {
+			limit = int(parsed)
+		}
+	}
+
+	ctx := context.Background()
+
+	// Convert userID string to ObjectID
+	userObjID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	insights, err := s.insightsService.GetRecentInsights(ctx, userObjID, limit)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get recent insights: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to response format
+	insightResponses := make([]WorkoutInsightResponse, len(insights))
+	for i, insight := range insights {
+		insightResponses[i] = WorkoutInsightResponse{
+			ID:        insight.ID.Hex(),
+			UserID:    insight.UserID.Hex(),
+			Type:      string(insight.Type),
+			Insight:   insight.Insight,
+			BasedOn:   insight.BasedOn,
+			Priority:  int32(insight.Priority),
+			CreatedAt: insight.CreatedAt,
+		}
+	}
+
+	response := GetRecentInsightsResponse{
+		Insights: insightResponses,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

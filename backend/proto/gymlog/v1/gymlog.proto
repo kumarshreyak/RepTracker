@@ -553,4 +553,38 @@ service MetricsService {
   rpc GetUserMetrics(GetUserMetricsRequest) returns (UserMetrics);
   rpc GetWorkoutMetrics(GetWorkoutMetricsRequest) returns (WorkoutMetrics);
   rpc GetVolumeTrends(GetVolumeTrendsRequest) returns (TrendMetrics);
+}
+
+// Insights related messages
+message WorkoutInsight {
+  string id = 1;
+  string user_id = 2;
+  string type = 3; // progress, volume, strength, recovery, balance, efficiency, motivation, risk
+  string insight = 4;
+  string based_on = 5; // e.g., "Last 7 days", "Previous workout"
+  int32 priority = 6; // 1-5, 5 being most important
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message GenerateInsightsRequest {
+  string user_id = 1;
+}
+
+message GenerateInsightsResponse {
+  repeated WorkoutInsight insights = 1;
+}
+
+message GetRecentInsightsRequest {
+  string user_id = 1;
+  int32 limit = 2; // default 5
+}
+
+message GetRecentInsightsResponse {
+  repeated WorkoutInsight insights = 1;
+}
+
+// Insights Service
+service InsightsService {
+  rpc GenerateInsights(GenerateInsightsRequest) returns (GenerateInsightsResponse);
+  rpc GetRecentInsights(GetRecentInsightsRequest) returns (GetRecentInsightsResponse);
 } 

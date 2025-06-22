@@ -1330,3 +1330,147 @@ var MetricsService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "gymlog/v1/gymlog.proto",
 }
+
+const (
+	InsightsService_GenerateInsights_FullMethodName  = "/gymlog.v1.InsightsService/GenerateInsights"
+	InsightsService_GetRecentInsights_FullMethodName = "/gymlog.v1.InsightsService/GetRecentInsights"
+)
+
+// InsightsServiceClient is the client API for InsightsService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Insights Service
+type InsightsServiceClient interface {
+	GenerateInsights(ctx context.Context, in *GenerateInsightsRequest, opts ...grpc.CallOption) (*GenerateInsightsResponse, error)
+	GetRecentInsights(ctx context.Context, in *GetRecentInsightsRequest, opts ...grpc.CallOption) (*GetRecentInsightsResponse, error)
+}
+
+type insightsServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewInsightsServiceClient(cc grpc.ClientConnInterface) InsightsServiceClient {
+	return &insightsServiceClient{cc}
+}
+
+func (c *insightsServiceClient) GenerateInsights(ctx context.Context, in *GenerateInsightsRequest, opts ...grpc.CallOption) (*GenerateInsightsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateInsightsResponse)
+	err := c.cc.Invoke(ctx, InsightsService_GenerateInsights_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *insightsServiceClient) GetRecentInsights(ctx context.Context, in *GetRecentInsightsRequest, opts ...grpc.CallOption) (*GetRecentInsightsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRecentInsightsResponse)
+	err := c.cc.Invoke(ctx, InsightsService_GetRecentInsights_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// InsightsServiceServer is the server API for InsightsService service.
+// All implementations must embed UnimplementedInsightsServiceServer
+// for forward compatibility.
+//
+// Insights Service
+type InsightsServiceServer interface {
+	GenerateInsights(context.Context, *GenerateInsightsRequest) (*GenerateInsightsResponse, error)
+	GetRecentInsights(context.Context, *GetRecentInsightsRequest) (*GetRecentInsightsResponse, error)
+	mustEmbedUnimplementedInsightsServiceServer()
+}
+
+// UnimplementedInsightsServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedInsightsServiceServer struct{}
+
+func (UnimplementedInsightsServiceServer) GenerateInsights(context.Context, *GenerateInsightsRequest) (*GenerateInsightsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateInsights not implemented")
+}
+func (UnimplementedInsightsServiceServer) GetRecentInsights(context.Context, *GetRecentInsightsRequest) (*GetRecentInsightsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRecentInsights not implemented")
+}
+func (UnimplementedInsightsServiceServer) mustEmbedUnimplementedInsightsServiceServer() {}
+func (UnimplementedInsightsServiceServer) testEmbeddedByValue()                         {}
+
+// UnsafeInsightsServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to InsightsServiceServer will
+// result in compilation errors.
+type UnsafeInsightsServiceServer interface {
+	mustEmbedUnimplementedInsightsServiceServer()
+}
+
+func RegisterInsightsServiceServer(s grpc.ServiceRegistrar, srv InsightsServiceServer) {
+	// If the following call pancis, it indicates UnimplementedInsightsServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&InsightsService_ServiceDesc, srv)
+}
+
+func _InsightsService_GenerateInsights_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateInsightsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InsightsServiceServer).GenerateInsights(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InsightsService_GenerateInsights_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InsightsServiceServer).GenerateInsights(ctx, req.(*GenerateInsightsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InsightsService_GetRecentInsights_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRecentInsightsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InsightsServiceServer).GetRecentInsights(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InsightsService_GetRecentInsights_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InsightsServiceServer).GetRecentInsights(ctx, req.(*GetRecentInsightsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// InsightsService_ServiceDesc is the grpc.ServiceDesc for InsightsService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var InsightsService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "gymlog.v1.InsightsService",
+	HandlerType: (*InsightsServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GenerateInsights",
+			Handler:    _InsightsService_GenerateInsights_Handler,
+		},
+		{
+			MethodName: "GetRecentInsights",
+			Handler:    _InsightsService_GetRecentInsights_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "gymlog/v1/gymlog.proto",
+}

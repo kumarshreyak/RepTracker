@@ -25,6 +25,9 @@ JWT_SECRET=your-super-secret-jwt-key-here
 # Google OAuth Configuration  
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Google Gemini API Configuration
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ### Installation
@@ -52,9 +55,14 @@ The server will start both:
 
 ### HTTP Endpoints
 
+#### Authentication
 - `POST /api/auth/google` - Authenticate with Google OAuth
 - `GET /api/auth/validate` - Validate session token
 - `POST /api/auth/logout` - Logout and delete session
+
+#### Insights
+- `POST /api/users/{userId}/insights` - Generate AI-powered workout insights
+- `GET /api/users/{userId}/insights` - Get recent insights for a user
 
 ### gRPC Services
 
@@ -63,6 +71,7 @@ The server will start both:
 - `WorkoutService` - Workout tracking
 - `WorkoutSessionService` - Active workout session management
 - `MetricsService` - Workout analytics and volume tracking
+- `InsightsService` - AI-powered workout insights using Google Gemini
 
 ## Database Schema
 
@@ -94,6 +103,7 @@ The server will start both:
 ## Documentation
 
 - **[METRICS.md](METRICS.md)** - Comprehensive guide to the workout metrics system, including all calculated metrics, formulas, API endpoints, and usage examples
+- **[INSIGHTS_SERVICE.md](INSIGHTS_SERVICE.md)** - Guide to the AI-powered insights service using Google Gemini, including setup, usage, and API endpoints
 
 ## Authentication Flow
 
