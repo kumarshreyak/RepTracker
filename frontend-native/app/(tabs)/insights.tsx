@@ -7,7 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { Typography } from '../../src/components';
+import { Typography, Button } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useFocusEffect } from 'expo-router';
@@ -27,6 +27,7 @@ export default function InsightsTab() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchInsights = async (isRefreshing = false) => {
@@ -75,6 +76,41 @@ export default function InsightsTab() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchInsights(true);
+  };
+
+  const generateInsights = async () => {
+    if (!user?.id || generating) return;
+
+    try {
+      setGenerating(true);
+      setError(null);
+      
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${user.id}/insights`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate insights");
+      }
+      
+      // After generating, fetch the updated insights list
+      await fetchInsights();
+      
+    } catch (err) {
+      console.error("Error generating insights:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate insights");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const getTypeColor = (type: string): string => {
@@ -192,6 +228,14 @@ export default function InsightsTab() {
         <Typography variant="heading-small" color="contentPrimary">
           Insights
         </Typography>
+        <Button
+          variant="primary"
+          size="small"
+          onPress={generateInsights}
+          disabled={generating}
+        >
+          {generating ? 'Generating...' : 'Generate'}
+        </Button>
       </View>
 
       <ScrollView 
@@ -246,6 +290,9 @@ const styles = StyleSheet.create({
   },
   
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
