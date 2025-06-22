@@ -101,6 +101,16 @@ func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *m
 		return nil, fmt.Errorf("failed to calculate work capacity metrics: %w", err)
 	}
 
+	metrics.TrainingPatternMetrics, err = m.calculateTrainingPatternMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate training pattern metrics: %w", err)
+	}
+
+	metrics.PeriodizationMetrics, err = m.calculatePeriodizationMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate periodization metrics: %w", err)
+	}
+
 	return metrics, nil
 }
 
@@ -1392,6 +1402,159 @@ func (m *MetricsService) getPreviousSessionMetrics(ctx context.Context, userID p
 	return &previousMetrics, nil
 }
 
+// calculateTrainingPatternMetrics calculates training pattern analytics metrics
+func (m *MetricsService) calculateTrainingPatternMetrics(ctx context.Context, session *models.WorkoutSession) (models.TrainingPatternMetrics, error) {
+	trainingPatternMetrics := models.TrainingPatternMetrics{}
+
+	// Calculate Volume and Intensity for Recovery Time calculation
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err != nil {
+		return trainingPatternMetrics, err
+	}
+
+	intensityMetrics, err := m.calculateIntensityMetrics(ctx, session)
+	if err != nil {
+		return trainingPatternMetrics, err
+	}
+
+	// Calculate Recovery Time = 24 × (Volume/10) × (Intensity/70) × (RPE/7)
+	volume := volumeMetrics.TotalVolumeLoad
+	intensity := intensityMetrics.AverageIntensity
+	rpe := float64(session.RPERating)
+
+	if volume > 0 && intensity > 0 && rpe > 0 {
+		recoveryTime := 24.0 * (volume / models.BaseVolumeThreshold) * (intensity / models.BaseIntensityPercent) * (rpe / models.BaseRPEThreshold)
+		trainingPatternMetrics.RecoveryTime = recoveryTime
+
+		// Calculate Optimal Frequency = Recovery Time + 24-48 hours
+		optimalFrequency := recoveryTime + models.MinimumRecoveryHours
+		if optimalFrequency > recoveryTime+models.MaximumRecoveryHours {
+			optimalFrequency = recoveryTime + models.MaximumRecoveryHours
+		}
+		trainingPatternMetrics.OptimalFrequency = optimalFrequency
+	}
+
+	// Calculate Exercise Selection Diversity Index = Unique Exercises / Total Exercises × 100
+	uniqueExercises := make(map[string]bool)
+	totalExercises := len(session.Exercises)
+
+	for _, exercise := range session.Exercises {
+		uniqueExercises[exercise.ExerciseID.Hex()] = true
+	}
+
+	if totalExercises > 0 {
+		diversityIndex := (float64(len(uniqueExercises)) / float64(totalExercises)) * 100.0
+		trainingPatternMetrics.ExerciseSelectionIndex = diversityIndex
+	}
+
+	// Calculate Workout Completion Rate = (Completed Sets / Planned Sets) × 100
+	setMetrics := m.calculateSetMetrics(session)
+	trainingPatternMetrics.WorkoutCompletionRate = setMetrics.CompletionRate * 100.0
+
+	// Calculate Consistency Score = (Actual Workouts / Planned Workouts) × 100
+	// For now, we'll use the workout completion rate as a proxy since we don't have planned workout data
+	// This could be enhanced when we have more detailed workout planning functionality
+	trainingPatternMetrics.ConsistencyScore = trainingPatternMetrics.WorkoutCompletionRate
+
+	return trainingPatternMetrics, nil
+}
+
+// calculatePeriodizationMetrics calculates advanced periodization metrics
+func (m *MetricsService) calculatePeriodizationMetrics(ctx context.Context, session *models.WorkoutSession) (models.PeriodizationMetrics, error) {
+	periodizationMetrics := models.PeriodizationMetrics{}
+
+	// Calculate current session's TSS for the calculations
+	recoveryFatigueMetrics, err := m.calculateRecoveryFatigueMetrics(ctx, session)
+	if err != nil {
+		return periodizationMetrics, err
+	}
+
+	currentTSS := recoveryFatigueMetrics.TrainingStrainScore
+
+	// Calculate Chronic Training Load (CTL) = Exponentially Weighted Average of daily TSS over 42 days
+	ctl, err := m.calculateExponentiallyWeightedAverage(ctx, session.UserID, session.StartedAt, models.ChronicTrainingLoadDays)
+	if err != nil {
+		// If calculation fails, use current TSS as fallback
+		ctl = currentTSS
+	}
+	periodizationMetrics.ChronicTrainingLoad = ctl
+
+	// Calculate Acute Training Load (ATL) = Exponentially Weighted Average of daily TSS over 7 days
+	atl, err := m.calculateExponentiallyWeightedAverage(ctx, session.UserID, session.StartedAt, models.AcuteTrainingLoadDays)
+	if err != nil {
+		// If calculation fails, use current TSS as fallback
+		atl = currentTSS
+	}
+	periodizationMetrics.AcuteTrainingLoad = atl
+
+	// Calculate Training Stress Balance (TSB) = CTL - ATL
+	tsb := ctl - atl
+	periodizationMetrics.TrainingStressBalance = tsb
+
+	// Calculate Form/Freshness Index (FFI) = TSB / CTL × 100
+	var ffi float64
+	if ctl > 0 {
+		ffi = (tsb / ctl) * 100.0
+	}
+	periodizationMetrics.FormFreshnessIndex = ffi
+
+	return periodizationMetrics, nil
+}
+
+// calculateExponentiallyWeightedAverage calculates the exponentially weighted average of TSS over a given period
+func (m *MetricsService) calculateExponentiallyWeightedAverage(ctx context.Context, userID primitive.ObjectID, currentDate time.Time, days int) (float64, error) {
+	// Get TSS values for the specified period
+	startDate := currentDate.AddDate(0, 0, -days)
+
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": startDate, "$lte": currentDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var tssValues []float64
+	var dates []time.Time
+
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+		tssValues = append(tssValues, metrics.RecoveryFatigueMetrics.TrainingStrainScore)
+		dates = append(dates, metrics.Date)
+	}
+
+	if len(tssValues) == 0 {
+		return 0, nil
+	}
+
+	// Calculate exponentially weighted average
+	// More recent values have higher weight
+	var weightedSum, totalWeight float64
+
+	for i, tss := range tssValues {
+		// Calculate days ago from current date
+		daysAgo := currentDate.Sub(dates[i]).Hours() / 24.0
+
+		// Apply exponential decay: weight = e^(-decay_factor * days_ago)
+		weight := math.Exp(-models.ExponentialDecayFactor * daysAgo)
+
+		weightedSum += tss * weight
+		totalWeight += weight
+	}
+
+	if totalWeight == 0 {
+		return 0, nil
+	}
+
+	return weightedSum / totalWeight, nil
+}
+
 func (m *MetricsService) SaveWorkoutMetrics(ctx context.Context, metrics *models.WorkoutMetrics) error {
 	result, err := m.metricsColl.InsertOne(ctx, metrics)
 	if err != nil {
@@ -1823,6 +1986,8 @@ func (m *MetricsService) workoutMetricsToProto(workoutMetrics *models.WorkoutMet
 		BodyCompositionMetrics:    m.bodyCompositionMetricsToProto(&workoutMetrics.BodyCompositionMetrics),
 		MuscleSpecificMetrics:     m.muscleSpecificMetricsToProto(&workoutMetrics.MuscleSpecificMetrics),
 		WorkCapacityMetrics:       m.workCapacityMetricsToProto(&workoutMetrics.WorkCapacityMetrics),
+		TrainingPatternMetrics:    m.trainingPatternMetricsToProto(&workoutMetrics.TrainingPatternMetrics),
+		PeriodizationMetrics:      m.periodizationMetricsToProto(&workoutMetrics.PeriodizationMetrics),
 		SetMetrics:                m.setMetricsToProto(&workoutMetrics.SetMetrics),
 		ExerciseMetrics:           exerciseMetrics,
 		WorkoutDurationSecs:       workoutMetrics.WorkoutDurationSecs,
@@ -1958,5 +2123,24 @@ func (m *MetricsService) workCapacityMetricsToProto(wcm *models.WorkCapacityMetr
 		DensityProgressPercent: wcm.DensityProgressPercent,
 		TimeUnderTension:       wcm.TimeUnderTension,
 		MechanicalTensionScore: wcm.MechanicalTensionScore,
+	}
+}
+
+func (m *MetricsService) trainingPatternMetricsToProto(tpm *models.TrainingPatternMetrics) *pb.TrainingPatternMetrics {
+	return &pb.TrainingPatternMetrics{
+		OptimalFrequency:       tpm.OptimalFrequency,
+		RecoveryTime:           tpm.RecoveryTime,
+		ExerciseSelectionIndex: tpm.ExerciseSelectionIndex,
+		ConsistencyScore:       tpm.ConsistencyScore,
+		WorkoutCompletionRate:  tpm.WorkoutCompletionRate,
+	}
+}
+
+func (m *MetricsService) periodizationMetricsToProto(pm *models.PeriodizationMetrics) *pb.PeriodizationMetrics {
+	return &pb.PeriodizationMetrics{
+		ChronicTrainingLoad:   pm.ChronicTrainingLoad,
+		AcuteTrainingLoad:     pm.AcuteTrainingLoad,
+		TrainingStressBalance: pm.TrainingStressBalance,
+		FormFreshnessIndex:    pm.FormFreshnessIndex,
 	}
 }

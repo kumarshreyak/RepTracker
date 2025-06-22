@@ -86,6 +86,8 @@ type WorkoutMetrics struct {
 	BodyCompositionMetrics    BodyCompositionMetrics    `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
 	MuscleSpecificMetrics     MuscleSpecificMetrics     `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
 	WorkCapacityMetrics       WorkCapacityMetrics       `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
+	TrainingPatternMetrics    TrainingPatternMetrics    `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
+	PeriodizationMetrics      PeriodizationMetrics      `bson:"periodizationMetrics" json:"periodizationMetrics"`
 	SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
 	ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
 	WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
@@ -305,3 +307,36 @@ var DefaultExerciseTempos = map[string]ExerciseTempo{
 
 // Default rest time between sets (in seconds)
 const DefaultRestTime = 180.0 // 3 minutes
+
+// Training Pattern Analytics Metrics
+type TrainingPatternMetrics struct {
+	OptimalFrequency       float64 `bson:"optimalFrequency" json:"optimalFrequency"`             // Optimal Frequency = Recovery Time + 24-48 hours
+	RecoveryTime           float64 `bson:"recoveryTime" json:"recoveryTime"`                     // Recovery Time = 24 × (Volume/10) × (Intensity/70) × (RPE/7)
+	ExerciseSelectionIndex float64 `bson:"exerciseSelectionIndex" json:"exerciseSelectionIndex"` // Diversity Index = Unique Exercises / Total Exercises × 100
+	ConsistencyScore       float64 `bson:"consistencyScore" json:"consistencyScore"`             // Consistency = (Actual Workouts / Planned Workouts) × 100
+	WorkoutCompletionRate  float64 `bson:"workoutCompletionRate" json:"workoutCompletionRate"`   // Completion Rate = (Completed Sets / Planned Sets) × 100
+}
+
+// Advanced Periodization Metrics
+type PeriodizationMetrics struct {
+	ChronicTrainingLoad   float64 `bson:"chronicTrainingLoad" json:"chronicTrainingLoad"`     // CTL = Exponentially Weighted Average of daily TSS over 42 days
+	AcuteTrainingLoad     float64 `bson:"acuteTrainingLoad" json:"acuteTrainingLoad"`         // ATL = Exponentially Weighted Average of daily TSS over 7 days
+	TrainingStressBalance float64 `bson:"trainingStressBalance" json:"trainingStressBalance"` // TSB = CTL - ATL
+	FormFreshnessIndex    float64 `bson:"formFreshnessIndex" json:"formFreshnessIndex"`       // FFI = TSB / CTL × 100
+}
+
+// Constants for Training Pattern Analytics
+const (
+	MinimumRecoveryHours = 24.0
+	MaximumRecoveryHours = 48.0
+	BaseVolumeThreshold  = 10.0
+	BaseIntensityPercent = 70.0
+	BaseRPEThreshold     = 7.0
+)
+
+// Constants for Periodization Metrics
+const (
+	ChronicTrainingLoadDays = 42   // 6 weeks
+	AcuteTrainingLoadDays   = 7    // 1 week
+	ExponentialDecayFactor  = 0.07 // Standard decay factor for training load
+)

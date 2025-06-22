@@ -236,6 +236,73 @@ The GymLog metrics system automatically calculates comprehensive workout analyti
 - Higher scores indicate greater mechanical stimulus
 - Useful for tracking hypertrophy-focused training effectiveness
 
+### Training Pattern Analytics Metrics
+
+#### 31. Optimal Training Frequency
+**Formula**: `Optimal Frequency = Recovery Time + 24-48 hours`
+- Recommends ideal time between training sessions
+- Based on calculated recovery time and minimum rest period
+- Ranges between Recovery Time + 24 hours to Recovery Time + 48 hours
+- Helps optimize training frequency for individual recovery capacity
+
+#### 32. Recovery Time
+**Formula**: `Recovery Time = 24 × (Volume/10) × (Intensity/70) × (RPE/7)`
+- Estimates time needed for full recovery from workout
+- Scales with workout volume, intensity, and perceived exertion
+- Base factors: 10 volume units, 70% intensity, RPE 7
+- Used to calculate optimal training frequency
+
+#### 33. Exercise Selection Diversity Index
+**Formula**: `Diversity Index = (Unique Exercises / Total Exercises) × 100`
+- Measures variety in exercise selection within a workout
+- Values close to 100% indicate high exercise diversity
+- Lower values suggest exercise repetition or specialization
+- Useful for tracking program variety and movement patterns
+
+#### 34. Consistency Score
+**Formula**: `Consistency = (Actual Workouts / Planned Workouts) × 100`
+- Measures adherence to planned training schedule
+- Currently uses workout completion rate as proxy
+- Will be enhanced when detailed workout planning is implemented
+- Higher values indicate better training consistency
+
+#### 35. Workout Completion Rate
+**Formula**: `Completion Rate = (Completed Sets / Planned Sets) × 100`
+- Percentage of planned sets actually completed
+- Indicates workout adherence and execution quality
+- Values close to 100% show strong workout completion
+- Lower values may indicate fatigue, time constraints, or programming issues
+
+### Advanced Periodization Metrics
+
+#### 36. Chronic Training Load (CTL)
+**Formula**: `CTL = Exponentially Weighted Average of daily TSS over 42 days`
+- Measures long-term training stress and fitness level
+- Based on 6 weeks (42 days) of Training Strain Score data
+- Uses exponential decay to weight recent sessions more heavily
+- Higher CTL indicates greater long-term training capacity
+
+#### 37. Acute Training Load (ATL)
+**Formula**: `ATL = Exponentially Weighted Average of daily TSS over 7 days`
+- Measures recent training stress and fatigue level
+- Based on 1 week (7 days) of Training Strain Score data
+- Uses exponential decay with recent sessions weighted more heavily
+- Higher ATL indicates greater recent training stress
+
+#### 38. Training Stress Balance (TSB)
+**Formula**: `TSB = CTL - ATL`
+- Indicates training stress balance and freshness
+- Positive values suggest freshness and readiness for hard training
+- Negative values indicate fatigue and need for recovery
+- **Optimal range**: -10 to +25 for most athletes
+
+#### 39. Form/Freshness Index (FFI)
+**Formula**: `FFI = (TSB / CTL) × 100`
+- Percentage-based indicator of form and freshness
+- Positive values indicate good form and readiness for performance
+- Negative values suggest fatigue and need for recovery
+- **Optimal range**: -5% to +15% for peak performance readiness
+
 ### Trend Metrics
 
 #### 31. Volume Progression
@@ -390,6 +457,21 @@ type WorkCapacityMetrics struct {
     MechanicalTensionScore float64 `bson:"mechanicalTensionScore" json:"mechanicalTensionScore"` // MTS = Weight × TUT × (RPE/10)
 }
 
+type TrainingPatternMetrics struct {
+    OptimalFrequency        float64 `bson:"optimalFrequency" json:"optimalFrequency"`               // Optimal Frequency = Recovery Time + 24-48 hours
+    RecoveryTime            float64 `bson:"recoveryTime" json:"recoveryTime"`                       // Recovery Time = 24 × (Volume/10) × (Intensity/70) × (RPE/7)
+    ExerciseSelectionIndex  float64 `bson:"exerciseSelectionIndex" json:"exerciseSelectionIndex"`   // Diversity Index = Unique Exercises / Total Exercises × 100
+    ConsistencyScore        float64 `bson:"consistencyScore" json:"consistencyScore"`               // Consistency = (Actual Workouts / Planned Workouts) × 100
+    WorkoutCompletionRate   float64 `bson:"workoutCompletionRate" json:"workoutCompletionRate"`     // Completion Rate = (Completed Sets / Planned Sets) × 100
+}
+
+type PeriodizationMetrics struct {
+    ChronicTrainingLoad    float64 `bson:"chronicTrainingLoad" json:"chronicTrainingLoad"`       // CTL = Exponentially Weighted Average of daily TSS over 42 days
+    AcuteTrainingLoad      float64 `bson:"acuteTrainingLoad" json:"acuteTrainingLoad"`           // ATL = Exponentially Weighted Average of daily TSS over 7 days
+    TrainingStressBalance  float64 `bson:"trainingStressBalance" json:"trainingStressBalance"`   // TSB = CTL - ATL
+    FormFreshnessIndex     float64 `bson:"formFreshnessIndex" json:"formFreshnessIndex"`         // FFI = TSB / CTL × 100
+}
+
 type WorkoutMetrics struct {
     ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
     UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
@@ -403,6 +485,8 @@ type WorkoutMetrics struct {
     ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
     MuscleSpecificMetrics     MuscleSpecificMetrics     `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
     WorkCapacityMetrics       WorkCapacityMetrics       `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
+    TrainingPatternMetrics    TrainingPatternMetrics    `bson:"trainingPatternMetrics" json:"trainingPatternMetrics"`
+    PeriodizationMetrics      PeriodizationMetrics      `bson:"periodizationMetrics" json:"periodizationMetrics"`
     SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
     ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
     WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
@@ -496,6 +580,9 @@ service MetricsService {
 - `SaveWorkoutMetrics()` - Persists workout metrics
 - `UpdateUserMetrics()` - Refreshes user aggregations
 - `CalculateVolumeLandmarks()` - Computes MEV/MAV/MRV
+- `calculateTrainingPatternMetrics()` - Computes training pattern analytics
+- `calculatePeriodizationMetrics()` - Computes advanced periodization metrics
+- `calculateExponentiallyWeightedAverage()` - Calculates exponentially weighted TSS averages
 
 ### Integration Points
 
@@ -648,6 +735,28 @@ var DefaultExerciseTempos = map[string]ExerciseTempo{
 const DefaultRestTime = 180.0 // 3 minutes
 ```
 
+**Training Pattern Analytics Configuration**:
+```go
+// Constants for Training Pattern Analytics
+const (
+    MinimumRecoveryHours = 24.0
+    MaximumRecoveryHours = 48.0
+    BaseVolumeThreshold  = 10.0
+    BaseIntensityPercent = 70.0
+    BaseRPEThreshold     = 7.0
+)
+```
+
+**Periodization Metrics Configuration**:
+```go
+// Constants for Periodization Metrics 
+const (
+    ChronicTrainingLoadDays = 42 // 6 weeks
+    AcuteTrainingLoadDays   = 7  // 1 week
+    ExponentialDecayFactor  = 0.07 // Standard decay factor for training load
+)
+```
+
 ## Usage Examples
 
 ### Frontend Integration
@@ -753,6 +862,34 @@ fmt.Printf("Density Training Index: %.2f volume/min", workoutMetrics.WorkCapacit
 fmt.Printf("Density Progress: %.1f%%", workoutMetrics.WorkCapacityMetrics.DensityProgressPercent)
 fmt.Printf("Time Under Tension: %.1f seconds", workoutMetrics.WorkCapacityMetrics.TimeUnderTension)
 fmt.Printf("Mechanical Tension Score: %.2f", workoutMetrics.WorkCapacityMetrics.MechanicalTensionScore)
+
+// Access Training Pattern Analytics metrics
+fmt.Printf("Optimal Training Frequency: %.1f hours", workoutMetrics.TrainingPatternMetrics.OptimalFrequency)
+fmt.Printf("Recovery Time: %.1f hours", workoutMetrics.TrainingPatternMetrics.RecoveryTime)
+fmt.Printf("Exercise Selection Diversity: %.1f%%", workoutMetrics.TrainingPatternMetrics.ExerciseSelectionIndex)
+fmt.Printf("Consistency Score: %.1f%%", workoutMetrics.TrainingPatternMetrics.ConsistencyScore)
+fmt.Printf("Workout Completion Rate: %.1f%%", workoutMetrics.TrainingPatternMetrics.WorkoutCompletionRate)
+
+// Access Advanced Periodization metrics
+fmt.Printf("Chronic Training Load (CTL): %.2f", workoutMetrics.PeriodizationMetrics.ChronicTrainingLoad)
+fmt.Printf("Acute Training Load (ATL): %.2f", workoutMetrics.PeriodizationMetrics.AcuteTrainingLoad)
+fmt.Printf("Training Stress Balance (TSB): %.2f", workoutMetrics.PeriodizationMetrics.TrainingStressBalance)
+fmt.Printf("Form/Freshness Index (FFI): %.1f%%", workoutMetrics.PeriodizationMetrics.FormFreshnessIndex)
+
+// Interpret periodization metrics
+if workoutMetrics.PeriodizationMetrics.TrainingStressBalance > 0 {
+    fmt.Printf("Status: Fresh and ready for hard training")
+} else if workoutMetrics.PeriodizationMetrics.TrainingStressBalance < -10 {
+    fmt.Printf("Status: Fatigued - consider recovery or deload")
+} else {
+    fmt.Printf("Status: Balanced training stress")
+}
+
+if workoutMetrics.PeriodizationMetrics.FormFreshnessIndex >= -5 && workoutMetrics.PeriodizationMetrics.FormFreshnessIndex <= 15 {
+    fmt.Printf("Form Status: Optimal for peak performance")
+} else {
+    fmt.Printf("Form Status: Outside optimal range - adjust training load")
+}
 ```
 
 ### Querying Historical Data

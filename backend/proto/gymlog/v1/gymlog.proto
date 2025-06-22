@@ -399,6 +399,21 @@ message WorkCapacityMetrics {
   double mechanical_tension_score = 5;  // MTS = Weight × TUT × (RPE/10)
 }
 
+message TrainingPatternMetrics {
+  double optimal_frequency = 1;         // Optimal Frequency = Recovery Time + 24-48 hours
+  double recovery_time = 2;             // Recovery Time = 24 × (Volume/10) × (Intensity/70) × (RPE/7)
+  double exercise_selection_index = 3;  // Diversity Index = Unique Exercises / Total Exercises × 100
+  double consistency_score = 4;         // Consistency = (Actual Workouts / Planned Workouts) × 100
+  double workout_completion_rate = 5;   // Completion Rate = (Completed Sets / Planned Sets) × 100
+}
+
+message PeriodizationMetrics {
+  double chronic_training_load = 1;     // CTL = Exponentially Weighted Average of daily TSS over 42 days
+  double acute_training_load = 2;       // ATL = Exponentially Weighted Average of daily TSS over 7 days
+  double training_stress_balance = 3;   // TSB = CTL - ATL
+  double form_freshness_index = 4;      // FFI = TSB / CTL × 100
+}
+
 message WorkoutMetrics {
   string id = 1;
   string user_id = 2;
@@ -414,11 +429,13 @@ message WorkoutMetrics {
   BodyCompositionMetrics body_composition_metrics = 12;
   MuscleSpecificMetrics muscle_specific_metrics = 13;
   WorkCapacityMetrics work_capacity_metrics = 14;
-  SetMetrics set_metrics = 15;
-  repeated ExerciseMetrics exercise_metrics = 16;
-  int32 workout_duration_secs = 17;
-  google.protobuf.Timestamp created_at = 18;
-  google.protobuf.Timestamp updated_at = 19;
+  TrainingPatternMetrics training_pattern_metrics = 15;
+  PeriodizationMetrics periodization_metrics = 16;
+  SetMetrics set_metrics = 17;
+  repeated ExerciseMetrics exercise_metrics = 18;
+  int32 workout_duration_secs = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
 }
 
 message PeriodMetrics {
