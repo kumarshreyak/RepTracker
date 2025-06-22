@@ -291,6 +291,7 @@ Be cautious but constructive.`, riskData)
 func (s *InsightsService) callGeminiAPI(ctx context.Context, prompt string) (string, error) {
 	// Add system context to ensure one-sentence responses
 	fullPrompt := fmt.Sprintf(`You are a professional fitness coach analyzing workout data. 
+	Talking to an absolute beginner in fitness, so keep it simple and easy to understand.
 %s
 
 Remember: Generate exactly ONE sentence only. Make it insightful, specific, and actionable.`, prompt)
