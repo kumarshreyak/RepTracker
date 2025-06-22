@@ -12,9 +12,20 @@ type User struct {
 	Name      string             `bson:"name" json:"name"`
 	GoogleID  string             `bson:"google_id,omitempty" json:"google_id,omitempty"`
 	Picture   string             `bson:"picture,omitempty" json:"picture,omitempty"`
+	Height    float64            `bson:"height,omitempty" json:"height,omitempty"` // Height in cm
+	Weight    float64            `bson:"weight,omitempty" json:"weight,omitempty"` // Weight in kg
+	Age       int32              `bson:"age,omitempty" json:"age,omitempty"`       // Age in years
+	Goal      string             `bson:"goal,omitempty" json:"goal,omitempty"`     // Goal: lose_fat, gain_muscle, maintain
 	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 }
+
+// Goal constants
+const (
+	GoalLoseFat    = "lose_fat"
+	GoalGainMuscle = "gain_muscle"
+	GoalMaintain   = "maintain"
+)
 
 type Session struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`

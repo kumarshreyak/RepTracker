@@ -24,6 +24,7 @@ type MetricsService struct {
 	db              *database.MongoDB
 	metricsColl     *mongo.Collection
 	userMetricsColl *mongo.Collection
+	usersColl       *mongo.Collection
 	exerciseService *ExerciseService
 }
 
@@ -32,8 +33,38 @@ func NewMetricsService(db *database.MongoDB, exerciseService *ExerciseService) *
 		db:              db,
 		metricsColl:     db.GetCollection("workout_metrics"),
 		userMetricsColl: db.GetCollection("user_metrics"),
+		usersColl:       db.GetCollection("users"),
 		exerciseService: exerciseService,
 	}
+}
+
+// getUserProfile retrieves user profile data, returns default profile if user not found
+func (m *MetricsService) getUserProfile(ctx context.Context, userID primitive.ObjectID) models.DefaultUserProfile {
+	var user models.User
+	err := m.usersColl.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
+	if err != nil {
+		// Return default profile if user not found
+		return models.DefaultProfile
+	}
+
+	// Convert user data to profile
+	profile := models.DefaultUserProfile{
+		BodyWeight:      user.Weight,
+		Height:          user.Height / 100.0, // Convert cm to meters
+		IsMale:          true,                // Default to male for now (TODO: add gender to user model)
+		SleepQuality:    7.0,                 // Default sleep quality
+		NutritionFactor: 7.0,                 // Default nutrition factor
+	}
+
+	// Use defaults if user data is missing
+	if profile.BodyWeight <= 0 {
+		profile.BodyWeight = models.DefaultProfile.BodyWeight
+	}
+	if profile.Height <= 0 {
+		profile.Height = models.DefaultProfile.Height
+	}
+
+	return profile
 }
 
 func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *models.WorkoutSession) (*models.WorkoutMetrics, error) {
@@ -938,8 +969,8 @@ func (m *MetricsService) calculateRecoveryFatigueMetrics(ctx context.Context, se
 		rni = (volumeMetrics.TotalVolumeLoad * intensityMetrics.AverageIntensity * float64(session.RPERating)) / (hoursSinceLastSession * 10.0)
 	}
 
-	// Calculate Recovery Score (simplified - using defaults from user profile)
-	profile := models.DefaultProfile
+	// Calculate Recovery Score from user profile
+	profile := m.getUserProfile(ctx, session.UserID)
 	recoveryScore := hoursSinceLastSession * profile.SleepQuality * profile.NutritionFactor
 
 	// Calculate Fatigue Accumulation Index (FAI)
@@ -983,8 +1014,8 @@ func (m *MetricsService) calculateRecoveryFatigueMetrics(ctx context.Context, se
 }
 
 func (m *MetricsService) calculateBodyCompositionMetrics(ctx context.Context, session *models.WorkoutSession) (models.BodyCompositionMetrics, error) {
-	// Use default profile values (TODO: get from user profile when available)
-	profile := models.DefaultProfile
+	// Get user profile data
+	profile := m.getUserProfile(ctx, session.UserID)
 
 	// Calculate BMI
 	bmi := profile.BodyWeight / (profile.Height * profile.Height)
@@ -1105,7 +1136,7 @@ func (m *MetricsService) calculateDailyRecoveryScore(ctx context.Context, userID
 		return 0, err
 	}
 
-	profile := models.DefaultProfile
+	profile := m.getUserProfile(ctx, userID)
 	return hoursSinceLastSession * profile.SleepQuality * profile.NutritionFactor, nil
 }
 
@@ -2219,8 +2250,8 @@ func (m *MetricsService) calculateInjuryRiskPreventionMetrics(ctx context.Contex
 	// Calculate fatigue score (using fatigue accumulation index as proxy)
 	fatigueScore := recoveryFatigueMetrics.FatigueAccumulationIndex
 
-	// Get recovery quality (simplified using defaults)
-	profile := models.DefaultProfile
+	// Get recovery quality from user profile
+	profile := m.getUserProfile(ctx, session.UserID)
 	recoveryQuality := (profile.SleepQuality + profile.NutritionFactor) / 2.0
 
 	// Calculate Injury Risk Score: IRS = (ACWR × Imbalance Index × Fatigue Score) / Recovery Quality
@@ -2562,8 +2593,16 @@ func (m *MetricsService) calculateComparativeNormativeMetrics(ctx context.Contex
 		GeneticPotentialEstimate:    make(map[string]float64),
 	}
 
-	// Get user profile data (using defaults for now)
-	profile := models.DefaultProfile
+	// Get user profile data and actual user for age
+	profile := m.getUserProfile(ctx, session.UserID)
+
+	// Get user's actual age
+	var user models.User
+	var userAge int = 25 // Default age if not found
+	err := m.usersColl.FindOne(ctx, bson.M{"_id": session.UserID}).Decode(&user)
+	if err == nil && user.Age > 0 {
+		userAge = int(user.Age)
+	}
 
 	// Calculate training age (in years) - simplified for now, using months since first workout
 	trainingAge, err := m.calculateTrainingAge(ctx, session.UserID)
@@ -2578,7 +2617,7 @@ func (m *MetricsService) calculateComparativeNormativeMetrics(ctx context.Contex
 	}
 
 	// Calculate demographic category for percentile ranking
-	demographicCategory := m.getDemographicCategory(25, profile.IsMale, profile.BodyWeight) // Default age 25
+	demographicCategory := m.getDemographicCategory(userAge, profile.IsMale, profile.BodyWeight)
 
 	// Get overall percentile ranking based on total strength (simplified using Wilks score)
 	percentileRanking := m.calculatePercentileRanking(strengthMetrics.WilksScore, demographicCategory)
@@ -3318,9 +3357,13 @@ func (m *MetricsService) calculateOptimalRestPeriods(session *models.WorkoutSess
 func (m *MetricsService) calculateCompoundMetrics(ctx context.Context, session *models.WorkoutSession) (models.CompoundMetrics, error) {
 	compoundMetrics := models.CompoundMetrics{}
 
-	// Get user profile data (using defaults for now)
-	// profile := models.DefaultProfile // TODO: use when user profile is available
-	chronologicalAge := 30.0 // Default age (TODO: get from user profile when available)
+	// Get user's actual age
+	var user models.User
+	chronologicalAge := 30.0 // Default age if not found
+	err := m.usersColl.FindOne(ctx, bson.M{"_id": session.UserID}).Decode(&user)
+	if err == nil && user.Age > 0 {
+		chronologicalAge = float64(user.Age)
+	}
 
 	// Calculate Overall Fitness Score components
 	strengthScore, err := m.calculateStrengthScore(ctx, session)
