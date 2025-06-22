@@ -2,13 +2,13 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { router, Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '../src/hooks/useAuth';
+import { useAuthAndProfile } from '../src/hooks/useAuthAndProfile';
 import { getColor } from '../src/components/Colors';
 
 export default function Index() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, needsOnboarding } = useAuthAndProfile();
 
-  // Show loading screen while checking authentication
+  // Show loading screen while checking authentication and profile
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -18,11 +18,13 @@ export default function Index() {
     );
   }
 
-  // Redirect based on authentication state
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)" />;
-  } else {
+  // Redirect based on authentication and profile state
+  if (!isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
+  } else if (needsOnboarding) {
+    return <Redirect href="/onboarding" />;
+  } else {
+    return <Redirect href="/(tabs)" />;
   }
 }
 

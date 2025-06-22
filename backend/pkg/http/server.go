@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -14,6 +15,7 @@ import (
 
 	"gymlog-backend/internal/services"
 	"gymlog-backend/pkg/database"
+	"gymlog-backend/pkg/models"
 	pb "gymlog-backend/proto/gymlog/v1"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -44,10 +46,25 @@ type UserResponse struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
+	FirstName string    `json:"firstName"`
+	LastName  string    `json:"lastName"`
+	Height    float64   `json:"height"` // Height in cm
+	Weight    float64   `json:"weight"` // Weight in kg
+	Age       int32     `json:"age"`    // Age in years
+	Goal      string    `json:"goal"`   // Goal: lose_fat, gain_muscle, maintain
 	GoogleID  string    `json:"googleId"`
 	Picture   string    `json:"picture"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type UpdateUserRequest struct {
+	FirstName string  `json:"firstName,omitempty"`
+	LastName  string  `json:"lastName,omitempty"`
+	Height    float64 `json:"height,omitempty"` // Height in cm
+	Weight    float64 `json:"weight,omitempty"` // Weight in kg
+	Age       int32   `json:"age,omitempty"`    // Age in years
+	Goal      string  `json:"goal,omitempty"`   // Goal: lose_fat, gain_muscle, maintain
 }
 
 // Exercise HTTP types
@@ -292,6 +309,9 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/auth/validate", s.handleValidateSession).Methods("GET")
 	api.HandleFunc("/auth/logout", s.handleLogout).Methods("POST")
 
+	// User routes
+	api.HandleFunc("/users/{userId}", s.handleUpdateUser).Methods("PUT")
+
 	// Exercise routes - specific routes must come before parameterized routes
 	api.HandleFunc("/exercises/quick-add", s.handleGetQuickAddExercises).Methods("GET")
 	api.HandleFunc("/exercises", s.handleListExercises).Methods("GET")
@@ -398,15 +418,7 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	log.Printf("✅ Session created successfully: ID=%s, Token=%s", session.ID.Hex(), session.AccessToken)
 
 	// Return user response
-	response := UserResponse{
-		ID:        user.ID.Hex(),
-		Email:     user.Email,
-		Name:      user.Name,
-		GoogleID:  user.GoogleID,
-		Picture:   user.Picture,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	}
+	response := s.userToResponse(user)
 
 	// Set session token in response header
 	w.Header().Set("X-Session-Token", session.AccessToken)
@@ -460,15 +472,7 @@ func (s *Server) handleValidateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := UserResponse{
-		ID:        user.ID.Hex(),
-		Email:     user.Email,
-		Name:      user.Name,
-		GoogleID:  user.GoogleID,
-		Picture:   user.Picture,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	}
+	response := s.userToResponse(user)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -1576,6 +1580,87 @@ func (s *Server) handleGetRecentInsights(w http.ResponseWriter, r *http.Request)
 		Insights: insightResponses,
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// Helper function to convert user model to response
+func (s *Server) userToResponse(user *models.User) UserResponse {
+	// Parse name to get first and last name
+	nameParts := strings.Split(user.Name, " ")
+	firstName := ""
+	lastName := ""
+	if len(nameParts) > 0 {
+		firstName = nameParts[0]
+		if len(nameParts) > 1 {
+			lastName = strings.Join(nameParts[1:], " ")
+		}
+	}
+
+	return UserResponse{
+		ID:        user.ID.Hex(),
+		Email:     user.Email,
+		Name:      user.Name,
+		FirstName: firstName,
+		LastName:  lastName,
+		Height:    user.Height,
+		Weight:    user.Weight,
+		Age:       user.Age,
+		Goal:      user.Goal,
+		GoogleID:  user.GoogleID,
+		Picture:   user.Picture,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+}
+
+// User update handler
+func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	var req UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	pbReq := &pb.UpdateUserRequest{
+		Id:        userID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Height:    req.Height,
+		Weight:    req.Weight,
+		Age:       req.Age,
+		Goal:      req.Goal,
+	}
+
+	user, err := s.userService.UpdateUser(ctx, pbReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update user: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert protobuf user to models.User for response
+	modelUser := &models.User{
+		ID:        primitive.ObjectID{}, // Will be set from user.Id
+		Email:     user.Email,
+		Name:      fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+		Height:    user.Height,
+		Weight:    user.Weight,
+		Age:       user.Age,
+		Goal:      user.Goal,
+		CreatedAt: user.CreatedAt.AsTime(),
+		UpdatedAt: user.UpdatedAt.AsTime(),
+	}
+
+	// Convert user ID
+	if userObjID, err := primitive.ObjectIDFromHex(user.Id); err == nil {
+		modelUser.ID = userObjID
+	}
+
+	response := s.userToResponse(modelUser)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }

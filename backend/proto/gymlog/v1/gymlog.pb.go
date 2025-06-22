@@ -33,6 +33,10 @@ type User struct {
 	LastName      string                 `protobuf:"bytes,5,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Height        float64                `protobuf:"fixed64,8,opt,name=height,proto3" json:"height,omitempty"` // Height in cm
+	Weight        float64                `protobuf:"fixed64,9,opt,name=weight,proto3" json:"weight,omitempty"` // Weight in kg
+	Age           int32                  `protobuf:"varint,10,opt,name=age,proto3" json:"age,omitempty"`       // Age in years
+	Goal          string                 `protobuf:"bytes,11,opt,name=goal,proto3" json:"goal,omitempty"`      // Goal: lose_fat, gain_muscle, maintain
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -116,6 +120,34 @@ func (x *User) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *User) GetHeight() float64 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *User) GetWeight() float64 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *User) GetAge() int32 {
+	if x != nil {
+		return x.Age
+	}
+	return 0
+}
+
+func (x *User) GetGoal() string {
+	if x != nil {
+		return x.Goal
+	}
+	return ""
+}
+
 type CreateUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
@@ -123,6 +155,10 @@ type CreateUserRequest struct {
 	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	FirstName     string                 `protobuf:"bytes,4,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
 	LastName      string                 `protobuf:"bytes,5,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	Height        float64                `protobuf:"fixed64,6,opt,name=height,proto3" json:"height,omitempty"` // Height in cm
+	Weight        float64                `protobuf:"fixed64,7,opt,name=weight,proto3" json:"weight,omitempty"` // Weight in kg
+	Age           int32                  `protobuf:"varint,8,opt,name=age,proto3" json:"age,omitempty"`        // Age in years
+	Goal          string                 `protobuf:"bytes,9,opt,name=goal,proto3" json:"goal,omitempty"`       // Goal: lose_fat, gain_muscle, maintain
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -192,6 +228,34 @@ func (x *CreateUserRequest) GetLastName() string {
 	return ""
 }
 
+func (x *CreateUserRequest) GetHeight() float64 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *CreateUserRequest) GetWeight() float64 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *CreateUserRequest) GetAge() int32 {
+	if x != nil {
+		return x.Age
+	}
+	return 0
+}
+
+func (x *CreateUserRequest) GetGoal() string {
+	if x != nil {
+		return x.Goal
+	}
+	return ""
+}
+
 type GetUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -243,6 +307,10 @@ type UpdateUserRequest struct {
 	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	FirstName     string                 `protobuf:"bytes,4,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
 	LastName      string                 `protobuf:"bytes,5,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	Height        float64                `protobuf:"fixed64,6,opt,name=height,proto3" json:"height,omitempty"` // Height in cm
+	Weight        float64                `protobuf:"fixed64,7,opt,name=weight,proto3" json:"weight,omitempty"` // Weight in kg
+	Age           int32                  `protobuf:"varint,8,opt,name=age,proto3" json:"age,omitempty"`        // Age in years
+	Goal          string                 `protobuf:"bytes,9,opt,name=goal,proto3" json:"goal,omitempty"`       // Goal: lose_fat, gain_muscle, maintain
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -308,6 +376,34 @@ func (x *UpdateUserRequest) GetFirstName() string {
 func (x *UpdateUserRequest) GetLastName() string {
 	if x != nil {
 		return x.LastName
+	}
+	return ""
+}
+
+func (x *UpdateUserRequest) GetHeight() float64 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *UpdateUserRequest) GetWeight() float64 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *UpdateUserRequest) GetAge() int32 {
+	if x != nil {
+		return x.Age
+	}
+	return 0
+}
+
+func (x *UpdateUserRequest) GetGoal() string {
+	if x != nil {
+		return x.Goal
 	}
 	return ""
 }
@@ -5061,7 +5157,7 @@ var File_gymlog_v1_gymlog_proto protoreflect.FileDescriptor
 
 const file_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"\n" +
-	"\x16gymlog/v1/gymlog.proto\x12\tgymlog.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xfa\x01\n" +
+	"\x16gymlog/v1/gymlog.proto\x12\tgymlog.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd0\x02\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
@@ -5072,23 +5168,36 @@ const file_gymlog_v1_gymlog_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x9d\x01\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x16\n" +
+	"\x06height\x18\b \x01(\x01R\x06height\x12\x16\n" +
+	"\x06weight\x18\t \x01(\x01R\x06weight\x12\x10\n" +
+	"\x03age\x18\n" +
+	" \x01(\x05R\x03age\x12\x12\n" +
+	"\x04goal\x18\v \x01(\tR\x04goal\"\xf3\x01\n" +
 	"\x11CreateUserRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x04 \x01(\tR\tfirstName\x12\x1b\n" +
-	"\tlast_name\x18\x05 \x01(\tR\blastName\" \n" +
+	"\tlast_name\x18\x05 \x01(\tR\blastName\x12\x16\n" +
+	"\x06height\x18\x06 \x01(\x01R\x06height\x12\x16\n" +
+	"\x06weight\x18\a \x01(\x01R\x06weight\x12\x10\n" +
+	"\x03age\x18\b \x01(\x05R\x03age\x12\x12\n" +
+	"\x04goal\x18\t \x01(\tR\x04goal\" \n" +
 	"\x0eGetUserRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x91\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xe7\x01\n" +
 	"\x11UpdateUserRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x04 \x01(\tR\tfirstName\x12\x1b\n" +
-	"\tlast_name\x18\x05 \x01(\tR\blastName\"N\n" +
+	"\tlast_name\x18\x05 \x01(\tR\blastName\x12\x16\n" +
+	"\x06height\x18\x06 \x01(\x01R\x06height\x12\x16\n" +
+	"\x06weight\x18\a \x01(\x01R\x06weight\x12\x10\n" +
+	"\x03age\x18\b \x01(\x05R\x03age\x12\x12\n" +
+	"\x04goal\x18\t \x01(\tR\x04goal\"N\n" +
 	"\x10ListUsersRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +

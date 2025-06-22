@@ -18,7 +18,7 @@ BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Paths
 PROTO_SOURCE_DIR="$BACKEND_DIR/proto"
-PROTO_OUTPUT_DIR="$BACKEND_DIR/proto"
+PROTO_OUTPUT_DIR="$BACKEND_DIR"
 
 echo -e "${YELLOW}GymLog Backend - Protobuf Generation${NC}"
 echo "=================================="
@@ -66,8 +66,8 @@ echo -e "${YELLOW}Generating protobuf files...${NC}"
 # Generate Go files from proto definitions
 protoc \
     --proto_path="$PROTO_SOURCE_DIR" \
-    --go_out=. \
-    --go-grpc_out=. \
+    --go_out="$PROTO_OUTPUT_DIR" \
+    --go-grpc_out="$PROTO_OUTPUT_DIR" \
     --go_opt=module=gymlog-backend \
     --go-grpc_opt=module=gymlog-backend \
     gymlog/v1/gymlog.proto
@@ -85,8 +85,8 @@ fi
 
 # Verify the generated files exist
 EXPECTED_FILES=(
-    "$PROTO_OUTPUT_DIR/gymlog/v1/gymlog.pb.go"
-    "$PROTO_OUTPUT_DIR/gymlog/v1/gymlog_grpc.pb.go"
+    "$PROTO_OUTPUT_DIR/proto/gymlog/v1/gymlog.pb.go"
+    "$PROTO_OUTPUT_DIR/proto/gymlog/v1/gymlog_grpc.pb.go"
 )
 
 echo -e "${YELLOW}Verifying generated files...${NC}"

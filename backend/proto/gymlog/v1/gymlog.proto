@@ -16,6 +16,10 @@ message User {
   string last_name = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
+  double height = 8; // Height in cm
+  double weight = 9; // Weight in kg
+  int32 age = 10;    // Age in years
+  string goal = 11;  // Goal: lose_fat, gain_muscle, maintain
 }
 
 message CreateUserRequest {
@@ -24,6 +28,10 @@ message CreateUserRequest {
   string password = 3;
   string first_name = 4;
   string last_name = 5;
+  double height = 6; // Height in cm
+  double weight = 7; // Weight in kg
+  int32 age = 8;     // Age in years
+  string goal = 9;   // Goal: lose_fat, gain_muscle, maintain
 }
 
 message GetUserRequest {
@@ -36,6 +44,10 @@ message UpdateUserRequest {
   string email = 3;
   string first_name = 4;
   string last_name = 5;
+  double height = 6; // Height in cm
+  double weight = 7; // Weight in kg
+  int32 age = 8;     // Age in years
+  string goal = 9;   // Goal: lose_fat, gain_muscle, maintain
 }
 
 message ListUsersRequest {

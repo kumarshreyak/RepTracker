@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,6 +41,11 @@ func (s *UserService) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
 
+	// Validate goal if provided
+	if req.Goal != "" && req.Goal != models.GoalLoseFat && req.Goal != models.GoalGainMuscle && req.Goal != models.GoalMaintain {
+		return nil, status.Error(codes.InvalidArgument, "invalid goal: must be lose_fat, gain_muscle, or maintain")
+	}
+
 	// Check if user already exists
 	var existingUser models.User
 	err := s.usersColl.FindOne(ctx, bson.M{"email": req.Email}).Decode(&existingUser)
@@ -53,6 +59,10 @@ func (s *UserService) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 	user := models.User{
 		Email:     req.Email,
 		Name:      fmt.Sprintf("%s %s", req.FirstName, req.LastName),
+		Height:    req.Height,
+		Weight:    req.Weight,
+		Age:       req.Age,
+		Goal:      req.Goal,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -69,6 +79,10 @@ func (s *UserService) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 		Email:     user.Email,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
+		Height:    user.Height,
+		Weight:    user.Weight,
+		Age:       user.Age,
+		Goal:      user.Goal,
 		CreatedAt: timestamppb.New(user.CreatedAt),
 		UpdatedAt: timestamppb.New(user.UpdatedAt),
 	}, nil
@@ -99,6 +113,11 @@ func (s *UserService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
 	}
 
+	// Validate goal if provided
+	if req.Goal != "" && req.Goal != models.GoalLoseFat && req.Goal != models.GoalGainMuscle && req.Goal != models.GoalMaintain {
+		return nil, status.Error(codes.InvalidArgument, "invalid goal: must be lose_fat, gain_muscle, or maintain")
+	}
+
 	update := bson.M{
 		"updated_at": time.Now(),
 	}
@@ -109,6 +128,18 @@ func (s *UserService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 	if req.FirstName != "" || req.LastName != "" {
 		name := fmt.Sprintf("%s %s", req.FirstName, req.LastName)
 		update["name"] = name
+	}
+	if req.Height > 0 {
+		update["height"] = req.Height
+	}
+	if req.Weight > 0 {
+		update["weight"] = req.Weight
+	}
+	if req.Age > 0 {
+		update["age"] = req.Age
+	}
+	if req.Goal != "" {
+		update["goal"] = req.Goal
 	}
 
 	result, err := s.usersColl.UpdateOne(
@@ -188,7 +219,7 @@ func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, em
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	} else {
-		// Update existing user
+		// Update existing user - preserve existing profile data
 		update := bson.M{
 			"name":       name,
 			"picture":    picture,
@@ -209,12 +240,14 @@ func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, em
 			return nil, fmt.Errorf("failed to update user: %w", err)
 		}
 
+		// Update local user object with the new values
 		user.Name = name
 		user.Picture = picture
 		user.UpdatedAt = now
 		if user.GoogleID == "" {
 			user.GoogleID = googleID
 		}
+		// Note: Height, Weight, Age, and Goal are preserved from the existing user data
 	}
 
 	return &user, nil
@@ -270,9 +303,26 @@ func (s *UserService) DeleteSession(ctx context.Context, accessToken string) err
 
 // modelToProto converts a user model to protobuf user
 func (s *UserService) modelToProto(user *models.User) *pb.User {
+	// Parse name to get first and last name
+	nameParts := strings.Split(user.Name, " ")
+	firstName := ""
+	lastName := ""
+	if len(nameParts) > 0 {
+		firstName = nameParts[0]
+		if len(nameParts) > 1 {
+			lastName = strings.Join(nameParts[1:], " ")
+		}
+	}
+
 	return &pb.User{
 		Id:        user.ID.Hex(),
 		Email:     user.Email,
+		FirstName: firstName,
+		LastName:  lastName,
+		Height:    user.Height,
+		Weight:    user.Weight,
+		Age:       user.Age,
+		Goal:      user.Goal,
 		CreatedAt: timestamppb.New(user.CreatedAt),
 		UpdatedAt: timestamppb.New(user.UpdatedAt),
 	}
