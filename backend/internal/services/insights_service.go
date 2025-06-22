@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -74,66 +75,122 @@ func NewInsightsService(db *mongo.Database) (*InsightsService, error) {
 
 // GenerateWorkoutInsights generates insights for a user based on their recent metrics
 func (s *InsightsService) GenerateWorkoutInsights(ctx context.Context, userID primitive.ObjectID) ([]WorkoutInsight, error) {
+	log.Printf("GenerateWorkoutInsights: Starting for user %s", userID.Hex())
+
 	// Fetch recent workout metrics
+	log.Printf("GenerateWorkoutInsights: Fetching recent workout metrics for user %s", userID.Hex())
 	workoutMetrics, err := s.fetchRecentWorkoutMetrics(ctx, userID, 7) // Last 7 days
 	if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to fetch workout metrics for user %s: %v", userID.Hex(), err)
 		return nil, fmt.Errorf("failed to fetch workout metrics: %w", err)
 	}
+	log.Printf("GenerateWorkoutInsights: Found %d workout metrics for user %s", len(workoutMetrics), userID.Hex())
 
 	// Fetch user metrics
+	log.Printf("GenerateWorkoutInsights: Fetching user metrics for user %s", userID.Hex())
 	userMetrics, err := s.fetchUserMetrics(ctx, userID)
 	if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to fetch user metrics for user %s: %v", userID.Hex(), err)
 		return nil, fmt.Errorf("failed to fetch user metrics: %w", err)
+	}
+	if userMetrics != nil {
+		log.Printf("GenerateWorkoutInsights: Found user metrics for user %s", userID.Hex())
+	} else {
+		log.Printf("GenerateWorkoutInsights: No user metrics found for user %s", userID.Hex())
 	}
 
 	// Generate insights based on different aspects
 	var insights []WorkoutInsight
+	log.Printf("GenerateWorkoutInsights: Starting insight generation for user %s", userID.Hex())
 
 	// Progress insight
+	log.Printf("GenerateWorkoutInsights: Generating progress insight for user %s", userID.Hex())
 	if insight, err := s.generateProgressInsight(ctx, workoutMetrics, userMetrics); err == nil && insight != nil {
+		log.Printf("GenerateWorkoutInsights: Successfully generated progress insight for user %s", userID.Hex())
 		insights = append(insights, *insight)
+	} else if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to generate progress insight for user %s: %v", userID.Hex(), err)
+	} else {
+		log.Printf("GenerateWorkoutInsights: No progress insight generated for user %s", userID.Hex())
 	}
 
 	// Volume insight
+	log.Printf("GenerateWorkoutInsights: Generating volume insight for user %s", userID.Hex())
 	if insight, err := s.generateVolumeInsight(ctx, workoutMetrics, userMetrics); err == nil && insight != nil {
+		log.Printf("GenerateWorkoutInsights: Successfully generated volume insight for user %s", userID.Hex())
 		insights = append(insights, *insight)
+	} else if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to generate volume insight for user %s: %v", userID.Hex(), err)
+	} else {
+		log.Printf("GenerateWorkoutInsights: No volume insight generated for user %s", userID.Hex())
 	}
 
 	// Recovery insight
+	log.Printf("GenerateWorkoutInsights: Generating recovery insight for user %s", userID.Hex())
 	if insight, err := s.generateRecoveryInsight(ctx, workoutMetrics, userMetrics); err == nil && insight != nil {
+		log.Printf("GenerateWorkoutInsights: Successfully generated recovery insight for user %s", userID.Hex())
 		insights = append(insights, *insight)
+	} else if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to generate recovery insight for user %s: %v", userID.Hex(), err)
+	} else {
+		log.Printf("GenerateWorkoutInsights: No recovery insight generated for user %s", userID.Hex())
 	}
 
 	// Balance insight
+	log.Printf("GenerateWorkoutInsights: Generating balance insight for user %s", userID.Hex())
 	if insight, err := s.generateBalanceInsight(ctx, workoutMetrics, userMetrics); err == nil && insight != nil {
+		log.Printf("GenerateWorkoutInsights: Successfully generated balance insight for user %s", userID.Hex())
 		insights = append(insights, *insight)
+	} else if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to generate balance insight for user %s: %v", userID.Hex(), err)
+	} else {
+		log.Printf("GenerateWorkoutInsights: No balance insight generated for user %s", userID.Hex())
 	}
 
 	// Risk insight
+	log.Printf("GenerateWorkoutInsights: Generating risk insight for user %s", userID.Hex())
 	if insight, err := s.generateRiskInsight(ctx, workoutMetrics, userMetrics); err == nil && insight != nil {
+		log.Printf("GenerateWorkoutInsights: Successfully generated risk insight for user %s", userID.Hex())
 		insights = append(insights, *insight)
+	} else if err != nil {
+		log.Printf("GenerateWorkoutInsights: Failed to generate risk insight for user %s: %v", userID.Hex(), err)
+	} else {
+		log.Printf("GenerateWorkoutInsights: No risk insight generated for user %s", userID.Hex())
 	}
+
+	log.Printf("GenerateWorkoutInsights: Generated %d total insights for user %s", len(insights), userID.Hex())
 
 	// Save insights to database
 	if len(insights) > 0 {
+		log.Printf("GenerateWorkoutInsights: Saving %d insights to database for user %s", len(insights), userID.Hex())
 		err = s.saveInsights(ctx, insights)
 		if err != nil {
 			// Log error but don't fail - insights are already generated
-			fmt.Printf("Failed to save insights: %v\n", err)
+			log.Printf("GenerateWorkoutInsights: Failed to save insights for user %s: %v", userID.Hex(), err)
+		} else {
+			log.Printf("GenerateWorkoutInsights: Successfully saved insights for user %s", userID.Hex())
 		}
+	} else {
+		log.Printf("GenerateWorkoutInsights: No insights to save for user %s", userID.Hex())
 	}
 
+	log.Printf("GenerateWorkoutInsights: Completed for user %s with %d insights", userID.Hex(), len(insights))
 	return insights, nil
 }
 
 // generateProgressInsight generates an insight about training progress
 func (s *InsightsService) generateProgressInsight(ctx context.Context, workoutMetrics []models.WorkoutMetrics, userMetrics *models.UserMetrics) (*WorkoutInsight, error) {
+	log.Printf("generateProgressInsight: Starting with %d workout metrics", len(workoutMetrics))
+
 	if len(workoutMetrics) == 0 {
+		log.Printf("generateProgressInsight: No workout metrics available, returning nil")
 		return nil, nil
 	}
 
 	// Prepare metrics summary for AI
+	log.Printf("generateProgressInsight: Preparing progress metrics data")
 	metricsData := s.prepareProgressMetricsData(workoutMetrics)
+	log.Printf("generateProgressInsight: Prepared metrics data: %s", metricsData)
 
 	prompt := fmt.Sprintf(`Based on these workout progress metrics from the last 7 days:
 %s
@@ -143,30 +200,44 @@ Focus on strength gains, progressive overload, or plateau detection.
 Be specific with numbers when relevant.
 Make it actionable or motivational.`, metricsData)
 
+	log.Printf("generateProgressInsight: Calling Gemini API with prompt length: %d", len(prompt))
 	insight, err := s.callGeminiAPI(ctx, prompt)
 	if err != nil {
+		log.Printf("generateProgressInsight: Gemini API call failed: %v", err)
 		return nil, err
 	}
+	log.Printf("generateProgressInsight: Received insight from API: %s", insight)
 
-	return &WorkoutInsight{
+	priority := s.calculatePriority(workoutMetrics, InsightTypeProgress)
+	log.Printf("generateProgressInsight: Calculated priority: %d", priority)
+
+	result := &WorkoutInsight{
 		ID:        primitive.NewObjectID(),
 		UserID:    workoutMetrics[0].UserID,
 		Type:      InsightTypeProgress,
 		Insight:   insight,
 		BasedOn:   "Last 7 days",
-		Priority:  s.calculatePriority(workoutMetrics, InsightTypeProgress),
+		Priority:  priority,
 		CreatedAt: time.Now(),
-	}, nil
+	}
+
+	log.Printf("generateProgressInsight: Successfully created progress insight with ID: %s", result.ID.Hex())
+	return result, nil
 }
 
 // generateVolumeInsight generates an insight about training volume
 func (s *InsightsService) generateVolumeInsight(ctx context.Context, workoutMetrics []models.WorkoutMetrics, userMetrics *models.UserMetrics) (*WorkoutInsight, error) {
+	log.Printf("generateVolumeInsight: Starting with %d workout metrics", len(workoutMetrics))
+
 	if len(workoutMetrics) == 0 || userMetrics == nil {
+		log.Printf("generateVolumeInsight: Insufficient data - workoutMetrics: %d, userMetrics: %v", len(workoutMetrics), userMetrics != nil)
 		return nil, nil
 	}
 
 	// Prepare volume data with landmarks
+	log.Printf("generateVolumeInsight: Preparing volume metrics data")
 	volumeData := s.prepareVolumeMetricsData(workoutMetrics, userMetrics)
+	log.Printf("generateVolumeInsight: Prepared volume data: %s", volumeData)
 
 	prompt := fmt.Sprintf(`Based on these training volume metrics and landmarks:
 %s
@@ -175,30 +246,44 @@ Generate ONE important insight about the user's training volume in exactly one s
 Consider MEV/MAV/MRV landmarks and muscle group distribution.
 Be specific and actionable.`, volumeData)
 
+	log.Printf("generateVolumeInsight: Calling Gemini API with prompt length: %d", len(prompt))
 	insight, err := s.callGeminiAPI(ctx, prompt)
 	if err != nil {
+		log.Printf("generateVolumeInsight: Gemini API call failed: %v", err)
 		return nil, err
 	}
+	log.Printf("generateVolumeInsight: Received insight from API: %s", insight)
 
-	return &WorkoutInsight{
+	priority := s.calculatePriority(workoutMetrics, InsightTypeVolume)
+	log.Printf("generateVolumeInsight: Calculated priority: %d", priority)
+
+	result := &WorkoutInsight{
 		ID:        primitive.NewObjectID(),
 		UserID:    workoutMetrics[0].UserID,
 		Type:      InsightTypeVolume,
 		Insight:   insight,
 		BasedOn:   "Volume analysis",
-		Priority:  s.calculatePriority(workoutMetrics, InsightTypeVolume),
+		Priority:  priority,
 		CreatedAt: time.Now(),
-	}, nil
+	}
+
+	log.Printf("generateVolumeInsight: Successfully created volume insight with ID: %s", result.ID.Hex())
+	return result, nil
 }
 
 // generateRecoveryInsight generates an insight about recovery needs
 func (s *InsightsService) generateRecoveryInsight(ctx context.Context, workoutMetrics []models.WorkoutMetrics, userMetrics *models.UserMetrics) (*WorkoutInsight, error) {
+	log.Printf("generateRecoveryInsight: Starting with %d workout metrics", len(workoutMetrics))
+
 	if len(workoutMetrics) == 0 {
+		log.Printf("generateRecoveryInsight: No workout metrics available, returning nil")
 		return nil, nil
 	}
 
 	// Prepare recovery-related data
+	log.Printf("generateRecoveryInsight: Preparing recovery metrics data")
 	recoveryData := s.prepareRecoveryMetricsData(workoutMetrics)
+	log.Printf("generateRecoveryInsight: Prepared recovery data: %s", recoveryData)
 
 	prompt := fmt.Sprintf(`Based on these recovery and fatigue metrics:
 %s
@@ -207,30 +292,44 @@ Generate ONE important insight about the user's recovery needs in exactly one se
 Consider training stress balance, fatigue indicators, and optimal frequency.
 Be specific and actionable.`, recoveryData)
 
+	log.Printf("generateRecoveryInsight: Calling Gemini API with prompt length: %d", len(prompt))
 	insight, err := s.callGeminiAPI(ctx, prompt)
 	if err != nil {
+		log.Printf("generateRecoveryInsight: Gemini API call failed: %v", err)
 		return nil, err
 	}
+	log.Printf("generateRecoveryInsight: Received insight from API: %s", insight)
 
-	return &WorkoutInsight{
+	priority := s.calculatePriority(workoutMetrics, InsightTypeRecovery)
+	log.Printf("generateRecoveryInsight: Calculated priority: %d", priority)
+
+	result := &WorkoutInsight{
 		ID:        primitive.NewObjectID(),
 		UserID:    workoutMetrics[0].UserID,
 		Type:      InsightTypeRecovery,
 		Insight:   insight,
 		BasedOn:   "Recovery metrics",
-		Priority:  s.calculatePriority(workoutMetrics, InsightTypeRecovery),
+		Priority:  priority,
 		CreatedAt: time.Now(),
-	}, nil
+	}
+
+	log.Printf("generateRecoveryInsight: Successfully created recovery insight with ID: %s", result.ID.Hex())
+	return result, nil
 }
 
 // generateBalanceInsight generates an insight about muscle balance
 func (s *InsightsService) generateBalanceInsight(ctx context.Context, workoutMetrics []models.WorkoutMetrics, userMetrics *models.UserMetrics) (*WorkoutInsight, error) {
+	log.Printf("generateBalanceInsight: Starting with %d workout metrics", len(workoutMetrics))
+
 	if len(workoutMetrics) == 0 {
+		log.Printf("generateBalanceInsight: No workout metrics available, returning nil")
 		return nil, nil
 	}
 
 	// Prepare balance-related data
+	log.Printf("generateBalanceInsight: Preparing balance metrics data")
 	balanceData := s.prepareBalanceMetricsData(workoutMetrics)
+	log.Printf("generateBalanceInsight: Prepared balance data: %s", balanceData)
 
 	prompt := fmt.Sprintf(`Based on these muscle balance and training distribution metrics:
 %s
@@ -239,30 +338,44 @@ Generate ONE important insight about the user's training balance in exactly one 
 Consider push/pull ratio, muscle imbalances, and muscle group distribution.
 Be specific and actionable.`, balanceData)
 
+	log.Printf("generateBalanceInsight: Calling Gemini API with prompt length: %d", len(prompt))
 	insight, err := s.callGeminiAPI(ctx, prompt)
 	if err != nil {
+		log.Printf("generateBalanceInsight: Gemini API call failed: %v", err)
 		return nil, err
 	}
+	log.Printf("generateBalanceInsight: Received insight from API: %s", insight)
 
-	return &WorkoutInsight{
+	priority := s.calculatePriority(workoutMetrics, InsightTypeBalance)
+	log.Printf("generateBalanceInsight: Calculated priority: %d", priority)
+
+	result := &WorkoutInsight{
 		ID:        primitive.NewObjectID(),
 		UserID:    workoutMetrics[0].UserID,
 		Type:      InsightTypeBalance,
 		Insight:   insight,
 		BasedOn:   "Balance analysis",
-		Priority:  s.calculatePriority(workoutMetrics, InsightTypeBalance),
+		Priority:  priority,
 		CreatedAt: time.Now(),
-	}, nil
+	}
+
+	log.Printf("generateBalanceInsight: Successfully created balance insight with ID: %s", result.ID.Hex())
+	return result, nil
 }
 
 // generateRiskInsight generates an insight about injury risk
 func (s *InsightsService) generateRiskInsight(ctx context.Context, workoutMetrics []models.WorkoutMetrics, userMetrics *models.UserMetrics) (*WorkoutInsight, error) {
+	log.Printf("generateRiskInsight: Starting with %d workout metrics", len(workoutMetrics))
+
 	if len(workoutMetrics) == 0 {
+		log.Printf("generateRiskInsight: No workout metrics available, returning nil")
 		return nil, nil
 	}
 
 	// Prepare risk-related data
+	log.Printf("generateRiskInsight: Preparing risk metrics data")
 	riskData := s.prepareRiskMetricsData(workoutMetrics)
+	log.Printf("generateRiskInsight: Prepared risk data: %s", riskData)
 
 	prompt := fmt.Sprintf(`Based on these injury risk and prevention metrics:
 %s
@@ -271,30 +384,43 @@ Generate ONE important insight about potential injury risks or prevention strate
 Focus on load spikes, asymmetries, or injury risk scores.
 Be cautious but constructive.`, riskData)
 
+	log.Printf("generateRiskInsight: Calling Gemini API with prompt length: %d", len(prompt))
 	insight, err := s.callGeminiAPI(ctx, prompt)
 	if err != nil {
+		log.Printf("generateRiskInsight: Gemini API call failed: %v", err)
 		return nil, err
 	}
+	log.Printf("generateRiskInsight: Received insight from API: %s", insight)
 
-	return &WorkoutInsight{
+	priority := s.calculatePriority(workoutMetrics, InsightTypeRisk)
+	log.Printf("generateRiskInsight: Calculated priority: %d", priority)
+
+	result := &WorkoutInsight{
 		ID:        primitive.NewObjectID(),
 		UserID:    workoutMetrics[0].UserID,
 		Type:      InsightTypeRisk,
 		Insight:   insight,
 		BasedOn:   "Risk assessment",
-		Priority:  s.calculatePriority(workoutMetrics, InsightTypeRisk),
+		Priority:  priority,
 		CreatedAt: time.Now(),
-	}, nil
+	}
+
+	log.Printf("generateRiskInsight: Successfully created risk insight with ID: %s", result.ID.Hex())
+	return result, nil
 }
 
 // callGeminiAPI makes a call to the Gemini API
 func (s *InsightsService) callGeminiAPI(ctx context.Context, prompt string) (string, error) {
+	log.Printf("callGeminiAPI: Starting API call with prompt length: %d", len(prompt))
+
 	// Add system context to ensure one-sentence responses
 	fullPrompt := fmt.Sprintf(`You are a professional fitness coach analyzing workout data. 
 	Talking to an absolute beginner in fitness, so keep it simple and easy to understand.
 %s
 
 Remember: Generate exactly ONE sentence only. Make it insightful, specific, and actionable.`, prompt)
+
+	log.Printf("callGeminiAPI: Full prompt length: %d", len(fullPrompt))
 
 	result, err := s.genAIClient.Models.GenerateContent(
 		ctx,
@@ -303,18 +429,24 @@ Remember: Generate exactly ONE sentence only. Make it insightful, specific, and 
 		nil, // Use default config
 	)
 	if err != nil {
+		log.Printf("callGeminiAPI: API call failed: %v", err)
 		return "", fmt.Errorf("failed to generate content: %w", err)
 	}
 
+	log.Printf("callGeminiAPI: Received response from API")
+
 	// Extract the text from the response
 	insight := strings.TrimSpace(result.Text())
+	log.Printf("callGeminiAPI: Raw insight text: %s", insight)
 
 	// Ensure it's a single sentence
 	sentences := strings.Split(insight, ". ")
 	if len(sentences) > 1 {
+		log.Printf("callGeminiAPI: Multiple sentences detected, using first one only")
 		insight = sentences[0] + "."
 	}
 
+	log.Printf("callGeminiAPI: Final processed insight: %s", insight)
 	return insight, nil
 }
 

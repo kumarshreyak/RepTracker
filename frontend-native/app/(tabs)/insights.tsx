@@ -67,10 +67,10 @@ export default function InsightsTab() {
   // Refresh insights when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      if (user?.id && !loading) {
+      if (user?.id) {
         fetchInsights();
       }
-    }, [user?.id, loading])
+    }, [user?.id])
   );
 
   const onRefresh = () => {
@@ -79,36 +79,71 @@ export default function InsightsTab() {
   };
 
   const generateInsights = async () => {
-    if (!user?.id || generating) return;
+    if (!user?.id || generating) {
+      console.log("generateInsights early return:", { userId: user?.id, generating });
+      return;
+    }
 
+    console.log("Starting insight generation for user:", user.id);
+    
     try {
       setGenerating(true);
       setError(null);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const response = await fetch(
-        `${API_BASE_URL}/api/users/${user.id}/insights`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const url = `${API_BASE_URL}/api/users/${user.id}/insights`;
       
-      const data = await response.json();
+      console.log("Making POST request to:", url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log("Response data:", data);
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", parseError);
+        throw new Error("Invalid response from server");
+      }
       
       if (!response.ok) {
-        throw new Error(data.error || "Failed to generate insights");
+        console.error("API error:", { status: response.status, data });
+        throw new Error(data.error || `Failed to generate insights (${response.status})`);
       }
+      
+      console.log("Insights generated successfully, fetching updated list...");
       
       // After generating, fetch the updated insights list
       await fetchInsights();
       
+      console.log("Insight generation completed successfully");
+      
     } catch (err) {
       console.error("Error generating insights:", err);
-      setError(err instanceof Error ? err.message : "Failed to generate insights");
+      
+      // More detailed error messaging
+      let errorMessage = "Failed to generate insights";
+      if (err instanceof Error) {
+        if (err.message.includes("fetch")) {
+          errorMessage = "Network error: Could not connect to server";
+        } else if (err.message.includes("Invalid response")) {
+          errorMessage = "Server error: Invalid response received";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
+      console.log("Setting generating to false");
       setGenerating(false);
     }
   };
