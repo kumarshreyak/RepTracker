@@ -91,6 +91,16 @@ func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *m
 		return nil, fmt.Errorf("failed to calculate body composition metrics: %w", err)
 	}
 
+	metrics.MuscleSpecificMetrics, err = m.calculateMuscleSpecificMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate muscle specific metrics: %w", err)
+	}
+
+	metrics.WorkCapacityMetrics, err = m.calculateWorkCapacityMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate work capacity metrics: %w", err)
+	}
+
 	return metrics, nil
 }
 
@@ -1178,6 +1188,210 @@ func (m *MetricsService) getMaxWeightFromSession(session *models.WorkoutSession)
 	return maxWeight
 }
 
+// calculateMuscleSpecificMetrics calculates muscle-specific metrics for a workout session
+func (m *MetricsService) calculateMuscleSpecificMetrics(ctx context.Context, session *models.WorkoutSession) (models.MuscleSpecificMetrics, error) {
+	muscleSpecificMetrics := models.MuscleSpecificMetrics{
+		MuscleGroupDistribution: make(map[string]float64),
+		MuscleImbalanceIndex:    make(map[string]float64),
+		AntagonistRatio:         make(map[string]float64),
+		StimulusToFatigueRatio:  make(map[string]float64),
+	}
+
+	// Calculate volume metrics to get total volume
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err != nil {
+		return muscleSpecificMetrics, err
+	}
+
+	// Calculate Muscle Group Volume Distribution
+	totalVolume := volumeMetrics.TotalVolumeLoad
+	if totalVolume > 0 {
+		for muscleGroup, volume := range volumeMetrics.MuscleGroupVolume {
+			distribution := (volume / totalVolume) * 100
+			muscleSpecificMetrics.MuscleGroupDistribution[muscleGroup] = distribution
+		}
+	}
+
+	// Calculate Muscle Imbalance Index (Left vs Right sides)
+	muscleStrengths := make(map[string]float64)
+	for _, exercise := range session.Exercises {
+		exerciseDetails, err := m.exerciseService.GetExercise(ctx, &pb.GetExerciseRequest{Id: exercise.ExerciseID.Hex()})
+		if err != nil {
+			continue
+		}
+
+		// Get the heaviest weight for this exercise
+		var maxWeight float64
+		var maxReps int32
+		for _, set := range exercise.Sets {
+			if set.Completed && float64(set.ActualWeight) > maxWeight {
+				maxWeight = float64(set.ActualWeight)
+				maxReps = set.ActualReps
+			}
+		}
+
+		if maxWeight > 0 {
+			oneRM := m.calculateOneRM(maxWeight, maxReps)
+			for _, muscle := range exerciseDetails.PrimaryMuscles {
+				if currentStrength, exists := muscleStrengths[muscle]; exists {
+					muscleStrengths[muscle] = math.Max(currentStrength, oneRM)
+				} else {
+					muscleStrengths[muscle] = oneRM
+				}
+			}
+		}
+	}
+
+	// Calculate imbalance indices for left-right pairs
+	for leftMuscle, rightMuscle := range models.LeftRightPairs {
+		leftStrength, leftExists := muscleStrengths[leftMuscle]
+		rightStrength, rightExists := muscleStrengths[rightMuscle]
+
+		if leftExists && rightExists && (leftStrength > 0 || rightStrength > 0) {
+			averageStrength := (leftStrength + rightStrength) / 2
+			if averageStrength > 0 {
+				imbalance := math.Abs(leftStrength-rightStrength) / averageStrength * 100
+				baseMuscle := strings.TrimPrefix(strings.TrimPrefix(leftMuscle, "left "), "right ")
+				muscleSpecificMetrics.MuscleImbalanceIndex[baseMuscle] = imbalance
+			}
+		}
+	}
+
+	// Calculate Antagonist Ratios
+	for agonist, antagonist := range models.AntagonistPairs {
+		agonistStrength, agonistExists := muscleStrengths[agonist]
+		antagonistStrength, antagonistExists := muscleStrengths[antagonist]
+
+		if agonistExists && antagonistExists && agonistStrength > 0 {
+			ratio := antagonistStrength / agonistStrength
+			muscleSpecificMetrics.AntagonistRatio[agonist+"_"+antagonist] = ratio
+		}
+	}
+
+	// Calculate Stimulus-to-Fatigue Ratio
+	// Get previous session metrics for baseline comparison
+	previousMetrics, err := m.getPreviousSessionMetrics(ctx, session.UserID, session.StartedAt)
+	if err == nil && previousMetrics != nil {
+		for muscleGroup, currentVolume := range volumeMetrics.MuscleGroupVolume {
+			if previousVolume, exists := previousMetrics.VolumeMetrics.MuscleGroupVolume[muscleGroup]; exists && previousVolume > 0 {
+				performanceGain := (currentVolume - previousVolume) / previousVolume
+				fatigueFactor := float64(session.RPERating) * currentVolume
+				if fatigueFactor > 0 {
+					sfr := performanceGain / fatigueFactor
+					muscleSpecificMetrics.StimulusToFatigueRatio[muscleGroup] = sfr
+				}
+			}
+		}
+	}
+
+	return muscleSpecificMetrics, nil
+}
+
+// calculateWorkCapacityMetrics calculates work capacity metrics for a workout session
+func (m *MetricsService) calculateWorkCapacityMetrics(ctx context.Context, session *models.WorkoutSession) (models.WorkCapacityMetrics, error) {
+	workCapacityMetrics := models.WorkCapacityMetrics{}
+
+	var totalWorkCapacity, totalTimeUnderTension, totalMechanicalTension float64
+	workoutTimeMinutes := float64(session.DurationSeconds) / 60.0
+
+	// Calculate volume metrics for density calculations
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err != nil {
+		return workCapacityMetrics, err
+	}
+
+	for _, exercise := range session.Exercises {
+		exerciseDetails, err := m.exerciseService.GetExercise(ctx, &pb.GetExerciseRequest{Id: exercise.ExerciseID.Hex()})
+		if err != nil {
+			continue
+		}
+
+		// Get exercise tempo (default if not specified)
+		tempo := models.DefaultExerciseTempos["default"]
+		exerciseName := strings.ToLower(exerciseDetails.Name)
+		for knownExercise, knownTempo := range models.DefaultExerciseTempos {
+			if strings.Contains(exerciseName, knownExercise) {
+				tempo = knownTempo
+				break
+			}
+		}
+
+		for i, set := range exercise.Sets {
+			if !set.Completed {
+				continue
+			}
+
+			weight := float64(set.ActualWeight)
+			reps := float64(set.ActualReps)
+
+			// Calculate rest time factor (assume default rest time between sets)
+			restTime := models.DefaultRestTime
+			if i == 0 {
+				restTime = 0 // No rest before first set
+			}
+			restFactor := 1 - (restTime / 300.0) // 300 seconds = 5 minutes max rest
+			if restFactor < 0 {
+				restFactor = 0
+			}
+
+			// Total Work Capacity: TWC = Σ(Sets × Reps × Weight × (1 - Rest Time/300))
+			setWorkCapacity := 1 * reps * weight * restFactor
+			totalWorkCapacity += setWorkCapacity
+
+			// Time Under Tension: TUT = Σ(Reps × Tempo in seconds)
+			repTempo := tempo.Eccentric + tempo.Pause1 + tempo.Concentric + tempo.Pause2
+			setTUT := reps * repTempo
+			totalTimeUnderTension += setTUT
+
+			// Mechanical Tension Score: MTS = Weight × TUT × (RPE/10)
+			rpeFactor := float64(session.RPERating) / 10.0
+			setMTS := weight * setTUT * rpeFactor
+			totalMechanicalTension += setMTS
+		}
+	}
+
+	workCapacityMetrics.TotalWorkCapacity = totalWorkCapacity
+	workCapacityMetrics.TimeUnderTension = totalTimeUnderTension
+	workCapacityMetrics.MechanicalTensionScore = totalMechanicalTension
+
+	// Density Training Index: Density = Total Volume / Total Time
+	if workoutTimeMinutes > 0 {
+		workCapacityMetrics.DensityTrainingIndex = volumeMetrics.TotalVolumeLoad / workoutTimeMinutes
+	}
+
+	// Density Progress Percent: Progress% = (Current Density - Previous Density) / Previous Density × 100
+	previousMetrics, err := m.getPreviousSessionMetrics(ctx, session.UserID, session.StartedAt)
+	if err == nil && previousMetrics != nil {
+		previousDensity := previousMetrics.WorkCapacityMetrics.DensityTrainingIndex
+		currentDensity := workCapacityMetrics.DensityTrainingIndex
+		if previousDensity > 0 {
+			densityProgress := ((currentDensity - previousDensity) / previousDensity) * 100
+			workCapacityMetrics.DensityProgressPercent = densityProgress
+		}
+	}
+
+	return workCapacityMetrics, nil
+}
+
+// getPreviousSessionMetrics gets the metrics from the previous workout session for comparison
+func (m *MetricsService) getPreviousSessionMetrics(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (*models.WorkoutMetrics, error) {
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$lt": currentDate},
+	}
+
+	opts := options.FindOne().SetSort(bson.D{{"date", -1}})
+	var previousMetrics models.WorkoutMetrics
+	err := m.metricsColl.FindOne(ctx, filter, opts).Decode(&previousMetrics)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil // No previous session found
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &previousMetrics, nil
+}
+
 func (m *MetricsService) SaveWorkoutMetrics(ctx context.Context, metrics *models.WorkoutMetrics) error {
 	result, err := m.metricsColl.InsertOne(ctx, metrics)
 	if err != nil {
@@ -1607,6 +1821,8 @@ func (m *MetricsService) workoutMetricsToProto(workoutMetrics *models.WorkoutMet
 		ProgressAdaptationMetrics: m.progressAdaptationMetricsToProto(&workoutMetrics.ProgressAdaptationMetrics),
 		RecoveryFatigueMetrics:    m.recoveryFatigueMetricsToProto(&workoutMetrics.RecoveryFatigueMetrics),
 		BodyCompositionMetrics:    m.bodyCompositionMetricsToProto(&workoutMetrics.BodyCompositionMetrics),
+		MuscleSpecificMetrics:     m.muscleSpecificMetricsToProto(&workoutMetrics.MuscleSpecificMetrics),
+		WorkCapacityMetrics:       m.workCapacityMetricsToProto(&workoutMetrics.WorkCapacityMetrics),
 		SetMetrics:                m.setMetricsToProto(&workoutMetrics.SetMetrics),
 		ExerciseMetrics:           exerciseMetrics,
 		WorkoutDurationSecs:       workoutMetrics.WorkoutDurationSecs,
@@ -1723,5 +1939,24 @@ func (m *MetricsService) bodyCompositionMetricsToProto(bcm *models.BodyCompositi
 		StrengthToWeightRatio:  bcm.StrengthToWeightRatio,
 		AllometricScalingScore: bcm.AllometricScalingScore,
 		PonderalIndex:          bcm.PonderalIndex,
+	}
+}
+
+func (m *MetricsService) muscleSpecificMetricsToProto(msm *models.MuscleSpecificMetrics) *pb.MuscleSpecificMetrics {
+	return &pb.MuscleSpecificMetrics{
+		MuscleGroupDistribution: msm.MuscleGroupDistribution,
+		MuscleImbalanceIndex:    msm.MuscleImbalanceIndex,
+		AntagonistRatio:         msm.AntagonistRatio,
+		StimulusToFatigueRatio:  msm.StimulusToFatigueRatio,
+	}
+}
+
+func (m *MetricsService) workCapacityMetricsToProto(wcm *models.WorkCapacityMetrics) *pb.WorkCapacityMetrics {
+	return &pb.WorkCapacityMetrics{
+		TotalWorkCapacity:      wcm.TotalWorkCapacity,
+		DensityTrainingIndex:   wcm.DensityTrainingIndex,
+		DensityProgressPercent: wcm.DensityProgressPercent,
+		TimeUnderTension:       wcm.TimeUnderTension,
+		MechanicalTensionScore: wcm.MechanicalTensionScore,
 	}
 }

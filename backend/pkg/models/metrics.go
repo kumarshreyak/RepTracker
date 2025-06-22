@@ -84,6 +84,8 @@ type WorkoutMetrics struct {
 	ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
 	RecoveryFatigueMetrics    RecoveryFatigueMetrics    `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
 	BodyCompositionMetrics    BodyCompositionMetrics    `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
+	MuscleSpecificMetrics     MuscleSpecificMetrics     `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
+	WorkCapacityMetrics       WorkCapacityMetrics       `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
 	SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
 	ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
 	WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
@@ -222,3 +224,84 @@ var Big3Exercises = map[string]bool{
 	"bench":    true,
 	"deadlift": true,
 }
+
+// Muscle-Specific Metrics
+type MuscleSpecificMetrics struct {
+	MuscleGroupDistribution map[string]float64 `bson:"muscleGroupDistribution" json:"muscleGroupDistribution"` // MG Distribution% = (MG Volume / Total Volume) × 100
+	MuscleImbalanceIndex    map[string]float64 `bson:"muscleImbalanceIndex" json:"muscleImbalanceIndex"`       // Imbalance = |Left Side Strength - Right Side Strength| / Average Strength × 100
+	AntagonistRatio         map[string]float64 `bson:"antagonistRatio" json:"antagonistRatio"`                 // Antagonist Ratio = Antagonist Strength / Agonist Strength (e.g., Hamstring/Quad ratio ideal: 0.6-0.8)
+	StimulusToFatigueRatio  map[string]float64 `bson:"stimulusToFatigueRatio" json:"stimulusToFatigueRatio"`   // SFR = (Performance Gain / Baseline) / (RPE × Volume)
+}
+
+// Work Capacity Metrics
+type WorkCapacityMetrics struct {
+	TotalWorkCapacity      float64 `bson:"totalWorkCapacity" json:"totalWorkCapacity"`           // TWC = Σ(Sets × Reps × Weight × (1 - Rest Time/300))
+	DensityTrainingIndex   float64 `bson:"densityTrainingIndex" json:"densityTrainingIndex"`     // Density = Total Volume / Total Time
+	DensityProgressPercent float64 `bson:"densityProgressPercent" json:"densityProgressPercent"` // Progress% = (Current Density - Previous Density) / Previous Density × 100
+	TimeUnderTension       float64 `bson:"timeUnderTension" json:"timeUnderTension"`             // TUT = Σ(Reps × Tempo in seconds)
+	MechanicalTensionScore float64 `bson:"mechanicalTensionScore" json:"mechanicalTensionScore"` // MTS = Weight × TUT × (RPE/10)
+}
+
+// Antagonist muscle group pairs for ratio calculations
+var AntagonistPairs = map[string]string{
+	"quadriceps":         "hamstrings",
+	"hamstrings":         "quadriceps",
+	"chest":              "middle back",
+	"middle back":        "chest",
+	"biceps":             "triceps",
+	"triceps":            "biceps",
+	"anterior deltoids":  "posterior deltoids",
+	"posterior deltoids": "anterior deltoids",
+}
+
+// Left-Right muscle pairs for imbalance calculations
+var LeftRightPairs = map[string]string{
+	"left quadriceps":  "right quadriceps",
+	"right quadriceps": "left quadriceps",
+	"left hamstrings":  "right hamstrings",
+	"right hamstrings": "left hamstrings",
+	"left chest":       "right chest",
+	"right chest":      "left chest",
+	"left biceps":      "right biceps",
+	"right biceps":     "left biceps",
+	"left triceps":     "right triceps",
+	"right triceps":    "left triceps",
+}
+
+// Default tempo values for exercises (in seconds: eccentric, pause, concentric, pause)
+type ExerciseTempo struct {
+	Eccentric  float64 // Lowering phase
+	Pause1     float64 // Bottom pause
+	Concentric float64 // Lifting phase
+	Pause2     float64 // Top pause
+}
+
+var DefaultExerciseTempos = map[string]ExerciseTempo{
+	"squat": {
+		Eccentric:  2.0,
+		Pause1:     1.0,
+		Concentric: 1.0,
+		Pause2:     0.0,
+	},
+	"bench press": {
+		Eccentric:  2.0,
+		Pause1:     1.0,
+		Concentric: 1.0,
+		Pause2:     0.0,
+	},
+	"deadlift": {
+		Eccentric:  2.0,
+		Pause1:     0.0,
+		Concentric: 1.0,
+		Pause2:     0.0,
+	},
+	"default": {
+		Eccentric:  2.0,
+		Pause1:     0.5,
+		Concentric: 1.0,
+		Pause2:     0.0,
+	},
+}
+
+// Default rest time between sets (in seconds)
+const DefaultRestTime = 180.0 // 3 minutes

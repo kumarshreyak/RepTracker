@@ -82,10 +82,16 @@ When working with protobuf definitions or when proto files are modified:
 4. **Makefile target**: `make generate-proto` for convenient access
 5. **Auto-verification**: Script automatically verifies generated files are in correct locations
 
+#### Protobuf File Structure:
+- **Source proto files**: Located in `/backend/proto/gymlog/v1/gymlog.proto`
+- **Generated Go files**: Generated in same directory `/backend/proto/gymlog/v1/*.pb.go`
+- **Single source of truth**: All proto files are now consolidated in the backend directory
+- **Clean structure**: No duplicate proto files in project root
+
 #### Protobuf Workflow:
-1. Modify `.proto` files in `/proto/gymlog/v1/`
+1. Modify `.proto` files in `/backend/proto/gymlog/v1/`
 2. Run `make generate-proto` to regenerate Go files
-3. Generated files will be placed in `/backend/proto/gymlog/v1/`
+3. Generated files will be placed in the same directory `/backend/proto/gymlog/v1/`
 4. Import in Go code: `pb "gymlog-backend/proto/gymlog/v1"`
 5. Script will verify all files are generated correctly
 

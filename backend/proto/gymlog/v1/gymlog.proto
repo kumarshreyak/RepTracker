@@ -384,6 +384,21 @@ message ExerciseMetrics {
   repeated string secondary_muscles = 10;
 }
 
+message MuscleSpecificMetrics {
+  map<string, double> muscle_group_distribution = 1; // MG Distribution% = (MG Volume / Total Volume) × 100
+  map<string, double> muscle_imbalance_index = 2;    // Imbalance = |Left Side Strength - Right Side Strength| / Average Strength × 100
+  map<string, double> antagonist_ratio = 3;          // Antagonist Ratio = Antagonist Strength / Agonist Strength (e.g., Hamstring/Quad ratio ideal: 0.6-0.8)
+  map<string, double> stimulus_to_fatigue_ratio = 4; // SFR = (Performance Gain / Baseline) / (RPE × Volume)
+}
+
+message WorkCapacityMetrics {
+  double total_work_capacity = 1;       // TWC = Σ(Sets × Reps × Weight × (1 - Rest Time/300))
+  double density_training_index = 2;    // Density = Total Volume / Total Time
+  double density_progress_percent = 3;  // Progress% = (Current Density - Previous Density) / Previous Density × 100
+  double time_under_tension = 4;        // TUT = Σ(Reps × Tempo in seconds)
+  double mechanical_tension_score = 5;  // MTS = Weight × TUT × (RPE/10)
+}
+
 message WorkoutMetrics {
   string id = 1;
   string user_id = 2;
@@ -397,11 +412,13 @@ message WorkoutMetrics {
   ProgressAdaptationMetrics progress_adaptation_metrics = 10;
   RecoveryFatigueMetrics recovery_fatigue_metrics = 11;
   BodyCompositionMetrics body_composition_metrics = 12;
-  SetMetrics set_metrics = 13;
-  repeated ExerciseMetrics exercise_metrics = 14;
-  int32 workout_duration_secs = 15;
-  google.protobuf.Timestamp created_at = 16;
-  google.protobuf.Timestamp updated_at = 17;
+  MuscleSpecificMetrics muscle_specific_metrics = 13;
+  WorkCapacityMetrics work_capacity_metrics = 14;
+  SetMetrics set_metrics = 15;
+  repeated ExerciseMetrics exercise_metrics = 16;
+  int32 workout_duration_secs = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
 }
 
 message PeriodMetrics {

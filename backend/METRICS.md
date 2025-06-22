@@ -164,14 +164,86 @@ The GymLog metrics system automatically calculates comprehensive workout analyti
 - Upper limit for training volume
 - Falls back to 22.5 sets/week equivalent if insufficient data
 
+### Muscle-Specific Metrics
+
+#### 22. Muscle Group Volume Distribution
+**Formula**: `MG Distribution% = (MG Volume / Total Volume) × 100`
+- Percentage contribution of each muscle group to total workout volume
+- Shows training balance across muscle groups
+- Calculated from muscle group volume totals
+- Helps identify muscle group emphasis and potential imbalances
+
+#### 23. Muscle Imbalance Index
+**Formula**: `Imbalance = |Left Side Strength - Right Side Strength| / Average Strength × 100`
+- Percentage strength difference between left and right sides
+- Calculated using estimated 1RM for bilateral exercises
+- Higher values indicate greater imbalances (>15% may need attention)
+- Tracks muscle groups: quadriceps, hamstrings, chest, biceps, triceps
+
+#### 24. Antagonist Ratio
+**Formula**: `Antagonist Ratio = Antagonist Strength / Agonist Strength`
+- Strength ratio between opposing muscle groups
+- **Key ratios**:
+  - Hamstring/Quadriceps: ideal 0.6-0.8
+  - Middle Back/Chest: ideal 0.8-1.2
+  - Biceps/Triceps: ideal 0.8-1.0
+  - Posterior/Anterior Deltoids: ideal 0.8-1.2
+- Values outside ideal ranges may indicate imbalances
+
+#### 25. Stimulus-to-Fatigue Ratio
+**Formula**: `SFR = (Performance Gain / Baseline) / (RPE × Volume)`
+- Efficiency of muscle group training stimulus
+- Higher values indicate better stimulus with less fatigue
+- Calculated per muscle group using volume changes vs previous session
+- Helps optimize training efficiency and recovery
+
+### Work Capacity Metrics
+
+#### 26. Total Work Capacity
+**Formula**: `TWC = Σ(Sets × Reps × Weight × (1 - Rest Time/300))`
+- Accounts for rest periods in work capacity calculation
+- Rest time capped at 300 seconds (5 minutes) for calculation
+- Higher values indicate greater work capacity and conditioning
+- Factors in workout density and rest efficiency
+
+#### 27. Density Training Index
+**Formula**: `Density = Total Volume / Total Time`
+- Volume per unit time (volume/minute)
+- Measures workout efficiency and pace
+- Higher density indicates more volume completed in less time
+- Useful for tracking conditioning improvements
+
+#### 28. Density Progress Percent
+**Formula**: `Progress% = (Current Density - Previous Density) / Previous Density × 100`
+- Percentage change in training density compared to previous session
+- Positive values indicate improved work capacity
+- Tracks conditioning and efficiency improvements over time
+
+#### 29. Time Under Tension (TUT)
+**Formula**: `TUT = Σ(Reps × Tempo in seconds)`
+- Total time muscles spend under load during workout
+- Uses exercise-specific tempo patterns:
+  - **Squat**: 2s eccentric, 1s pause, 1s concentric
+  - **Bench Press**: 2s eccentric, 1s pause, 1s concentric  
+  - **Deadlift**: 2s eccentric, 0s pause, 1s concentric
+  - **Default**: 2s eccentric, 0.5s pause, 1s concentric
+- Indicates muscle stimulation quality and training style
+
+#### 30. Mechanical Tension Score
+**Formula**: `MTS = Weight × TUT × (RPE/10)`
+- Combines load, time under tension, and perceived difficulty
+- Weighted by RPE to account for subjective intensity
+- Higher scores indicate greater mechanical stimulus
+- Useful for tracking hypertrophy-focused training effectiveness
+
 ### Trend Metrics
 
-#### 22. Volume Progression
+#### 31. Volume Progression
 - Historical volume data points over time
 - Tracks workout-to-workout changes
 - Supports weekly and monthly views
 
-#### 23. Volume Growth Rate
+#### 32. Volume Growth Rate
 **Formula**: `(Current Period Volume - Previous Period Volume) / Previous Period Volume × 100`
 - Percentage change in volume between periods
 - Indicates training progression trends
@@ -303,6 +375,21 @@ type PlateauStatus struct {
     WeeksSinceProgress int32   `bson:"weeksSinceProgress" json:"weeksSinceProgress"`
 }
 
+type MuscleSpecificMetrics struct {
+    MuscleGroupDistribution map[string]float64 `bson:"muscleGroupDistribution" json:"muscleGroupDistribution"` // MG Distribution% = (MG Volume / Total Volume) × 100
+    MuscleImbalanceIndex    map[string]float64 `bson:"muscleImbalanceIndex" json:"muscleImbalanceIndex"`       // Imbalance = |Left Side Strength - Right Side Strength| / Average Strength × 100
+    AntagonistRatio         map[string]float64 `bson:"antagonistRatio" json:"antagonistRatio"`                 // Antagonist Ratio = Antagonist Strength / Agonist Strength
+    StimulusToFatigueRatio  map[string]float64 `bson:"stimulusToFatigueRatio" json:"stimulusToFatigueRatio"`   // SFR = (Performance Gain / Baseline) / (RPE × Volume)
+}
+
+type WorkCapacityMetrics struct {
+    TotalWorkCapacity      float64 `bson:"totalWorkCapacity" json:"totalWorkCapacity"`           // TWC = Σ(Sets × Reps × Weight × (1 - Rest Time/300))
+    DensityTrainingIndex   float64 `bson:"densityTrainingIndex" json:"densityTrainingIndex"`     // Density = Total Volume / Total Time
+    DensityProgressPercent float64 `bson:"densityProgressPercent" json:"densityProgressPercent"` // Progress% = (Current Density - Previous Density) / Previous Density × 100
+    TimeUnderTension       float64 `bson:"timeUnderTension" json:"timeUnderTension"`             // TUT = Σ(Reps × Tempo in seconds)
+    MechanicalTensionScore float64 `bson:"mechanicalTensionScore" json:"mechanicalTensionScore"` // MTS = Weight × TUT × (RPE/10)
+}
+
 type WorkoutMetrics struct {
     ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
     UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
@@ -314,6 +401,8 @@ type WorkoutMetrics struct {
     IntensityMetrics          IntensityMetrics          `bson:"intensityMetrics" json:"intensityMetrics"`
     StrengthMetrics           StrengthMetrics           `bson:"strengthMetrics" json:"strengthMetrics"`
     ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
+    MuscleSpecificMetrics     MuscleSpecificMetrics     `bson:"muscleSpecificMetrics" json:"muscleSpecificMetrics"`
+    WorkCapacityMetrics       WorkCapacityMetrics       `bson:"workCapacityMetrics" json:"workCapacityMetrics"`
     SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
     ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
     WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
@@ -489,6 +578,76 @@ var WilksFemaleCoefficients = WilksCoefficients{
 - Adaptation Rate calculated weekly (performance change / volume change)
 - All calculations are per-exercise and resilient to missing data
 
+**Muscle-Specific Metrics Configuration**:
+```go
+// Antagonist muscle group pairs for ratio calculations
+var AntagonistPairs = map[string]string{
+    "quadriceps": "hamstrings",
+    "hamstrings": "quadriceps",
+    "chest":      "middle back",
+    "middle back": "chest",
+    "biceps":     "triceps",
+    "triceps":    "biceps",
+    "anterior deltoids": "posterior deltoids",
+    "posterior deltoids": "anterior deltoids",
+}
+
+// Left-Right muscle pairs for imbalance calculations
+var LeftRightPairs = map[string]string{
+    "left quadriceps":  "right quadriceps",
+    "right quadriceps": "left quadriceps",
+    "left hamstrings":  "right hamstrings",
+    "right hamstrings": "left hamstrings",
+    "left chest":       "right chest",
+    "right chest":      "left chest",
+    "left biceps":      "right biceps",
+    "right biceps":     "left biceps",
+    "left triceps":     "right triceps",
+    "right triceps":    "left triceps",
+}
+```
+
+**Work Capacity Metrics Configuration**:
+```go
+// Default tempo values for exercises (in seconds)
+type ExerciseTempo struct {
+    Eccentric  float64 // Lowering phase
+    Pause1     float64 // Bottom pause
+    Concentric float64 // Lifting phase
+    Pause2     float64 // Top pause
+}
+
+var DefaultExerciseTempos = map[string]ExerciseTempo{
+    "squat": {
+        Eccentric:  2.0,
+        Pause1:     1.0,
+        Concentric: 1.0,
+        Pause2:     0.0,
+    },
+    "bench press": {
+        Eccentric:  2.0,
+        Pause1:     1.0,
+        Concentric: 1.0,
+        Pause2:     0.0,
+    },
+    "deadlift": {
+        Eccentric:  2.0,
+        Pause1:     0.0,
+        Concentric: 1.0,
+        Pause2:     0.0,
+    },
+    "default": {
+        Eccentric:  2.0,
+        Pause1:     0.5,
+        Concentric: 1.0,
+        Pause2:     0.0,
+    },
+}
+
+// Default rest time between sets (in seconds)
+const DefaultRestTime = 180.0 // 3 minutes
+```
+
 ## Usage Examples
 
 ### Frontend Integration
@@ -566,6 +725,34 @@ for exerciseID, sgv := range workoutMetrics.ProgressAdaptationMetrics.StrengthGa
 for exerciseID, adaptationRate := range workoutMetrics.ProgressAdaptationMetrics.AdaptationRate {
     fmt.Printf("Exercise %s - Adaptation Rate: %.2f", exerciseID, adaptationRate)
 }
+
+// Access Muscle-Specific metrics
+fmt.Printf("Muscle Group Distribution:")
+for muscleGroup, percentage := range workoutMetrics.MuscleSpecificMetrics.MuscleGroupDistribution {
+    fmt.Printf("  %s: %.1f%%", muscleGroup, percentage)
+}
+
+fmt.Printf("Muscle Imbalance Indices:")
+for muscleGroup, imbalance := range workoutMetrics.MuscleSpecificMetrics.MuscleImbalanceIndex {
+    fmt.Printf("  %s: %.1f%%", muscleGroup, imbalance)
+}
+
+fmt.Printf("Antagonist Ratios:")
+for pairing, ratio := range workoutMetrics.MuscleSpecificMetrics.AntagonistRatio {
+    fmt.Printf("  %s: %.2f", pairing, ratio)
+}
+
+fmt.Printf("Stimulus-to-Fatigue Ratios:")
+for muscleGroup, sfr := range workoutMetrics.MuscleSpecificMetrics.StimulusToFatigueRatio {
+    fmt.Printf("  %s: %.3f", muscleGroup, sfr)
+}
+
+// Access Work Capacity metrics
+fmt.Printf("Total Work Capacity: %.2f", workoutMetrics.WorkCapacityMetrics.TotalWorkCapacity)
+fmt.Printf("Density Training Index: %.2f volume/min", workoutMetrics.WorkCapacityMetrics.DensityTrainingIndex)
+fmt.Printf("Density Progress: %.1f%%", workoutMetrics.WorkCapacityMetrics.DensityProgressPercent)
+fmt.Printf("Time Under Tension: %.1f seconds", workoutMetrics.WorkCapacityMetrics.TimeUnderTension)
+fmt.Printf("Mechanical Tension Score: %.2f", workoutMetrics.WorkCapacityMetrics.MechanicalTensionScore)
 ```
 
 ### Querying Historical Data
@@ -608,6 +795,11 @@ The metrics system is designed to be resilient:
 3. **Exercise-specific landmarks**: MEV/MAV/MRV per exercise rather than just muscle groups
 4. **Advanced analytics**: Strength curves, volume-load relationships, deload recommendations
 5. **Real-time updates**: WebSocket integration for live metrics updates during workouts
+6. **Enhanced Tempo Tracking**: User-defined tempo patterns per exercise rather than defaults
+7. **Rest Period Tracking**: Actual rest time measurement for more accurate work capacity calculations
+8. **Bilateral Exercise Detection**: Automatic identification of unilateral vs bilateral exercises for imbalance calculations
+9. **Advanced Muscle Mapping**: More detailed muscle group classifications and exercise-muscle relationships
+10. **Fatigue Prediction**: ML-based fatigue prediction using stimulus-to-fatigue ratios and historical data
 
 ## Contributing
 
