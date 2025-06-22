@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -68,11 +69,26 @@ func (m *MetricsService) CalculateWorkoutMetrics(ctx context.Context, session *m
 		return nil, fmt.Errorf("failed to calculate strength metrics: %w", err)
 	}
 
+	metrics.ProgressAdaptationMetrics, err = m.calculateProgressAdaptationMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate progress adaptation metrics: %w", err)
+	}
+
 	metrics.SetMetrics = m.calculateSetMetrics(session)
 
 	metrics.ExerciseMetrics, err = m.calculateExerciseMetrics(ctx, session)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate exercise metrics: %w", err)
+	}
+
+	metrics.RecoveryFatigueMetrics, err = m.calculateRecoveryFatigueMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate recovery fatigue metrics: %w", err)
+	}
+
+	metrics.BodyCompositionMetrics, err = m.calculateBodyCompositionMetrics(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate body composition metrics: %w", err)
 	}
 
 	return metrics, nil
@@ -422,6 +438,327 @@ func (m *MetricsService) getTotalSets(session *models.WorkoutSession) int {
 	return totalSets
 }
 
+func (m *MetricsService) calculateProgressAdaptationMetrics(ctx context.Context, session *models.WorkoutSession) (models.ProgressAdaptationMetrics, error) {
+	progressAdaptationMetrics := models.ProgressAdaptationMetrics{
+		WeekOverWeekProgressRate: make(map[string]float64),
+		PlateauDetection:         make(map[string]models.PlateauStatus),
+		StrengthGainVelocity:     make(map[string]float64),
+		AdaptationRate:           make(map[string]float64),
+	}
+
+	// Calculate Progressive Overload Index
+	poi, err := m.calculateProgressiveOverloadIndex(ctx, session)
+	if err != nil {
+		// Log error but don't fail - set to 0 if calculation fails
+		poi = 0
+	}
+	progressAdaptationMetrics.ProgressiveOverloadIndex = poi
+
+	// Calculate metrics for each exercise
+	for _, exercise := range session.Exercises {
+		exerciseID := exercise.ExerciseID.Hex()
+
+		// Calculate Week-over-Week Progress Rate
+		progressRate, err := m.calculateWeekOverWeekProgressRate(ctx, session.UserID, exerciseID, session.StartedAt)
+		if err == nil {
+			progressAdaptationMetrics.WeekOverWeekProgressRate[exerciseID] = progressRate
+		}
+
+		// Calculate Plateau Detection
+		plateauStatus, err := m.calculatePlateauDetection(ctx, session.UserID, exerciseID, session.StartedAt)
+		if err == nil {
+			progressAdaptationMetrics.PlateauDetection[exerciseID] = plateauStatus
+		}
+
+		// Calculate Strength Gain Velocity
+		sgv, err := m.calculateStrengthGainVelocity(ctx, session.UserID, exerciseID, session.StartedAt)
+		if err == nil {
+			progressAdaptationMetrics.StrengthGainVelocity[exerciseID] = sgv
+		}
+
+		// Calculate Adaptation Rate
+		adaptationRate, err := m.calculateAdaptationRate(ctx, session.UserID, exerciseID, session.StartedAt)
+		if err == nil {
+			progressAdaptationMetrics.AdaptationRate[exerciseID] = adaptationRate
+		}
+	}
+
+	return progressAdaptationMetrics, nil
+}
+
+// calculateProgressiveOverloadIndex calculates POI = (Current Week Volume × Avg Intensity) / (Previous Week Volume × Avg Intensity)
+func (m *MetricsService) calculateProgressiveOverloadIndex(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	now := session.StartedAt
+	currentWeekStart := now.AddDate(0, 0, -int(now.Weekday()))
+	previousWeekStart := currentWeekStart.AddDate(0, 0, -7)
+	previousWeekEnd := currentWeekStart.AddDate(0, 0, -1)
+
+	// Get current week metrics
+	currentWeekMetrics, err := m.calculatePeriodMetrics(ctx, session.UserID, currentWeekStart, now)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get previous week metrics
+	previousWeekMetrics, err := m.calculatePeriodMetrics(ctx, session.UserID, previousWeekStart, previousWeekEnd)
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate average intensity for both weeks (simplified - using total volume as proxy)
+	currentWeekVolumeIntensity := currentWeekMetrics.TotalVolumeLoad
+	previousWeekVolumeIntensity := previousWeekMetrics.TotalVolumeLoad
+
+	if previousWeekVolumeIntensity == 0 {
+		return 0, nil // No previous week data
+	}
+
+	poi := currentWeekVolumeIntensity / previousWeekVolumeIntensity
+	return poi, nil
+}
+
+// calculateWeekOverWeekProgressRate calculates Progress Rate = (Current 1RM - Previous 1RM) / Previous 1RM × 100
+func (m *MetricsService) calculateWeekOverWeekProgressRate(ctx context.Context, userID primitive.ObjectID, exerciseID string, currentDate time.Time) (float64, error) {
+	// Get current week's best 1RM for this exercise
+	currentWeekStart := currentDate.AddDate(0, 0, -int(currentDate.Weekday()))
+	currentOneRM, err := m.getBestOneRMForPeriod(ctx, userID, exerciseID, currentWeekStart, currentDate)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get previous week's best 1RM for this exercise
+	previousWeekStart := currentWeekStart.AddDate(0, 0, -7)
+	previousWeekEnd := currentWeekStart.AddDate(0, 0, -1)
+	previousOneRM, err := m.getBestOneRMForPeriod(ctx, userID, exerciseID, previousWeekStart, previousWeekEnd)
+	if err != nil {
+		return 0, err
+	}
+
+	if previousOneRM == 0 {
+		return 0, nil // No previous week data
+	}
+
+	progressRate := ((currentOneRM - previousOneRM) / previousOneRM) * 100
+	return progressRate, nil
+}
+
+// calculatePlateauDetection detects if Progress Rate < 1% for 3+ consecutive weeks
+func (m *MetricsService) calculatePlateauDetection(ctx context.Context, userID primitive.ObjectID, exerciseID string, currentDate time.Time) (models.PlateauStatus, error) {
+	plateauStatus := models.PlateauStatus{}
+
+	// Get progress rates for the last 4 weeks
+	var progressRates []float64
+	for i := 0; i < 4; i++ {
+		weekStart := currentDate.AddDate(0, 0, -int(currentDate.Weekday())-(i*7))
+		weekEnd := weekStart.AddDate(0, 0, 6)
+
+		if i == 0 {
+			// Current week
+			progressRate, err := m.calculateWeekOverWeekProgressRate(ctx, userID, exerciseID, currentDate)
+			if err == nil {
+				progressRates = append(progressRates, progressRate)
+			}
+		} else {
+			// Previous weeks
+			progressRate, err := m.calculateWeekOverWeekProgressRate(ctx, userID, exerciseID, weekEnd)
+			if err == nil {
+				progressRates = append(progressRates, progressRate)
+			}
+		}
+	}
+
+	if len(progressRates) == 0 {
+		return plateauStatus, nil
+	}
+
+	plateauStatus.LastProgressRate = progressRates[0]
+
+	// Count consecutive weeks with <1% progress
+	consecutiveWeeks := int32(0)
+	for _, rate := range progressRates {
+		if rate < 1.0 {
+			consecutiveWeeks++
+		} else {
+			break
+		}
+	}
+
+	plateauStatus.ConsecutiveWeeks = consecutiveWeeks
+	plateauStatus.IsPlateaued = consecutiveWeeks >= 3
+
+	// Count weeks since last significant progress (>=1%)
+	weeksSinceProgress := int32(0)
+	for _, rate := range progressRates {
+		if rate >= 1.0 {
+			break
+		}
+		weeksSinceProgress++
+	}
+	plateauStatus.WeeksSinceProgress = weeksSinceProgress
+
+	return plateauStatus, nil
+}
+
+// calculateStrengthGainVelocity calculates SGV = (Current 1RM - Initial 1RM) / Training Weeks
+func (m *MetricsService) calculateStrengthGainVelocity(ctx context.Context, userID primitive.ObjectID, exerciseID string, currentDate time.Time) (float64, error) {
+	// Get the earliest workout with this exercise (initial 1RM)
+	initialOneRM, initialDate, err := m.getInitialOneRM(ctx, userID, exerciseID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get current best 1RM
+	currentOneRM, err := m.getBestOneRMForPeriod(ctx, userID, exerciseID, time.Time{}, currentDate)
+	if err != nil {
+		return 0, err
+	}
+
+	if initialOneRM == 0 {
+		return 0, nil // No initial data
+	}
+
+	// Calculate training weeks
+	trainingWeeks := currentDate.Sub(initialDate).Hours() / (24 * 7) // Convert to weeks
+	if trainingWeeks <= 0 {
+		return 0, nil
+	}
+
+	sgv := (currentOneRM - initialOneRM) / trainingWeeks
+	return sgv, nil
+}
+
+// calculateAdaptationRate calculates Adaptation Rate = Δ Performance / Δ Volume
+func (m *MetricsService) calculateAdaptationRate(ctx context.Context, userID primitive.ObjectID, exerciseID string, currentDate time.Time) (float64, error) {
+	// Get current week's volume and 1RM for this exercise
+	currentWeekStart := currentDate.AddDate(0, 0, -int(currentDate.Weekday()))
+	currentVolume, err := m.getExerciseVolumeForPeriod(ctx, userID, exerciseID, currentWeekStart, currentDate)
+	if err != nil {
+		return 0, err
+	}
+	currentOneRM, err := m.getBestOneRMForPeriod(ctx, userID, exerciseID, currentWeekStart, currentDate)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get previous week's volume and 1RM for this exercise
+	previousWeekStart := currentWeekStart.AddDate(0, 0, -7)
+	previousWeekEnd := currentWeekStart.AddDate(0, 0, -1)
+	previousVolume, err := m.getExerciseVolumeForPeriod(ctx, userID, exerciseID, previousWeekStart, previousWeekEnd)
+	if err != nil {
+		return 0, err
+	}
+	previousOneRM, err := m.getBestOneRMForPeriod(ctx, userID, exerciseID, previousWeekStart, previousWeekEnd)
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate deltas
+	deltaPerformance := currentOneRM - previousOneRM
+	deltaVolume := currentVolume - previousVolume
+
+	if deltaVolume == 0 {
+		return 0, nil // No volume change
+	}
+
+	adaptationRate := deltaPerformance / deltaVolume
+	return adaptationRate, nil
+}
+
+// Helper methods for Progress & Adaptation metrics
+
+// getBestOneRMForPeriod gets the best estimated 1RM for an exercise in a given period
+func (m *MetricsService) getBestOneRMForPeriod(ctx context.Context, userID primitive.ObjectID, exerciseID string, startDate, endDate time.Time) (float64, error) {
+	filter := bson.M{
+		"userId": userID,
+	}
+
+	if !startDate.IsZero() {
+		filter["date"] = bson.M{"$gte": startDate, "$lte": endDate}
+	} else {
+		filter["date"] = bson.M{"$lte": endDate}
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", -1}}))
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var bestOneRM float64
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+
+		if oneRM, exists := metrics.StrengthMetrics.EstimatedOneRMEpley[exerciseID]; exists {
+			if oneRM > bestOneRM {
+				bestOneRM = oneRM
+			}
+		}
+	}
+
+	return bestOneRM, nil
+}
+
+// getInitialOneRM gets the first recorded 1RM for an exercise
+func (m *MetricsService) getInitialOneRM(ctx context.Context, userID primitive.ObjectID, exerciseID string) (float64, time.Time, error) {
+	filter := bson.M{
+		"userId": userID,
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+
+		if oneRM, exists := metrics.StrengthMetrics.EstimatedOneRMEpley[exerciseID]; exists && oneRM > 0 {
+			return oneRM, metrics.Date, nil
+		}
+	}
+
+	return 0, time.Time{}, fmt.Errorf("no initial 1RM found for exercise %s", exerciseID)
+}
+
+// getExerciseVolumeForPeriod gets the total volume for a specific exercise in a given period
+func (m *MetricsService) getExerciseVolumeForPeriod(ctx context.Context, userID primitive.ObjectID, exerciseID string, startDate, endDate time.Time) (float64, error) {
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": startDate, "$lte": endDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var totalVolume float64
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+
+		// Find the specific exercise in the workout metrics
+		for _, exerciseMetric := range metrics.ExerciseMetrics {
+			if exerciseMetric.ExerciseID.Hex() == exerciseID {
+				totalVolume += exerciseMetric.VolumeLoad
+				break
+			}
+		}
+	}
+
+	return totalVolume, nil
+}
+
 func (m *MetricsService) calculateSetMetrics(session *models.WorkoutSession) models.SetMetrics {
 	var totalSets, completedSets int32
 
@@ -500,6 +837,345 @@ func (m *MetricsService) calculateExerciseMetrics(ctx context.Context, session *
 	}
 
 	return exerciseMetrics, nil
+}
+
+func (m *MetricsService) calculateRecoveryFatigueMetrics(ctx context.Context, session *models.WorkoutSession) (models.RecoveryFatigueMetrics, error) {
+	// Calculate acute and chronic workloads
+	acuteWorkload, err := m.calculateAcuteWorkload(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		return models.RecoveryFatigueMetrics{}, err
+	}
+
+	chronicWorkload, err := m.calculateChronicWorkload(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		return models.RecoveryFatigueMetrics{}, err
+	}
+
+	// Calculate ACWR (Acute:Chronic Workload Ratio)
+	var acwr float64
+	if chronicWorkload > 0 {
+		acwr = acuteWorkload / chronicWorkload
+	}
+
+	// Calculate current session volume and intensity for TSS
+	volumeMetrics, err := m.calculateVolumeMetrics(ctx, session)
+	if err != nil {
+		return models.RecoveryFatigueMetrics{}, err
+	}
+
+	intensityMetrics, err := m.calculateIntensityMetrics(ctx, session)
+	if err != nil {
+		return models.RecoveryFatigueMetrics{}, err
+	}
+
+	// Calculate Training Strain Score (TSS)
+	tss := (volumeMetrics.TotalVolumeLoad * intensityMetrics.AverageIntensity * float64(session.RPERating)) / 1000.0
+
+	// Calculate Recovery Need Index (RNI)
+	hoursSinceLastSession, err := m.getHoursSinceLastSession(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		hoursSinceLastSession = 24.0 // Default to 24 hours if can't determine
+	}
+
+	var rni float64
+	if hoursSinceLastSession > 0 {
+		rni = (volumeMetrics.TotalVolumeLoad * intensityMetrics.AverageIntensity * float64(session.RPERating)) / (hoursSinceLastSession * 10.0)
+	}
+
+	// Calculate Recovery Score (simplified - using defaults from user profile)
+	profile := models.DefaultProfile
+	recoveryScore := hoursSinceLastSession * profile.SleepQuality * profile.NutritionFactor
+
+	// Calculate Fatigue Accumulation Index (FAI)
+	dailyTSS, err := m.calculateDailyTSS(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		dailyTSS = tss // Use current session TSS if historical data unavailable
+	}
+
+	dailyRecoveryScore, err := m.calculateDailyRecoveryScore(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		dailyRecoveryScore = recoveryScore // Use current recovery score if historical data unavailable
+	}
+
+	fai := dailyTSS - dailyRecoveryScore
+
+	// Calculate Overtraining Risk Score (OTS)
+	rpeTrend, err := m.calculateRPETrend(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		rpeTrend = 1.0 // Neutral trend if can't calculate
+	}
+
+	performanceDecline, err := m.calculatePerformanceDecline(ctx, session.UserID, session.StartedAt)
+	if err != nil {
+		performanceDecline = 1.0 // No decline if can't calculate
+	}
+
+	recoveryQuality := (profile.SleepQuality + profile.NutritionFactor) / 2.0 // Average of sleep and nutrition
+	var ots float64
+	if recoveryQuality > 0 {
+		ots = (acwr * rpeTrend * performanceDecline) / recoveryQuality
+	}
+
+	return models.RecoveryFatigueMetrics{
+		AcuteChronicWorkloadRatio: acwr,
+		TrainingStrainScore:       tss,
+		RecoveryNeedIndex:         rni,
+		FatigueAccumulationIndex:  fai,
+		OvertrainingRiskScore:     ots,
+		RecoveryScore:             recoveryScore,
+	}, nil
+}
+
+func (m *MetricsService) calculateBodyCompositionMetrics(ctx context.Context, session *models.WorkoutSession) (models.BodyCompositionMetrics, error) {
+	// Use default profile values (TODO: get from user profile when available)
+	profile := models.DefaultProfile
+
+	// Calculate BMI
+	bmi := profile.BodyWeight / (profile.Height * profile.Height)
+
+	// Calculate Strength-to-Weight Ratio (Big 3 lifts)
+	big3Total, err := m.calculateBig3Total(ctx, session)
+	if err != nil {
+		return models.BodyCompositionMetrics{}, err
+	}
+
+	strengthToWeightRatio := big3Total / profile.BodyWeight
+
+	// Calculate Allometric Scaling Score (using heaviest lift from session)
+	maxWeight := m.getMaxWeightFromSession(session)
+	allometricScalingScore := maxWeight / math.Pow(profile.BodyWeight, 2.0/3.0)
+
+	// Calculate Ponderal Index
+	ponderalIndex := profile.BodyWeight / (profile.Height * profile.Height * profile.Height)
+
+	return models.BodyCompositionMetrics{
+		BMI:                    bmi,
+		StrengthToWeightRatio:  strengthToWeightRatio,
+		AllometricScalingScore: allometricScalingScore,
+		PonderalIndex:          ponderalIndex,
+	}, nil
+}
+
+// Helper methods for Recovery & Fatigue Metrics
+
+func (m *MetricsService) calculateAcuteWorkload(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Get workouts from last 7 days
+	sevenDaysAgo := currentDate.AddDate(0, 0, -7)
+	return m.getWorkloadForPeriod(ctx, userID, sevenDaysAgo, currentDate)
+}
+
+func (m *MetricsService) calculateChronicWorkload(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Get workouts from last 28 days
+	twentyEightDaysAgo := currentDate.AddDate(0, 0, -28)
+	return m.getWorkloadForPeriod(ctx, userID, twentyEightDaysAgo, currentDate)
+}
+
+func (m *MetricsService) getWorkloadForPeriod(ctx context.Context, userID primitive.ObjectID, startDate, endDate time.Time) (float64, error) {
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": startDate, "$lte": endDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var totalWorkload float64
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+		// Use TSS as workload measure
+		totalWorkload += metrics.RecoveryFatigueMetrics.TrainingStrainScore
+	}
+
+	return totalWorkload, nil
+}
+
+func (m *MetricsService) getHoursSinceLastSession(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$lt": currentDate},
+	}
+
+	opts := options.FindOne().SetSort(bson.D{{"date", -1}})
+	var lastMetrics models.WorkoutMetrics
+	err := m.metricsColl.FindOne(ctx, filter, opts).Decode(&lastMetrics)
+	if err == mongo.ErrNoDocuments {
+		return 24.0, nil // Default to 24 hours if no previous session
+	} else if err != nil {
+		return 0, err
+	}
+
+	duration := currentDate.Sub(lastMetrics.Date)
+	return duration.Hours(), nil
+}
+
+func (m *MetricsService) calculateDailyTSS(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Get TSS for the current day
+	startOfDay := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(), 0, 0, 0, 0, currentDate.Location())
+	endOfDay := startOfDay.AddDate(0, 0, 1)
+
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": startOfDay, "$lt": endOfDay},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var totalTSS float64
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+		totalTSS += metrics.RecoveryFatigueMetrics.TrainingStrainScore
+	}
+
+	return totalTSS, nil
+}
+
+func (m *MetricsService) calculateDailyRecoveryScore(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Simplified: return a default recovery score based on time since last session
+	hoursSinceLastSession, err := m.getHoursSinceLastSession(ctx, userID, currentDate)
+	if err != nil {
+		return 0, err
+	}
+
+	profile := models.DefaultProfile
+	return hoursSinceLastSession * profile.SleepQuality * profile.NutritionFactor, nil
+}
+
+func (m *MetricsService) calculateRPETrend(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Get RPE values from last 7 days
+	sevenDaysAgo := currentDate.AddDate(0, 0, -7)
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": sevenDaysAgo, "$lte": currentDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return 1.0, err
+	}
+	defer cursor.Close(ctx)
+
+	var rpeValues []float64
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+		rpeValues = append(rpeValues, metrics.PerformanceMetrics.AverageRPE)
+	}
+
+	if len(rpeValues) < 2 {
+		return 1.0, nil // Neutral trend if insufficient data
+	}
+
+	// Calculate simple trend (last value / first value)
+	return rpeValues[len(rpeValues)-1] / rpeValues[0], nil
+}
+
+func (m *MetricsService) calculatePerformanceDecline(ctx context.Context, userID primitive.ObjectID, currentDate time.Time) (float64, error) {
+	// Get volume metrics from last 14 days to assess performance decline
+	fourteenDaysAgo := currentDate.AddDate(0, 0, -14)
+	filter := bson.M{
+		"userId": userID,
+		"date":   bson.M{"$gte": fourteenDaysAgo, "$lte": currentDate},
+	}
+
+	cursor, err := m.metricsColl.Find(ctx, filter, options.Find().SetSort(bson.D{{"date", 1}}))
+	if err != nil {
+		return 1.0, err
+	}
+	defer cursor.Close(ctx)
+
+	var volumeValues []float64
+	for cursor.Next(ctx) {
+		var metrics models.WorkoutMetrics
+		if err := cursor.Decode(&metrics); err != nil {
+			continue
+		}
+		volumeValues = append(volumeValues, metrics.VolumeMetrics.TotalVolumeLoad)
+	}
+
+	if len(volumeValues) < 2 {
+		return 1.0, nil // No decline if insufficient data
+	}
+
+	// Calculate performance decline (higher values indicate more decline)
+	recentAvg := average(volumeValues[len(volumeValues)/2:])
+	earlierAvg := average(volumeValues[:len(volumeValues)/2])
+
+	if earlierAvg == 0 {
+		return 1.0, nil
+	}
+
+	decline := earlierAvg / recentAvg // Values > 1.0 indicate decline
+	return decline, nil
+}
+
+// Helper methods for Body Composition Metrics
+
+func (m *MetricsService) calculateBig3Total(ctx context.Context, session *models.WorkoutSession) (float64, error) {
+	var big3Total float64
+
+	for _, exercise := range session.Exercises {
+		exerciseDetails, err := m.exerciseService.GetExercise(ctx, &pb.GetExerciseRequest{Id: exercise.ExerciseID.Hex()})
+		if err != nil {
+			continue
+		}
+
+		// Check if this is a Big 3 exercise (case-insensitive)
+		exerciseName := strings.ToLower(exerciseDetails.Name)
+		isBig3 := false
+		for big3Exercise := range models.Big3Exercises {
+			if strings.Contains(exerciseName, big3Exercise) {
+				isBig3 = true
+				break
+			}
+		}
+
+		if isBig3 {
+			// Get the heaviest weight lifted for this exercise
+			var maxWeight float64
+			var maxReps int32
+			for _, set := range exercise.Sets {
+				if set.Completed && float64(set.ActualWeight) > maxWeight {
+					maxWeight = float64(set.ActualWeight)
+					maxReps = set.ActualReps
+				}
+			}
+
+			// Calculate 1RM for this exercise and add to Big 3 total
+			if maxWeight > 0 {
+				oneRM := m.calculateOneRM(maxWeight, maxReps)
+				big3Total += oneRM
+			}
+		}
+	}
+
+	return big3Total, nil
+}
+
+func (m *MetricsService) getMaxWeightFromSession(session *models.WorkoutSession) float64 {
+	var maxWeight float64
+	for _, exercise := range session.Exercises {
+		for _, set := range exercise.Sets {
+			if set.Completed && float64(set.ActualWeight) > maxWeight {
+				maxWeight = float64(set.ActualWeight)
+			}
+		}
+	}
+	return maxWeight
 }
 
 func (m *MetricsService) SaveWorkoutMetrics(ctx context.Context, metrics *models.WorkoutMetrics) error {
@@ -919,20 +1595,23 @@ func (m *MetricsService) workoutMetricsToProto(workoutMetrics *models.WorkoutMet
 	}
 
 	return &pb.WorkoutMetrics{
-		Id:                  workoutMetrics.ID.Hex(),
-		UserId:              workoutMetrics.UserID.Hex(),
-		SessionId:           workoutMetrics.SessionID.Hex(),
-		RoutineId:           workoutMetrics.RoutineID.Hex(),
-		Date:                timestamppb.New(workoutMetrics.Date),
-		VolumeMetrics:       m.volumeMetricsToProto(&workoutMetrics.VolumeMetrics),
-		PerformanceMetrics:  m.performanceMetricsToProto(&workoutMetrics.PerformanceMetrics),
-		IntensityMetrics:    m.intensityMetricsToProto(&workoutMetrics.IntensityMetrics),
-		StrengthMetrics:     m.strengthMetricsToProto(&workoutMetrics.StrengthMetrics),
-		SetMetrics:          m.setMetricsToProto(&workoutMetrics.SetMetrics),
-		ExerciseMetrics:     exerciseMetrics,
-		WorkoutDurationSecs: workoutMetrics.WorkoutDurationSecs,
-		CreatedAt:           timestamppb.New(workoutMetrics.CreatedAt),
-		UpdatedAt:           timestamppb.New(workoutMetrics.UpdatedAt),
+		Id:                        workoutMetrics.ID.Hex(),
+		UserId:                    workoutMetrics.UserID.Hex(),
+		SessionId:                 workoutMetrics.SessionID.Hex(),
+		RoutineId:                 workoutMetrics.RoutineID.Hex(),
+		Date:                      timestamppb.New(workoutMetrics.Date),
+		VolumeMetrics:             m.volumeMetricsToProto(&workoutMetrics.VolumeMetrics),
+		PerformanceMetrics:        m.performanceMetricsToProto(&workoutMetrics.PerformanceMetrics),
+		IntensityMetrics:          m.intensityMetricsToProto(&workoutMetrics.IntensityMetrics),
+		StrengthMetrics:           m.strengthMetricsToProto(&workoutMetrics.StrengthMetrics),
+		ProgressAdaptationMetrics: m.progressAdaptationMetricsToProto(&workoutMetrics.ProgressAdaptationMetrics),
+		RecoveryFatigueMetrics:    m.recoveryFatigueMetricsToProto(&workoutMetrics.RecoveryFatigueMetrics),
+		BodyCompositionMetrics:    m.bodyCompositionMetricsToProto(&workoutMetrics.BodyCompositionMetrics),
+		SetMetrics:                m.setMetricsToProto(&workoutMetrics.SetMetrics),
+		ExerciseMetrics:           exerciseMetrics,
+		WorkoutDurationSecs:       workoutMetrics.WorkoutDurationSecs,
+		CreatedAt:                 timestamppb.New(workoutMetrics.CreatedAt),
+		UpdatedAt:                 timestamppb.New(workoutMetrics.UpdatedAt),
 	}
 }
 
@@ -1004,5 +1683,45 @@ func (m *MetricsService) trendMetricsToProto(tm *models.TrendMetrics) *pb.TrendM
 		VolumeGrowthRate:  tm.VolumeGrowthRate,
 		MuscleGroupTrends: muscleGroupTrends,
 		PerformanceTrends: tm.PerformanceTrends,
+	}
+}
+
+func (m *MetricsService) progressAdaptationMetricsToProto(pam *models.ProgressAdaptationMetrics) *pb.ProgressAdaptationMetrics {
+	plateauDetection := make(map[string]*pb.PlateauStatus)
+	for exerciseID, status := range pam.PlateauDetection {
+		plateauDetection[exerciseID] = &pb.PlateauStatus{
+			IsPlateaued:        status.IsPlateaued,
+			ConsecutiveWeeks:   status.ConsecutiveWeeks,
+			LastProgressRate:   status.LastProgressRate,
+			WeeksSinceProgress: status.WeeksSinceProgress,
+		}
+	}
+
+	return &pb.ProgressAdaptationMetrics{
+		ProgressiveOverloadIndex: pam.ProgressiveOverloadIndex,
+		WeekOverWeekProgressRate: pam.WeekOverWeekProgressRate,
+		PlateauDetection:         plateauDetection,
+		StrengthGainVelocity:     pam.StrengthGainVelocity,
+		AdaptationRate:           pam.AdaptationRate,
+	}
+}
+
+func (m *MetricsService) recoveryFatigueMetricsToProto(rfm *models.RecoveryFatigueMetrics) *pb.RecoveryFatigueMetrics {
+	return &pb.RecoveryFatigueMetrics{
+		AcuteChronicWorkloadRatio: rfm.AcuteChronicWorkloadRatio,
+		TrainingStrainScore:       rfm.TrainingStrainScore,
+		RecoveryNeedIndex:         rfm.RecoveryNeedIndex,
+		FatigueAccumulationIndex:  rfm.FatigueAccumulationIndex,
+		OvertrainingRiskScore:     rfm.OvertrainingRiskScore,
+		RecoveryScore:             rfm.RecoveryScore,
+	}
+}
+
+func (m *MetricsService) bodyCompositionMetricsToProto(bcm *models.BodyCompositionMetrics) *pb.BodyCompositionMetrics {
+	return &pb.BodyCompositionMetrics{
+		Bmi:                    bcm.BMI,
+		StrengthToWeightRatio:  bcm.StrengthToWeightRatio,
+		AllometricScalingScore: bcm.AllometricScalingScore,
+		PonderalIndex:          bcm.PonderalIndex,
 	}
 }

@@ -37,6 +37,21 @@ type StrengthMetrics struct {
 	PowerOutput           float64            `bson:"powerOutput" json:"powerOutput"`                     // (Weight × Distance × Reps) / Time
 }
 
+type ProgressAdaptationMetrics struct {
+	ProgressiveOverloadIndex float64                  `bson:"progressiveOverloadIndex" json:"progressiveOverloadIndex"` // POI = (Current Week Volume × Avg Intensity) / (Previous Week Volume × Avg Intensity)
+	WeekOverWeekProgressRate map[string]float64       `bson:"weekOverWeekProgressRate" json:"weekOverWeekProgressRate"` // Exercise ID -> Progress Rate = (Current 1RM - Previous 1RM) / Previous 1RM × 100
+	PlateauDetection         map[string]PlateauStatus `bson:"plateauDetection" json:"plateauDetection"`                 // Exercise ID -> Plateau status
+	StrengthGainVelocity     map[string]float64       `bson:"strengthGainVelocity" json:"strengthGainVelocity"`         // Exercise ID -> SGV = (Current 1RM - Initial 1RM) / Training Weeks
+	AdaptationRate           map[string]float64       `bson:"adaptationRate" json:"adaptationRate"`                     // Exercise ID -> Adaptation Rate = Δ Performance / Δ Volume
+}
+
+type PlateauStatus struct {
+	IsPlateaued        bool    `bson:"isPlateaued" json:"isPlateaued"`               // True if Progress Rate < 1% for 3+ consecutive weeks
+	ConsecutiveWeeks   int32   `bson:"consecutiveWeeks" json:"consecutiveWeeks"`     // Number of consecutive weeks with <1% progress
+	LastProgressRate   float64 `bson:"lastProgressRate" json:"lastProgressRate"`     // Most recent progress rate
+	WeeksSinceProgress int32   `bson:"weeksSinceProgress" json:"weeksSinceProgress"` // Weeks since last significant progress
+}
+
 type SetMetrics struct {
 	TotalSets      int32   `bson:"totalSets" json:"totalSets"`
 	CompletedSets  int32   `bson:"completedSets" json:"completedSets"`
@@ -57,20 +72,23 @@ type ExerciseMetrics struct {
 }
 
 type WorkoutMetrics struct {
-	ID                  primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID              primitive.ObjectID `bson:"userId" json:"userId"`
-	SessionID           primitive.ObjectID `bson:"sessionId" json:"sessionId"`
-	RoutineID           primitive.ObjectID `bson:"routineId" json:"routineId"`
-	Date                time.Time          `bson:"date" json:"date"`
-	VolumeMetrics       VolumeMetrics      `bson:"volumeMetrics" json:"volumeMetrics"`
-	PerformanceMetrics  PerformanceMetrics `bson:"performanceMetrics" json:"performanceMetrics"`
-	IntensityMetrics    IntensityMetrics   `bson:"intensityMetrics" json:"intensityMetrics"`
-	StrengthMetrics     StrengthMetrics    `bson:"strengthMetrics" json:"strengthMetrics"`
-	SetMetrics          SetMetrics         `bson:"setMetrics" json:"setMetrics"`
-	ExerciseMetrics     []ExerciseMetrics  `bson:"exerciseMetrics" json:"exerciseMetrics"`
-	WorkoutDurationSecs int32              `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
-	CreatedAt           time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt           time.Time          `bson:"updatedAt" json:"updatedAt"`
+	ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
+	UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
+	SessionID                 primitive.ObjectID        `bson:"sessionId" json:"sessionId"`
+	RoutineID                 primitive.ObjectID        `bson:"routineId" json:"routineId"`
+	Date                      time.Time                 `bson:"date" json:"date"`
+	VolumeMetrics             VolumeMetrics             `bson:"volumeMetrics" json:"volumeMetrics"`
+	PerformanceMetrics        PerformanceMetrics        `bson:"performanceMetrics" json:"performanceMetrics"`
+	IntensityMetrics          IntensityMetrics          `bson:"intensityMetrics" json:"intensityMetrics"`
+	StrengthMetrics           StrengthMetrics           `bson:"strengthMetrics" json:"strengthMetrics"`
+	ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
+	RecoveryFatigueMetrics    RecoveryFatigueMetrics    `bson:"recoveryFatigueMetrics" json:"recoveryFatigueMetrics"`
+	BodyCompositionMetrics    BodyCompositionMetrics    `bson:"bodyCompositionMetrics" json:"bodyCompositionMetrics"`
+	SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
+	ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
+	WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
+	CreatedAt                 time.Time                 `bson:"createdAt" json:"createdAt"`
+	UpdatedAt                 time.Time                 `bson:"updatedAt" json:"updatedAt"`
 }
 
 type PeriodMetrics struct {
@@ -161,4 +179,46 @@ var WilksFemaleCoefficients = WilksCoefficients{
 	D: -0.00930733913,
 	E: 4.731582e-05,
 	F: -9.054e-08,
+}
+
+// Recovery & Fatigue Metrics
+type RecoveryFatigueMetrics struct {
+	AcuteChronicWorkloadRatio float64 `bson:"acuteChronicWorkloadRatio" json:"acuteChronicWorkloadRatio"` // ACWR = Acute Load (7 days) / Chronic Load (28 days), optimal: 0.8-1.3
+	TrainingStrainScore       float64 `bson:"trainingStrainScore" json:"trainingStrainScore"`             // TSS = (Volume × Intensity × RPE) / 1000
+	RecoveryNeedIndex         float64 `bson:"recoveryNeedIndex" json:"recoveryNeedIndex"`                 // RNI = (Volume × Intensity% × RPE) / (Hours Since Last Session × 10)
+	FatigueAccumulationIndex  float64 `bson:"fatigueAccumulationIndex" json:"fatigueAccumulationIndex"`   // FAI = Σ(Daily TSS) - Σ(Daily Recovery Score)
+	OvertrainingRiskScore     float64 `bson:"overtrainingRiskScore" json:"overtrainingRiskScore"`         // OTS = (ACWR × RPE Trend × Performance Decline) / Recovery Quality, high risk if > 2.0
+	RecoveryScore             float64 `bson:"recoveryScore" json:"recoveryScore"`                         // Recovery Score = Hours Rest × Sleep Quality × Nutrition Factor
+}
+
+// Body Composition & Anthropometric Metrics
+type BodyCompositionMetrics struct {
+	BMI                    float64 `bson:"bmi" json:"bmi"`                                       // BMI = Weight (kg) / Height (m)²
+	StrengthToWeightRatio  float64 `bson:"strengthToWeightRatio" json:"strengthToWeightRatio"`   // SWR = Total of Big 3 Lifts / Body Weight
+	AllometricScalingScore float64 `bson:"allometricScalingScore" json:"allometricScalingScore"` // Scaled Strength = Lift Weight / Body Weight^(2/3)
+	PonderalIndex          float64 `bson:"ponderalIndex" json:"ponderalIndex"`                   // PI = Weight (kg) / Height (m)³
+}
+
+// Default values for body composition calculations when user profile data is not available
+type DefaultUserProfile struct {
+	BodyWeight      float64 // kg
+	Height          float64 // meters
+	IsMale          bool
+	SleepQuality    float64 // 1.0-10.0 scale
+	NutritionFactor float64 // 1.0-10.0 scale
+}
+
+var DefaultProfile = DefaultUserProfile{
+	BodyWeight:      75.0, // 75kg default
+	Height:          1.75, // 1.75m default (175cm)
+	IsMale:          true,
+	SleepQuality:    7.0, // Good sleep quality
+	NutritionFactor: 7.0, // Good nutrition
+}
+
+// Big 3 lifts for strength-to-weight ratio calculation
+var Big3Exercises = map[string]bool{
+	"squat":    true,
+	"bench":    true,
+	"deadlift": true,
 }

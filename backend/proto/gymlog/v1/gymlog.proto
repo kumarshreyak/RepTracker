@@ -5,7 +5,7 @@ package gymlog.v1;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-option go_package = "proto/gymlog/v1";
+option go_package = "gymlog-backend/proto/gymlog/v1";
 
 // User related messages
 message User {
@@ -334,6 +334,37 @@ message StrengthMetrics {
   double power_output = 5;                          // (Weight × Distance × Reps) / Time
 }
 
+message PlateauStatus {
+  bool is_plateaued = 1;           // True if Progress Rate < 1% for 3+ consecutive weeks
+  int32 consecutive_weeks = 2;     // Number of consecutive weeks with <1% progress
+  double last_progress_rate = 3;   // Most recent progress rate
+  int32 weeks_since_progress = 4;  // Weeks since last significant progress
+}
+
+message ProgressAdaptationMetrics {
+  double progressive_overload_index = 1;                // POI = (Current Week Volume × Avg Intensity) / (Previous Week Volume × Avg Intensity)
+  map<string, double> week_over_week_progress_rate = 2; // Exercise ID -> Progress Rate = (Current 1RM - Previous 1RM) / Previous 1RM × 100
+  map<string, PlateauStatus> plateau_detection = 3;    // Exercise ID -> Plateau status
+  map<string, double> strength_gain_velocity = 4;      // Exercise ID -> SGV = (Current 1RM - Initial 1RM) / Training Weeks
+  map<string, double> adaptation_rate = 5;             // Exercise ID -> Adaptation Rate = Δ Performance / Δ Volume
+}
+
+message RecoveryFatigueMetrics {
+  double acute_chronic_workload_ratio = 1; // ACWR = Acute Load (7 days) / Chronic Load (28 days), optimal: 0.8-1.3
+  double training_strain_score = 2;        // TSS = (Volume × Intensity × RPE) / 1000
+  double recovery_need_index = 3;          // RNI = (Volume × Intensity% × RPE) / (Hours Since Last Session × 10)
+  double fatigue_accumulation_index = 4;   // FAI = Σ(Daily TSS) - Σ(Daily Recovery Score)
+  double overtraining_risk_score = 5;      // OTS = (ACWR × RPE Trend × Performance Decline) / Recovery Quality, high risk if > 2.0
+  double recovery_score = 6;               // Recovery Score = Hours Rest × Sleep Quality × Nutrition Factor
+}
+
+message BodyCompositionMetrics {
+  double bmi = 1;                      // BMI = Weight (kg) / Height (m)²
+  double strength_to_weight_ratio = 2; // SWR = Total of Big 3 Lifts / Body Weight
+  double allometric_scaling_score = 3; // Scaled Strength = Lift Weight / Body Weight^(2/3)
+  double ponderal_index = 4;           // PI = Weight (kg) / Height (m)³
+}
+
 message SetMetrics {
   int32 total_sets = 1;
   int32 completed_sets = 2;
@@ -363,11 +394,14 @@ message WorkoutMetrics {
   PerformanceMetrics performance_metrics = 7;
   IntensityMetrics intensity_metrics = 8;
   StrengthMetrics strength_metrics = 9;
-  SetMetrics set_metrics = 10;
-  repeated ExerciseMetrics exercise_metrics = 11;
-  int32 workout_duration_secs = 12;
-  google.protobuf.Timestamp created_at = 13;
-  google.protobuf.Timestamp updated_at = 14;
+  ProgressAdaptationMetrics progress_adaptation_metrics = 10;
+  RecoveryFatigueMetrics recovery_fatigue_metrics = 11;
+  BodyCompositionMetrics body_composition_metrics = 12;
+  SetMetrics set_metrics = 13;
+  repeated ExerciseMetrics exercise_metrics = 14;
+  int32 workout_duration_secs = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
 }
 
 message PeriodMetrics {

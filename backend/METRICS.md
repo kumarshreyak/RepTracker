@@ -176,6 +176,43 @@ The GymLog metrics system automatically calculates comprehensive workout analyti
 - Percentage change in volume between periods
 - Indicates training progression trends
 
+### Progress & Adaptation Metrics
+
+#### 24. Progressive Overload Index (POI)
+**Formula**: `POI = (Current Week Volume × Avg Intensity) / (Previous Week Volume × Avg Intensity)`
+- Measures progressive overload implementation
+- Values >1.0 indicate increasing training stimulus
+- Values <1.0 may indicate deload or regression
+- Simplified calculation using total volume as intensity proxy
+
+#### 25. Week-over-Week Progress Rate
+**Formula**: `Progress Rate = (Current 1RM - Previous 1RM) / Previous 1RM × 100`
+- Percentage change in estimated 1RM between consecutive weeks
+- Calculated per exercise using Epley formula estimates
+- Positive values indicate strength gains
+- Values <1% may indicate plateau or stagnation
+
+#### 26. Plateau Detection
+**Criteria**: `Plateau = True if Progress Rate < 1% for 3+ consecutive weeks`
+- Automated detection of training plateaus
+- Tracks consecutive weeks with minimal progress
+- Records weeks since last significant progress (≥1%)
+- Provides last recorded progress rate for context
+
+#### 27. Strength Gain Velocity (SGV)
+**Formula**: `SGV = (Current 1RM - Initial 1RM) / Training Weeks`
+- Rate of strength improvement over time
+- Measured in weight units per week (kg/week, lbs/week)
+- Calculated from first recorded 1RM to current best
+- Indicates overall training effectiveness
+
+#### 28. Adaptation Rate
+**Formula**: `Adaptation Rate = Δ Performance / Δ Volume`
+- Efficiency of strength gains relative to volume changes
+- Higher values indicate better adaptation to training stimulus
+- Calculated as change in 1RM divided by change in exercise volume
+- Helps optimize volume-performance relationships
+
 ## When Metrics Are Calculated
 
 ### Automatic Calculation Triggers
@@ -251,21 +288,37 @@ type StrengthMetrics struct {
     PowerOutput           float64            `bson:"powerOutput" json:"powerOutput"`
 }
 
+type ProgressAdaptationMetrics struct {
+    ProgressiveOverloadIndex float64                    `bson:"progressiveOverloadIndex" json:"progressiveOverloadIndex"`
+    WeekOverWeekProgressRate map[string]float64         `bson:"weekOverWeekProgressRate" json:"weekOverWeekProgressRate"`
+    PlateauDetection         map[string]PlateauStatus   `bson:"plateauDetection" json:"plateauDetection"`
+    StrengthGainVelocity     map[string]float64         `bson:"strengthGainVelocity" json:"strengthGainVelocity"`
+    AdaptationRate           map[string]float64         `bson:"adaptationRate" json:"adaptationRate"`
+}
+
+type PlateauStatus struct {
+    IsPlateaued        bool    `bson:"isPlateaued" json:"isPlateaued"`
+    ConsecutiveWeeks   int32   `bson:"consecutiveWeeks" json:"consecutiveWeeks"`
+    LastProgressRate   float64 `bson:"lastProgressRate" json:"lastProgressRate"`
+    WeeksSinceProgress int32   `bson:"weeksSinceProgress" json:"weeksSinceProgress"`
+}
+
 type WorkoutMetrics struct {
-    ID                   primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
-    UserID               primitive.ObjectID  `bson:"userId" json:"userId"`
-    SessionID            primitive.ObjectID  `bson:"sessionId" json:"sessionId"`
-    RoutineID            primitive.ObjectID  `bson:"routineId" json:"routineId"`
-    Date                 time.Time           `bson:"date" json:"date"`
-    VolumeMetrics        VolumeMetrics       `bson:"volumeMetrics" json:"volumeMetrics"`
-    PerformanceMetrics   PerformanceMetrics  `bson:"performanceMetrics" json:"performanceMetrics"`
-    IntensityMetrics     IntensityMetrics    `bson:"intensityMetrics" json:"intensityMetrics"`
-    StrengthMetrics      StrengthMetrics     `bson:"strengthMetrics" json:"strengthMetrics"`
-    SetMetrics           SetMetrics          `bson:"setMetrics" json:"setMetrics"`
-    ExerciseMetrics      []ExerciseMetrics   `bson:"exerciseMetrics" json:"exerciseMetrics"`
-    WorkoutDurationSecs  int32               `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
-    CreatedAt            time.Time           `bson:"createdAt" json:"createdAt"`
-    UpdatedAt            time.Time           `bson:"updatedAt" json:"updatedAt"`
+    ID                        primitive.ObjectID        `bson:"_id,omitempty" json:"id"`
+    UserID                    primitive.ObjectID        `bson:"userId" json:"userId"`
+    SessionID                 primitive.ObjectID        `bson:"sessionId" json:"sessionId"`
+    RoutineID                 primitive.ObjectID        `bson:"routineId" json:"routineId"`
+    Date                      time.Time                 `bson:"date" json:"date"`
+    VolumeMetrics             VolumeMetrics             `bson:"volumeMetrics" json:"volumeMetrics"`
+    PerformanceMetrics        PerformanceMetrics        `bson:"performanceMetrics" json:"performanceMetrics"`
+    IntensityMetrics          IntensityMetrics          `bson:"intensityMetrics" json:"intensityMetrics"`
+    StrengthMetrics           StrengthMetrics           `bson:"strengthMetrics" json:"strengthMetrics"`
+    ProgressAdaptationMetrics ProgressAdaptationMetrics `bson:"progressAdaptationMetrics" json:"progressAdaptationMetrics"`
+    SetMetrics                SetMetrics                `bson:"setMetrics" json:"setMetrics"`
+    ExerciseMetrics           []ExerciseMetrics         `bson:"exerciseMetrics" json:"exerciseMetrics"`
+    WorkoutDurationSecs       int32                     `bson:"workoutDurationSecs" json:"workoutDurationSecs"`
+    CreatedAt                 time.Time                 `bson:"createdAt" json:"createdAt"`
+    UpdatedAt                 time.Time                 `bson:"updatedAt" json:"updatedAt"`
 }
 ```
 
@@ -429,6 +482,13 @@ var WilksFemaleCoefficients = WilksCoefficients{
 - Power output uses simplified 1m distance per rep
 - Push/pull classification based on primary muscles only
 
+**Progress & Adaptation Configuration**:
+- Progressive Overload Index calculated weekly (current vs previous week)
+- Plateau detection threshold: <1% progress for 3+ consecutive weeks
+- Strength Gain Velocity measured from first recorded 1RM to current
+- Adaptation Rate calculated weekly (performance change / volume change)
+- All calculations are per-exercise and resilient to missing data
+
 ## Usage Examples
 
 ### Frontend Integration
@@ -481,6 +541,30 @@ for exerciseID, oneRM := range workoutMetrics.StrengthMetrics.EstimatedOneRMEple
 
 for exerciseID, oneRM := range workoutMetrics.StrengthMetrics.EstimatedOneRMBrzycki {
     fmt.Printf("Exercise %s - Estimated 1RM (Brzycki): %.2f kg", exerciseID, oneRM)
+}
+
+// Access Progress & Adaptation metrics
+fmt.Printf("Progressive Overload Index: %.2f", workoutMetrics.ProgressAdaptationMetrics.ProgressiveOverloadIndex)
+
+// Access per-exercise progress metrics
+for exerciseID, progressRate := range workoutMetrics.ProgressAdaptationMetrics.WeekOverWeekProgressRate {
+    fmt.Printf("Exercise %s - Progress Rate: %.2f%%", exerciseID, progressRate)
+}
+
+// Access plateau detection
+for exerciseID, plateau := range workoutMetrics.ProgressAdaptationMetrics.PlateauDetection {
+    fmt.Printf("Exercise %s - Plateaued: %t (Consecutive weeks: %d)", 
+        exerciseID, plateau.IsPlateaued, plateau.ConsecutiveWeeks)
+}
+
+// Access strength gain velocity
+for exerciseID, sgv := range workoutMetrics.ProgressAdaptationMetrics.StrengthGainVelocity {
+    fmt.Printf("Exercise %s - Strength Gain Velocity: %.2f kg/week", exerciseID, sgv)
+}
+
+// Access adaptation rate
+for exerciseID, adaptationRate := range workoutMetrics.ProgressAdaptationMetrics.AdaptationRate {
+    fmt.Printf("Exercise %s - Adaptation Rate: %.2f", exerciseID, adaptationRate)
 }
 ```
 

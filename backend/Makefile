@@ -12,6 +12,7 @@ help:
 	@echo "  test           - Run tests"
 	@echo "  build          - Build the binary"
 	@echo "  clean          - Clean build artifacts"
+	@echo "  generate-proto - Generate Go protobuf files"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-build   - Build Docker image"
@@ -118,6 +119,11 @@ health:
 populate-exercises:
 	@echo "Populating exercises database..."
 	@cd scripts && go run populate_exercises.go
+
+# Protobuf generation
+generate-proto:
+	@echo "Generating protobuf files..."
+	@./scripts/generate-proto.sh
 
 # Git hooks
 install-hooks:

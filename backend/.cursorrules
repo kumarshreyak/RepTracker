@@ -72,6 +72,39 @@ filter["category"] = "strength"
 - **Indexes**: Create appropriate indexes for common queries
 - **Aggregations**: Use MongoDB aggregation pipeline for complex queries
 
+### Protobuf Generation
+**MANDATORY: Always use the provided script for protobuf generation**
+
+When working with protobuf definitions or when proto files are modified:
+1. **ALWAYS run the generation script**: Use `make generate-proto` or `./scripts/generate-proto.sh`
+2. **NEVER manually run protoc**: The script handles correct paths and output locations
+3. **Script location**: `./scripts/generate-proto.sh` in the backend directory
+4. **Makefile target**: `make generate-proto` for convenient access
+5. **Auto-verification**: Script automatically verifies generated files are in correct locations
+
+#### Protobuf Workflow:
+1. Modify `.proto` files in `/proto/gymlog/v1/`
+2. Run `make generate-proto` to regenerate Go files
+3. Generated files will be placed in `/backend/proto/gymlog/v1/`
+4. Import in Go code: `pb "gymlog-backend/proto/gymlog/v1"`
+5. Script will verify all files are generated correctly
+
+#### Script Features:
+- **Automatic path detection**: Finds project root and sets correct paths
+- **Dependency checking**: Verifies protoc and Go plugins are installed
+- **Error handling**: Stops on any errors with helpful messages
+- **File verification**: Confirms all expected files are generated
+- **Colored output**: Clear success/error indicators
+
+#### Quick Commands:
+```bash
+# Generate protobuf files
+make generate-proto
+
+# Or run script directly
+./scripts/generate-proto.sh
+```
+
 ### Service Layer Patterns
 1. **Context propagation**: Always pass `context.Context` as the first parameter
 2. **Error handling**: Return meaningful errors, wrap with context when appropriate
@@ -102,6 +135,7 @@ filter["category"] = "strength"
 3. **Consistency**: Use the same naming conventions throughout the codebase
 4. **Performance**: Use appropriate indexes and limit query results
 5. **Security**: Sanitize user input and use parameterized queries
+6. **Protobuf generation**: Always use `make generate-proto` when modifying proto files
 
 ## Examples
 
@@ -177,6 +211,35 @@ func GetTrainingRecommendations(ctx context.Context, userID primitive.ObjectID) 
 }
 ```
 
+### Working with Protobuf
+
+```bash
+# After modifying proto files, always regenerate
+make generate-proto
+
+# Verify the build still works
+go build ./cmd/server
+```
+
+```go
+// Importing generated protobuf code
+import (
+    pb "gymlog-backend/proto/gymlog/v1"
+)
+
+// Using protobuf messages in gRPC services
+func (s *ExerciseService) GetExercise(ctx context.Context, req *pb.GetExerciseRequest) (*pb.Exercise, error) {
+    // Service implementation using generated types
+    exercise, err := s.repository.GetByID(ctx, req.Id)
+    if err != nil {
+        return nil, err
+    }
+    
+    return s.exerciseToProto(exercise), nil
+}
+```
+
 **Remember: 
 - Always use the typed constants and validation functions. When in doubt, check EXERCISE_CONSTANTS_README.md for proper usage patterns.
-- For metrics-related work, always refer to METRICS.md for formulas, data models, and integration patterns.** 
+- For metrics-related work, always refer to METRICS.md for formulas, data models, and integration patterns.
+- Always use `make generate-proto` when modifying protobuf definitions - never run protoc manually.** 
