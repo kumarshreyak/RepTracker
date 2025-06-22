@@ -640,7 +640,7 @@ func (s *InsightsService) GetRecentInsights(ctx context.Context, userID primitiv
 
 	filter := bson.M{"userId": userID}
 	opts := options.Find().
-		SetSort(bson.D{{Key: "priority", Value: -1}, {Key: "createdAt", Value: -1}}).
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
 		SetLimit(int64(limit))
 
 	cursor, err := collection.Find(ctx, filter, opts)
