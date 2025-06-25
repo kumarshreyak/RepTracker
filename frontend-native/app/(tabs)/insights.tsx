@@ -6,11 +6,12 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { Typography, Button } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 interface Insight {
   id: string;
@@ -22,13 +23,47 @@ interface Insight {
   createdAt: string;
 }
 
+interface WorkoutChange {
+  type: string;
+  exerciseId?: string;
+  exerciseName: string;
+  oldValue: string;
+  newValue: string;
+  reason: string;
+}
+
+interface SuggestedWorkout {
+  originalWorkoutId: string;
+  name: string;
+  description: string;
+  exercises: any[];
+  changes: WorkoutChange[];
+  overallReasoning: string;
+  priority: number;
+}
+
+interface StoredWorkoutSuggestion {
+  id: string;
+  userId: string;
+  suggestions: SuggestedWorkout[];
+  analysisSummary: string;
+  daysAnalyzed: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function InsightsTab() {
   const { user } = useAuth();
+  const router = useRouter();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [storedSuggestions, setStoredSuggestions] = useState<StoredWorkoutSuggestion[]>([]);
+  const [generatingSuggestions, setGeneratingSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [processingWorkoutId, setProcessingWorkoutId] = useState<string | null>(null);
 
   const fetchInsights = async (isRefreshing = false) => {
     if (!user?.id) return;
@@ -58,9 +93,35 @@ export default function InsightsTab() {
     }
   };
 
+  const fetchStoredSuggestions = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoadingSuggestions(true);
+      
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${user.id}/suggestions/stored?pageSize=5`
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch suggestions");
+      }
+      
+      setStoredSuggestions(data.storedSuggestions || []);
+    } catch (err) {
+      console.error("Error fetching suggestions:", err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.id) {
       fetchInsights();
+      fetchStoredSuggestions();
     }
   }, [user?.id]);
 
@@ -69,13 +130,17 @@ export default function InsightsTab() {
     React.useCallback(() => {
       if (user?.id) {
         fetchInsights();
+        fetchStoredSuggestions();
       }
     }, [user?.id])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchInsights(true);
+    Promise.all([
+      fetchInsights(true),
+      fetchStoredSuggestions()
+    ]).finally(() => setRefreshing(false));
   };
 
   const generateInsights = async () => {
@@ -146,6 +211,91 @@ export default function InsightsTab() {
       console.log("Setting generating to false");
       setGenerating(false);
     }
+  };
+
+  const generateWorkoutSuggestions = async () => {
+    if (!user?.id || generatingSuggestions) return;
+
+    try {
+      setGeneratingSuggestions(true);
+      setError(null);
+      
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${user.id}/suggestions/workouts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            daysToAnalyze: 14,
+            maxSuggestions: 3
+          })
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate suggestions");
+      }
+      
+      // Refresh the stored suggestions list
+      await fetchStoredSuggestions();
+      
+    } catch (err) {
+      console.error("Error generating suggestions:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate suggestions");
+    } finally {
+      setGeneratingSuggestions(false);
+    }
+  };
+
+  const acceptSuggestion = async (suggestion: SuggestedWorkout) => {
+    if (!user?.id || processingWorkoutId) return;
+
+    try {
+      setProcessingWorkoutId(suggestion.originalWorkoutId);
+      
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      
+      // Convert the suggested workout to update format
+      const updateData = {
+        name: suggestion.name,
+        description: suggestion.description,
+        exercises: suggestion.exercises || [] // This would need proper mapping from the full suggestion data
+      };
+      
+      const response = await fetch(
+        `${API_BASE_URL}/api/workouts/${suggestion.originalWorkoutId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData)
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to update workout");
+      }
+      
+      // Refresh suggestions after accepting
+      await fetchStoredSuggestions();
+      
+    } catch (err) {
+      console.error("Error accepting suggestion:", err);
+      setError("Failed to apply suggested changes");
+    } finally {
+      setProcessingWorkoutId(null);
+    }
+  };
+
+  const rejectSuggestion = async (suggestionId: string) => {
+    // TODO: Implement delete API call when available
+    console.log("TODO: Call delete suggestion API for:", suggestionId);
   };
 
   const getTypeColor = (type: string): string => {
@@ -241,6 +391,101 @@ export default function InsightsTab() {
     </View>
   );
 
+  const renderSuggestionCard = (storedSuggestion: StoredWorkoutSuggestion) => {
+    // Show only the highest priority suggestion from each stored suggestion set
+    const topSuggestion = storedSuggestion.suggestions
+      .sort((a, b) => b.priority - a.priority)[0];
+    
+    if (!topSuggestion) return null;
+
+    const changeCount = topSuggestion.changes.length;
+    const changeTypes = [...new Set(topSuggestion.changes.map(c => c.type))];
+    
+    const handleCardPress = () => {
+      router.push({
+        pathname: '/suggestion-detail',
+        params: { suggestion: JSON.stringify(storedSuggestion) }
+      });
+    };
+    
+    return (
+      <TouchableOpacity 
+        key={storedSuggestion.id} 
+        style={styles.suggestionCard}
+        onPress={handleCardPress}
+        activeOpacity={0.7}
+      >
+        {/* Priority indicator */}
+        <View 
+          style={[
+            styles.suggestionPriorityIndicator,
+            { backgroundColor: topSuggestion.priority >= 4 ? getColor('accent') : getColor('borderOpaque') }
+          ]} 
+        />
+        
+        <View style={styles.suggestionContent}>
+          {/* Header with workout name and change count */}
+          <View style={styles.suggestionHeader}>
+            <View style={{ flex: 1 }}>
+              <Typography variant="label-medium" color="contentPrimary">
+                {topSuggestion.name}
+              </Typography>
+            </View>
+            <View style={styles.changeCountBadge}>
+              <Typography variant="label-xsmall" color="contentOnColor">
+                {changeCount} {changeCount === 1 ? 'change' : 'changes'}
+              </Typography>
+            </View>
+          </View>
+          
+          {/* Change type indicators */}
+          <View style={styles.changeTypesRow}>
+            {changeTypes.slice(0, 3).map((type, index) => (
+              <View key={index} style={styles.changeTypeBadge}>
+                <Typography variant="label-xsmall" color="contentSecondary">
+                  {type}
+                </Typography>
+              </View>
+            ))}
+            {changeTypes.length > 3 && (
+              <Typography variant="label-xsmall" color="contentTertiary">
+                +{changeTypes.length - 3}
+              </Typography>
+            )}
+          </View>
+          
+          {/* Brief reasoning */}
+          <View style={styles.suggestionReasoning}>
+            <Typography variant="paragraph-xsmall" color="contentSecondary">
+              {topSuggestion.overallReasoning}
+            </Typography>
+          </View>
+          
+          {/* Action buttons */}
+          <View style={styles.suggestionActions}>
+            <Button
+              variant="secondary"
+              size="small"
+              onPress={() => rejectSuggestion(storedSuggestion.id)}
+              style={styles.suggestionButton}
+            >
+              Dismiss
+            </Button>
+            <Button
+              variant="primary"
+              size="small"
+              onPress={() => acceptSuggestion(topSuggestion)}
+              disabled={processingWorkoutId === topSuggestion.originalWorkoutId}
+              style={styles.suggestionButton}
+            >
+              {processingWorkoutId === topSuggestion.originalWorkoutId ? 'Applying...' : 'Apply'}
+            </Button>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   if (loading && insights.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
@@ -285,34 +530,81 @@ export default function InsightsTab() {
           />
         }
       >
-        {error ? (
-          <View style={styles.centerContent}>
-            <Typography variant="paragraph-small" color="contentNegative">
-              {error}
-            </Typography>
-          </View>
-        ) : insights.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Typography 
-              variant="heading-xsmall" 
-              color="contentSecondary" 
-              style={styles.emptyTitle}
-            >
-              No insights yet
-            </Typography>
-            <Typography 
-              variant="paragraph-small" 
-              color="contentTertiary"
-              style={{ textAlign: 'center' }}
-            >
-              Complete more workouts to get personalized insights
-            </Typography>
-          </View>
-        ) : (
-          <View style={styles.insightsList}>
-            {insights.map(renderInsightCard)}
+        {/* Workout Suggestions Section */}
+        {(storedSuggestions.length > 0 || !loadingSuggestions) && (
+          <View style={styles.suggestionsSection}>
+            <View style={styles.sectionHeader}>
+              <Typography variant="label-medium" color="contentPrimary">
+                Workout Improvements
+              </Typography>
+              <Button
+                variant="text"
+                size="small"
+                onPress={generateWorkoutSuggestions}
+                disabled={generatingSuggestions}
+              >
+                {generatingSuggestions ? 'Analyzing...' : 'New Analysis'}
+              </Button>
+            </View>
+            
+            {loadingSuggestions ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={getColor('accent')} />
+              </View>
+            ) : storedSuggestions.length === 0 ? (
+              <View style={styles.emptySuggestions}>
+                <Typography variant="paragraph-small" color="contentTertiary">
+                  No suggestions yet. Complete more workouts for personalized recommendations.
+                </Typography>
+              </View>
+            ) : (
+              <View style={styles.suggestionsList}>
+                {storedSuggestions.map(renderSuggestionCard)}
+              </View>
+            )}
           </View>
         )}
+        
+        {/* Divider */}
+        {storedSuggestions.length > 0 && insights.length > 0 && (
+          <View style={styles.sectionDivider} />
+        )}
+
+        {/* Insights Section */}
+        <View style={styles.insightsSection}>
+          <Typography variant="label-medium" color="contentPrimary" style={styles.sectionTitle}>
+            Recent Activity
+          </Typography>
+          
+          {error ? (
+            <View style={styles.centerContent}>
+              <Typography variant="paragraph-small" color="contentNegative">
+                {error}
+              </Typography>
+            </View>
+          ) : insights.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Typography 
+                variant="heading-xsmall" 
+                color="contentSecondary" 
+                style={styles.emptyTitle}
+              >
+                No insights yet
+              </Typography>
+              <Typography 
+                variant="paragraph-small" 
+                color="contentTertiary"
+                style={{ textAlign: 'center' }}
+              >
+                Complete more workouts to get personalized insights
+              </Typography>
+            </View>
+          ) : (
+            <View style={styles.insightsList}>
+              {insights.map(renderInsightCard)}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -340,6 +632,112 @@ const styles = StyleSheet.create({
   
   scrollContent: {
     flexGrow: 1,
+  },
+  
+  // Suggestions Section Styles
+  suggestionsSection: {
+    paddingTop: 16,
+  },
+  
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  
+  suggestionsList: {
+    paddingHorizontal: 16,
+  },
+  
+  suggestionCard: {
+    flexDirection: 'row',
+    backgroundColor: getColor('backgroundPrimary'),
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: getColor('borderOpaque'),
+    overflow: 'hidden',
+  },
+  
+  suggestionPriorityIndicator: {
+    width: 4,
+  },
+  
+  suggestionContent: {
+    flex: 1,
+    padding: 16,
+  },
+  
+  suggestionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  
+  changeCountBadge: {
+    backgroundColor: getColor('accent'),
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  
+  changeTypesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  
+  changeTypeBadge: {
+    backgroundColor: getColor('backgroundTertiary'),
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  
+  suggestionReasoning: {
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  
+  suggestionActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  
+  suggestionButton: {
+    minWidth: 80,
+  },
+  
+  emptySuggestions: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  
+  loadingContainer: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  
+  sectionDivider: {
+    height: 1,
+    backgroundColor: getColor('borderOpaque'),
+    marginHorizontal: 16,
+    marginVertical: 24,
+  },
+  
+  // Insights Section Styles
+  insightsSection: {
+    flex: 1,
+  },
+  
+  sectionTitle: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   
   insightsList: {
