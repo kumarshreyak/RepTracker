@@ -166,4 +166,21 @@ interface Exercise {
 - **ColorDemo component**: Interactive showcase of all available semantic colors
 - **Colors.ts**: Implementation of the three-layer semantic color architecture
 
-**Remember: Every piece of UI should feel like it belongs to the same design system. When in doubt, check COLOR_SYSTEM.md for proper semantic color usage, TYPOGRAPHY_SYSTEM.md for typography guidelines, and use the ColorDemo component to see all available colors.** 
+**Remember: Every piece of UI should feel like it belongs to the same design system. When in doubt, check COLOR_SYSTEM.md for proper semantic color usage, TYPOGRAPHY_SYSTEM.md for typography guidelines, and use the ColorDemo component to see all available colors.**
+
+---
+
+## 📚 Documentation & API Consistency
+**CRITICAL: Maintain consistency between frontend and backend API usage**
+
+### API Documentation Rules:
+- ✅ **Backend developers**: Always update `@/backend/README.md` when modifying `server.go` endpoints
+- ✅ **Frontend developers**: Always reference `@/backend/README.md` before implementing API calls
+- ✅ **API changes**: Must be documented in backend README before frontend implementation
+- ✅ **New endpoints**: Must include request/response examples and parameter documentation
+
+### Cross-Reference Pattern:
+1. **Backend changes `server.go`** → **Update `backend/README.md`** → **Frontend references `backend/README.md`**
+2. **Frontend needs API** → **Check `backend/README.md`** → **Implement according to documentation**
+
+**The backend README.md serves as the contract between frontend and backend - keep it synchronized and authoritative.** 

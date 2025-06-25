@@ -53,25 +53,129 @@ The server will start both:
 
 ## API Endpoints
 
-### HTTP Endpoints
+### Authentication
+- `POST /auth/google` - Google OAuth authentication
+- `POST /auth/validate` - Validate session token  
+- `POST /auth/logout` - Logout user
 
-#### Authentication
-- `POST /api/auth/google` - Authenticate with Google OAuth
-- `GET /api/auth/validate` - Validate session token
-- `POST /api/auth/logout` - Logout and delete session
+### Users
+- `POST /api/users` - Create user
+- `GET /api/users/{userId}` - Get user by ID
+- `PUT /api/users/{userId}` - Update user
+- `GET /api/users` - List users
 
-#### Insights
-- `POST /api/users/{userId}/insights` - Generate AI-powered workout insights
-- `GET /api/users/{userId}/insights` - Get recent insights for a user
+### Exercises
+- `GET /api/exercises` - List exercises with filtering
+- `POST /api/exercises` - Create exercise
+- `GET /api/exercises/{id}` - Get exercise by ID
+- `PUT /api/exercises/{id}` - Update exercise
+- `DELETE /api/exercises/{id}` - Delete exercise
+- `GET /api/exercises/quick-add` - Get exercises for quick add
 
-### gRPC Services
+### Workouts (Routines)
+- `GET /api/workouts` - List workouts
+- `POST /api/workouts` - Create workout
+- `GET /api/workouts/{id}` - Get workout by ID
+- `GET /api/workouts/{id}/start` - Get workout with exercise details for starting
+- `PUT /api/workouts/{id}` - Update workout
+- `DELETE /api/workouts/{id}` - Delete workout
 
-- `UserService` - User management
-- `ExerciseService` - Exercise library
-- `WorkoutService` - Workout tracking
-- `WorkoutSessionService` - Active workout session management
-- `MetricsService` - Workout analytics and volume tracking
-- `InsightsService` - AI-powered workout insights using Google Gemini
+### Workout Sessions
+- `GET /api/users/{userId}/workout-sessions` - List workout sessions
+- `POST /api/users/{userId}/workout-sessions` - Create workout session
+- `GET /api/workout-sessions/{id}` - Get workout session
+- `PUT /api/workout-sessions/{id}` - Update workout session
+- `DELETE /api/workout-sessions/{id}` - Delete workout session
+- `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/start` - Start exercise
+- `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/finish` - Finish exercise
+- `PUT /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}` - Update set
+
+### Metrics
+- `GET /api/users/{userId}/metrics` - Get user metrics
+- `GET /api/users/{userId}/metrics/trends` - Get volume trends
+- `GET /api/workout-sessions/{sessionId}/metrics` - Get workout metrics
+
+### Insights
+- `POST /api/users/{userId}/insights` - Generate workout insights
+- `GET /api/users/{userId}/insights/recent` - Get recent insights
+
+### Workout Suggestions
+- `POST /api/users/{userId}/suggestions/workouts` - Generate AI workout suggestions
+- `GET /api/users/{userId}/suggestions/stored` - Get stored workout suggestions (paginated, ordered by creation date desc)
+
+#### Workout Suggestions API Details
+
+**Generate Workout Suggestions**
+```
+POST /api/users/{userId}/suggestions/workouts
+```
+Generates AI-powered workout suggestions based on recent workout sessions and stores them in the database.
+
+Request body (optional):
+```json
+{
+  "daysToAnalyze": 14,    // Number of days of workout history to analyze (default: 14)
+  "maxSuggestions": 3     // Maximum number of suggestions to generate (default: 3)
+}
+```
+
+Response:
+```json
+{
+  "suggestions": [
+    {
+      "originalWorkoutId": "workout_id",
+      "name": "Improved Push Day",
+      "description": "Enhanced push workout with better progression",
+      "exercises": [...],
+      "changes": [
+        {
+          "type": "sets",
+          "exerciseId": "exercise_id", 
+          "exerciseName": "Bench Press",
+          "oldValue": "3 sets",
+          "newValue": "4 sets",
+          "reason": "Increase volume for better strength gains"
+        }
+      ],
+      "overallReasoning": "Based on your recent progress...",
+      "priority": 5
+    }
+  ],
+  "analysisSummary": "Analysis of your recent workout patterns shows..."
+}
+```
+
+**Get Stored Suggestions**
+```
+GET /api/users/{userId}/suggestions/stored?pageSize=10&pageToken=...
+```
+Retrieves previously generated workout suggestions in decreasing order of creation date.
+
+Query parameters:
+- `pageSize` (optional): Number of suggestion sets per page (default: 10, max: 50)
+- `pageToken` (optional): Token for pagination (timestamp-based)
+
+Response:
+```json
+{
+  "storedSuggestions": [
+    {
+      "id": "suggestion_set_id",
+      "userId": "user_id", 
+      "suggestions": [...],  // Array of SuggestedWorkout objects
+      "analysisSummary": "Analysis summary from when suggestions were generated",
+      "daysAnalyzed": 14,
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "nextPageToken": "2024-01-14T10:30:00Z"  // For pagination
+}
+```
+
+### Health Check
+- `GET /health` - Health check endpoint
 
 ## Database Schema
 

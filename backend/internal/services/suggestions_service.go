@@ -31,6 +31,7 @@ type SuggestionsService struct {
 	userService     *UserService
 	exerciseService *ExerciseService
 	insightsService *InsightsService
+	suggestionsColl *mongo.Collection
 }
 
 // NewSuggestionsService creates a new suggestions service
@@ -59,6 +60,7 @@ func NewSuggestionsService(db *mongo.Database, workoutService *WorkoutService, u
 		userService:     userService,
 		exerciseService: exerciseService,
 		insightsService: insightsService,
+		suggestionsColl: db.Collection("workout_suggestions"),
 	}, nil
 }
 
@@ -133,6 +135,14 @@ func (s *SuggestionsService) GenerateWorkoutSuggestions(ctx context.Context, req
 	if err != nil {
 		log.Printf("GenerateWorkoutSuggestions: Failed to generate AI suggestions: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to generate suggestions: %v", err)
+	}
+
+	// Store suggestions in MongoDB
+	log.Printf("GenerateWorkoutSuggestions: Storing suggestions in MongoDB")
+	err = s.storeSuggestions(ctx, userObjectID, suggestions, analysisSummary, daysToAnalyze)
+	if err != nil {
+		log.Printf("GenerateWorkoutSuggestions: Failed to store suggestions: %v", err)
+		// Don't fail the request if storage fails, just log the error
 	}
 
 	log.Printf("GenerateWorkoutSuggestions: Successfully generated %d suggestions", len(suggestions))
@@ -597,4 +607,204 @@ func (s *SuggestionsService) workoutSessionToProto(session *models.WorkoutSessio
 		CreatedAt:       timestamppb.New(session.CreatedAt),
 		UpdatedAt:       timestamppb.New(session.UpdatedAt),
 	}
+}
+
+// GetStoredSuggestions retrieves stored workout suggestions in decreasing order of creation
+func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.GetStoredSuggestionsRequest) (*pb.GetStoredSuggestionsResponse, error) {
+	log.Printf("GetStoredSuggestions: Starting for user %s", req.UserId)
+
+	// Validate user ID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Set defaults
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 10 // Default to 10 suggestions per page
+	}
+	if pageSize > 50 {
+		pageSize = 50 // Maximum 50 suggestions per page
+	}
+
+	// Build filter
+	filter := bson.M{"userId": userObjectID}
+
+	// Handle pagination
+	opts := options.Find().
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
+		SetLimit(int64(pageSize))
+
+	if req.PageToken != "" {
+		// Decode page token (it's a timestamp-based token)
+		if tokenTime, err := time.Parse(time.RFC3339, req.PageToken); err == nil {
+			filter["createdAt"] = bson.M{"$lt": tokenTime}
+		}
+	}
+
+	// Fetch suggestions
+	cursor, err := s.suggestionsColl.Find(ctx, filter, opts)
+	if err != nil {
+		log.Printf("GetStoredSuggestions: Failed to fetch suggestions: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch suggestions: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	// Decode results
+	var storedSuggestions []models.StoredWorkoutSuggestion
+	if err = cursor.All(ctx, &storedSuggestions); err != nil {
+		log.Printf("GetStoredSuggestions: Failed to decode suggestions: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to decode suggestions: %v", err)
+	}
+
+	// Convert to protobuf
+	var pbStoredSuggestions []*pb.StoredWorkoutSuggestion
+	var nextPageToken string
+
+	for i, stored := range storedSuggestions {
+		// Convert suggestions
+		var pbSuggestions []*pb.SuggestedWorkout
+		for _, suggestion := range stored.Suggestions {
+			// Convert changes
+			var pbChanges []*pb.WorkoutChange
+			for _, change := range suggestion.Changes {
+				pbChanges = append(pbChanges, &pb.WorkoutChange{
+					Type:         change.Type,
+					ExerciseId:   change.ExerciseID,
+					ExerciseName: change.ExerciseName,
+					OldValue:     change.OldValue,
+					NewValue:     change.NewValue,
+					Reason:       change.Reason,
+				})
+			}
+
+			// Convert exercises
+			var pbExercises []*pb.WorkoutExercise
+			for _, exercise := range suggestion.Exercises {
+				var pbSets []*pb.WorkoutSet
+				for _, set := range exercise.Sets {
+					pbSets = append(pbSets, &pb.WorkoutSet{
+						Reps:            set.Reps,
+						Weight:          set.Weight,
+						DurationSeconds: float32(set.DurationSeconds),
+						Distance:        set.Distance,
+						Notes:           set.Notes,
+					})
+				}
+
+				pbExercises = append(pbExercises, &pb.WorkoutExercise{
+					ExerciseId:  exercise.ExerciseID.Hex(),
+					Sets:        pbSets,
+					Notes:       exercise.Notes,
+					RestSeconds: exercise.RestSeconds,
+				})
+			}
+
+			pbSuggestions = append(pbSuggestions, &pb.SuggestedWorkout{
+				OriginalWorkoutId: suggestion.OriginalWorkoutID,
+				Name:              suggestion.Name,
+				Description:       suggestion.Description,
+				Exercises:         pbExercises,
+				Changes:           pbChanges,
+				OverallReasoning:  suggestion.OverallReasoning,
+				Priority:          suggestion.Priority,
+			})
+		}
+
+		pbStoredSuggestions = append(pbStoredSuggestions, &pb.StoredWorkoutSuggestion{
+			Id:              stored.ID.Hex(),
+			UserId:          stored.UserID.Hex(),
+			Suggestions:     pbSuggestions,
+			AnalysisSummary: stored.AnalysisSummary,
+			DaysAnalyzed:    stored.DaysAnalyzed,
+			CreatedAt:       timestamppb.New(stored.CreatedAt),
+			UpdatedAt:       timestamppb.New(stored.UpdatedAt),
+		})
+
+		// Set next page token if this is the last item and we have a full page
+		if i == len(storedSuggestions)-1 && len(storedSuggestions) == int(pageSize) {
+			nextPageToken = stored.CreatedAt.Format(time.RFC3339)
+		}
+	}
+
+	log.Printf("GetStoredSuggestions: Successfully fetched %d stored suggestions", len(pbStoredSuggestions))
+	return &pb.GetStoredSuggestionsResponse{
+		StoredSuggestions: pbStoredSuggestions,
+		NextPageToken:     nextPageToken,
+	}, nil
+}
+
+// storeSuggestions stores the generated suggestions in MongoDB
+func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primitive.ObjectID, suggestions []*pb.SuggestedWorkout, analysisSummary string, daysAnalyzed int32) error {
+	now := time.Now()
+
+	// Convert protobuf suggestions to MongoDB model
+	var storedSuggestions []models.StoredSuggestedWorkout
+	for _, suggestion := range suggestions {
+		// Convert changes
+		var storedChanges []models.StoredWorkoutChange
+		for _, change := range suggestion.Changes {
+			storedChanges = append(storedChanges, models.StoredWorkoutChange{
+				Type:         change.Type,
+				ExerciseID:   change.ExerciseId,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			})
+		}
+
+		// Convert exercises
+		var exercises []models.WorkoutExercise
+		for _, exercise := range suggestion.Exercises {
+			var sets []models.WorkoutSet
+			for _, set := range exercise.Sets {
+				sets = append(sets, models.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: int32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				})
+			}
+
+			exerciseID, _ := primitive.ObjectIDFromHex(exercise.ExerciseId)
+			exercises = append(exercises, models.WorkoutExercise{
+				ExerciseID:  exerciseID,
+				Sets:        sets,
+				Notes:       exercise.Notes,
+				RestSeconds: exercise.RestSeconds,
+			})
+		}
+
+		storedSuggestions = append(storedSuggestions, models.StoredSuggestedWorkout{
+			OriginalWorkoutID: suggestion.OriginalWorkoutId,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           storedChanges,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+		})
+	}
+
+	// Create the stored workout suggestion document
+	storedSuggestion := models.StoredWorkoutSuggestion{
+		UserID:          userID,
+		Suggestions:     storedSuggestions,
+		AnalysisSummary: analysisSummary,
+		DaysAnalyzed:    daysAnalyzed,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+
+	// Insert into MongoDB
+	_, err := s.suggestionsColl.InsertOne(ctx, storedSuggestion)
+	if err != nil {
+		return fmt.Errorf("failed to insert suggestions: %w", err)
+	}
+
+	log.Printf("storeSuggestions: Successfully stored %d suggestions for user %s", len(suggestions), userID.Hex())
+	return nil
 }

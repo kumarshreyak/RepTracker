@@ -1477,6 +1477,7 @@ var InsightsService_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	SuggestionsService_GenerateWorkoutSuggestions_FullMethodName = "/gymlog.v1.SuggestionsService/GenerateWorkoutSuggestions"
+	SuggestionsService_GetStoredSuggestions_FullMethodName       = "/gymlog.v1.SuggestionsService/GetStoredSuggestions"
 )
 
 // SuggestionsServiceClient is the client API for SuggestionsService service.
@@ -1486,6 +1487,7 @@ const (
 // Suggestions Service
 type SuggestionsServiceClient interface {
 	GenerateWorkoutSuggestions(ctx context.Context, in *GenerateWorkoutSuggestionsRequest, opts ...grpc.CallOption) (*GenerateWorkoutSuggestionsResponse, error)
+	GetStoredSuggestions(ctx context.Context, in *GetStoredSuggestionsRequest, opts ...grpc.CallOption) (*GetStoredSuggestionsResponse, error)
 }
 
 type suggestionsServiceClient struct {
@@ -1506,6 +1508,16 @@ func (c *suggestionsServiceClient) GenerateWorkoutSuggestions(ctx context.Contex
 	return out, nil
 }
 
+func (c *suggestionsServiceClient) GetStoredSuggestions(ctx context.Context, in *GetStoredSuggestionsRequest, opts ...grpc.CallOption) (*GetStoredSuggestionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStoredSuggestionsResponse)
+	err := c.cc.Invoke(ctx, SuggestionsService_GetStoredSuggestions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SuggestionsServiceServer is the server API for SuggestionsService service.
 // All implementations must embed UnimplementedSuggestionsServiceServer
 // for forward compatibility.
@@ -1513,6 +1525,7 @@ func (c *suggestionsServiceClient) GenerateWorkoutSuggestions(ctx context.Contex
 // Suggestions Service
 type SuggestionsServiceServer interface {
 	GenerateWorkoutSuggestions(context.Context, *GenerateWorkoutSuggestionsRequest) (*GenerateWorkoutSuggestionsResponse, error)
+	GetStoredSuggestions(context.Context, *GetStoredSuggestionsRequest) (*GetStoredSuggestionsResponse, error)
 	mustEmbedUnimplementedSuggestionsServiceServer()
 }
 
@@ -1525,6 +1538,9 @@ type UnimplementedSuggestionsServiceServer struct{}
 
 func (UnimplementedSuggestionsServiceServer) GenerateWorkoutSuggestions(context.Context, *GenerateWorkoutSuggestionsRequest) (*GenerateWorkoutSuggestionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateWorkoutSuggestions not implemented")
+}
+func (UnimplementedSuggestionsServiceServer) GetStoredSuggestions(context.Context, *GetStoredSuggestionsRequest) (*GetStoredSuggestionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStoredSuggestions not implemented")
 }
 func (UnimplementedSuggestionsServiceServer) mustEmbedUnimplementedSuggestionsServiceServer() {}
 func (UnimplementedSuggestionsServiceServer) testEmbeddedByValue()                            {}
@@ -1565,6 +1581,24 @@ func _SuggestionsService_GenerateWorkoutSuggestions_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SuggestionsService_GetStoredSuggestions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStoredSuggestionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SuggestionsServiceServer).GetStoredSuggestions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SuggestionsService_GetStoredSuggestions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SuggestionsServiceServer).GetStoredSuggestions(ctx, req.(*GetStoredSuggestionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SuggestionsService_ServiceDesc is the grpc.ServiceDesc for SuggestionsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1575,6 +1609,10 @@ var SuggestionsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GenerateWorkoutSuggestions",
 			Handler:    _SuggestionsService_GenerateWorkoutSuggestions_Handler,
+		},
+		{
+			MethodName: "GetStoredSuggestions",
+			Handler:    _SuggestionsService_GetStoredSuggestions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

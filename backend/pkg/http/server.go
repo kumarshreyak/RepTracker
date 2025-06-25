@@ -313,6 +313,21 @@ type GenerateWorkoutSuggestionsResponse struct {
 	AnalysisSummary string                     `json:"analysisSummary"`
 }
 
+type StoredWorkoutSuggestionResponse struct {
+	ID              string                     `json:"id"`
+	UserID          string                     `json:"userId"`
+	Suggestions     []SuggestedWorkoutResponse `json:"suggestions"`
+	AnalysisSummary string                     `json:"analysisSummary"`
+	DaysAnalyzed    int32                      `json:"daysAnalyzed"`
+	CreatedAt       time.Time                  `json:"createdAt"`
+	UpdatedAt       time.Time                  `json:"updatedAt"`
+}
+
+type GetStoredSuggestionsResponse struct {
+	StoredSuggestions []StoredWorkoutSuggestionResponse `json:"storedSuggestions"`
+	NextPageToken     string                            `json:"nextPageToken,omitempty"`
+}
+
 func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, suggestionsService *services.SuggestionsService, db *database.MongoDB) *Server {
 	return &Server{
 		userService:           userService,
@@ -381,6 +396,7 @@ func (s *Server) Start(port string) error {
 
 	// Suggestions routes
 	api.HandleFunc("/users/{userId}/suggestions/workouts", s.handleGenerateWorkoutSuggestions).Methods("POST")
+	api.HandleFunc("/users/{userId}/suggestions/stored", s.handleGetStoredSuggestions).Methods("GET")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -1787,6 +1803,117 @@ func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http
 	}
 
 	log.Printf("✅ Successfully generated %d workout suggestions for user %s", len(suggestions), userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	// Parse query parameters
+	pageSize := int32(10) // default
+	if ps := r.URL.Query().Get("pageSize"); ps != "" {
+		if parsed, err := strconv.ParseInt(ps, 10, 32); err == nil && parsed > 0 {
+			pageSize = int32(parsed)
+		}
+	}
+
+	pageToken := r.URL.Query().Get("pageToken")
+
+	ctx := context.Background()
+	pbReq := &pb.GetStoredSuggestionsRequest{
+		UserId:    userID,
+		PageSize:  pageSize,
+		PageToken: pageToken,
+	}
+
+	log.Printf("📊 Getting stored workout suggestions for user %s", userID)
+
+	resp, err := s.suggestionsService.GetStoredSuggestions(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to get stored workout suggestions: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to get stored workout suggestions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert protobuf response to HTTP response
+	storedSuggestions := make([]StoredWorkoutSuggestionResponse, len(resp.StoredSuggestions))
+	for i, stored := range resp.StoredSuggestions {
+		// Convert suggestions
+		suggestions := make([]SuggestedWorkoutResponse, len(stored.Suggestions))
+		for j, suggestion := range stored.Suggestions {
+			// Convert exercises
+			exercises := make([]WorkoutExerciseResponse, len(suggestion.Exercises))
+			for k, ex := range suggestion.Exercises {
+				sets := make([]WorkoutSetResponse, len(ex.Sets))
+				for l, set := range ex.Sets {
+					sets[l] = WorkoutSetResponse{
+						Reps:            set.Reps,
+						Weight:          set.Weight,
+						DurationSeconds: set.DurationSeconds,
+						Distance:        set.Distance,
+						Notes:           set.Notes,
+					}
+				}
+
+				exercises[k] = WorkoutExerciseResponse{
+					ExerciseID:  ex.ExerciseId,
+					Sets:        sets,
+					Notes:       ex.Notes,
+					RestSeconds: ex.RestSeconds,
+				}
+
+				// Populate exercise details if available
+				if ex.Exercise != nil {
+					exerciseResp := exerciseToResponse(ex.Exercise)
+					exercises[k].Exercise = &exerciseResp
+				}
+			}
+
+			// Convert changes
+			changes := make([]WorkoutChangeResponse, len(suggestion.Changes))
+			for k, change := range suggestion.Changes {
+				changes[k] = WorkoutChangeResponse{
+					Type:         change.Type,
+					ExerciseID:   change.ExerciseId,
+					ExerciseName: change.ExerciseName,
+					OldValue:     change.OldValue,
+					NewValue:     change.NewValue,
+					Reason:       change.Reason,
+				}
+			}
+
+			suggestions[j] = SuggestedWorkoutResponse{
+				OriginalWorkoutID: suggestion.OriginalWorkoutId,
+				Name:              suggestion.Name,
+				Description:       suggestion.Description,
+				Exercises:         exercises,
+				Changes:           changes,
+				OverallReasoning:  suggestion.OverallReasoning,
+				Priority:          suggestion.Priority,
+			}
+		}
+
+		storedSuggestions[i] = StoredWorkoutSuggestionResponse{
+			ID:              stored.Id,
+			UserID:          stored.UserId,
+			Suggestions:     suggestions,
+			AnalysisSummary: stored.AnalysisSummary,
+			DaysAnalyzed:    stored.DaysAnalyzed,
+			CreatedAt:       stored.CreatedAt.AsTime(),
+			UpdatedAt:       stored.UpdatedAt.AsTime(),
+		}
+	}
+
+	response := GetStoredSuggestionsResponse{
+		StoredSuggestions: storedSuggestions,
+		NextPageToken:     resp.NextPageToken,
+	}
+
+	log.Printf("✅ Successfully retrieved %d stored workout suggestions for user %s", len(storedSuggestions), userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

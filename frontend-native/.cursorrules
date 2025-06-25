@@ -1,0 +1,63 @@
+# GymLog Frontend-Native Cursor Rules
+
+## 🔗 API Reference Rules
+**CRITICAL: Always refer to the backend README.md for API information**
+
+### API Documentation Reference:
+- ✅ **ALWAYS check `@/backend/README.md`** - The single source of truth for all API endpoints
+- ✅ **Before making API calls**: Review the endpoint documentation in `@/backend/README.md`
+- ✅ **For request/response structure**: Use the examples provided in `@/backend/README.md`
+- ✅ **For query parameters**: Check defaults and validation rules in `@/backend/README.md`
+- ✅ **For error handling**: Follow the documented response formats in `@/backend/README.md`
+
+### API Usage Rules:
+- ❌ **NEVER guess API endpoints** - always confirm the exact path in `@/backend/README.md`
+- ❌ **NEVER assume request structure** - check the documented JSON examples
+- ✅ **ALWAYS use documented query parameters** with proper defaults
+- ✅ **ALWAYS handle pagination** according to the documented patterns
+- ✅ **ALWAYS use correct HTTP methods** as specified in the README
+
+### Quick API Reference Pattern:
+1. **Check endpoint exists**: Look for the exact endpoint in `@/backend/README.md`
+2. **Review request format**: Use the documented JSON structure
+3. **Handle response**: Follow the documented response format
+4. **Add error handling**: Based on documented error responses
+5. **Test with documented parameters**: Use the specified defaults and validation
+
+### API Categories in Backend README:
+- **Authentication**: `/auth/*` endpoints for OAuth and session management
+- **Users**: `/api/users/*` endpoints for user management  
+- **Exercises**: `/api/exercises/*` endpoints for exercise library
+- **Workouts**: `/api/workouts/*` endpoints for workout routines
+- **Workout Sessions**: `/api/workout-sessions/*` endpoints for active workout tracking
+- **Metrics**: `/api/users/{userId}/metrics/*` endpoints for analytics
+- **Insights**: `/api/users/{userId}/insights/*` endpoints for AI insights
+- **Suggestions**: `/api/users/{userId}/suggestions/*` endpoints for AI workout suggestions
+
+### Example of Proper API Usage:
+```typescript
+// ✅ CORRECT - Check backend/README.md first for endpoint details
+// From README: GET /api/users/{userId}/suggestions/stored?pageSize=10&pageToken=...
+const response = await fetch(`/api/users/${userId}/suggestions/stored?pageSize=10`, {
+  method: 'GET',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// ❌ INCORRECT - Don't guess the endpoint structure
+const response = await fetch(`/api/suggestions/${userId}`, { ... });
+```
+
+**Always consult `@/backend/README.md` before implementing any API calls - it contains the definitive API documentation with examples, parameters, and response formats.**
+
+---
+
+## 🎨 Design System Inheritance
+**Follow all design system rules from the root `.cursorrules` file**
+
+- All color, typography, and component rules from the root project apply
+- Use the Uber Base Design System semantic color system
+- Follow the four-category typography architecture  
+- Use camelCase naming conventions for all data models
+- Import components from `@/components`
+
+**Refer to the root `.cursorrules` file for complete design system guidelines.** 

@@ -632,7 +632,30 @@ message GenerateWorkoutSuggestionsResponse {
   string analysis_summary = 2;
 }
 
+// Stored Workout Suggestions related messages
+message GetStoredSuggestionsRequest {
+  string user_id = 1;
+  int32 page_size = 2; // default 10
+  string page_token = 3;
+}
+
+message StoredWorkoutSuggestion {
+  string id = 1;
+  string user_id = 2;
+  repeated SuggestedWorkout suggestions = 3;
+  string analysis_summary = 4;
+  int32 days_analyzed = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message GetStoredSuggestionsResponse {
+  repeated StoredWorkoutSuggestion stored_suggestions = 1;
+  string next_page_token = 2;
+}
+
 // Suggestions Service
 service SuggestionsService {
   rpc GenerateWorkoutSuggestions(GenerateWorkoutSuggestionsRequest) returns (GenerateWorkoutSuggestionsResponse);
+  rpc GetStoredSuggestions(GetStoredSuggestionsRequest) returns (GetStoredSuggestionsResponse);
 } 
