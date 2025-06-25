@@ -150,7 +150,7 @@ Response:
 ```
 GET /api/users/{userId}/suggestions/stored?pageSize=10&pageToken=...
 ```
-Retrieves previously generated workout suggestions in decreasing order of creation date.
+Retrieves previously generated workout suggestions with "pending" status in decreasing order of creation date. Only suggestions that haven't been accepted or rejected are returned.
 
 Query parameters:
 - `pageSize` (optional): Number of suggestion sets per page (default: 10, max: 50)
@@ -163,7 +163,19 @@ Response:
     {
       "id": "suggestion_set_id",
       "userId": "user_id", 
-      "suggestions": [...],  // Array of SuggestedWorkout objects
+      "suggestions": [
+        {
+          "originalWorkoutId": "workout_id",
+          "name": "Improved Push Day",
+          "description": "Enhanced push workout",
+          "exercises": [...],
+          "changes": [...],
+          "overallReasoning": "Based on your recent progress...",
+          "priority": 5,
+          "status": "pending",  // "pending", "accepted", "rejected"
+          "statusUpdatedAt": "2024-01-15T10:35:00Z"  // When status was last changed
+        }
+      ],
       "analysisSummary": "Analysis summary from when suggestions were generated",
       "daysAnalyzed": 14,
       "createdAt": "2024-01-15T10:30:00Z",
@@ -173,6 +185,38 @@ Response:
   "nextPageToken": "2024-01-14T10:30:00Z"  // For pagination
 }
 ```
+
+**Confirm Suggestion (Accept/Reject)**
+```
+POST /api/users/{userId}/suggestions/{suggestionId}/confirm
+```
+Accepts or rejects a specific workout suggestion. When accepted, applies the suggested changes to the original workout.
+
+Request body:
+```json
+{
+  "suggestionIndex": 0,  // Index of the suggestion within the stored suggestion set
+  "accept": true  // true to accept, false to reject
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Suggestion accepted and applied to workout"
+}
+```
+
+When a suggestion is accepted:
+- The original workout is updated with the suggested changes
+- The suggestion status is marked as "accepted"
+- The `statusUpdatedAt` timestamp is set
+
+When a suggestion is rejected:
+- The suggestion status is marked as "rejected" 
+- The `statusUpdatedAt` timestamp is set
+- No changes are applied to the original workout
 
 ### Health Check
 - `GET /health` - Health check endpoint

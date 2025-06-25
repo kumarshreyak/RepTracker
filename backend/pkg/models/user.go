@@ -139,6 +139,8 @@ type StoredSuggestedWorkout struct {
 	Changes           []StoredWorkoutChange `bson:"changes" json:"changes"`
 	OverallReasoning  string                `bson:"overallReasoning" json:"overallReasoning"`
 	Priority          int32                 `bson:"priority" json:"priority"`
+	Status            string                `bson:"status,omitempty" json:"status,omitempty"` // "pending", "accepted", "rejected"
+	StatusUpdatedAt   *time.Time            `bson:"statusUpdatedAt,omitempty" json:"statusUpdatedAt,omitempty"`
 }
 
 type StoredWorkoutSuggestion struct {

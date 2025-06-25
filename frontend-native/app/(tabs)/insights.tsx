@@ -12,45 +12,14 @@ import { Typography, Button } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { 
+  WorkoutInsight, 
+  StoredWorkoutSuggestion, 
+  GenerateWorkoutSuggestionsRequest 
+} from '../../src/types/suggestion';
 
-interface Insight {
-  id: string;
-  userId: string;
-  type: string;
-  insight: string;
-  basedOn: string;
-  priority: number;
-  createdAt: string;
-}
-
-interface WorkoutChange {
-  type: string;
-  exerciseId?: string;
-  exerciseName: string;
-  oldValue: string;
-  newValue: string;
-  reason: string;
-}
-
-interface SuggestedWorkout {
-  originalWorkoutId: string;
-  name: string;
-  description: string;
-  exercises: any[];
-  changes: WorkoutChange[];
-  overallReasoning: string;
-  priority: number;
-}
-
-interface StoredWorkoutSuggestion {
-  id: string;
-  userId: string;
-  suggestions: SuggestedWorkout[];
-  analysisSummary: string;
-  daysAnalyzed: number;
-  createdAt: string;
-  updatedAt: string;
-}
+// Renaming for backward compatibility with existing code
+type Insight = WorkoutInsight;
 
 export default function InsightsTab() {
   const { user } = useAuth();
@@ -252,34 +221,32 @@ export default function InsightsTab() {
     }
   };
 
-  const acceptSuggestion = async (suggestion: SuggestedWorkout) => {
+  const acceptSuggestion = async (storedSuggestionId: string, suggestionIndex: number) => {
     if (!user?.id || processingWorkoutId) return;
 
     try {
-      setProcessingWorkoutId(suggestion.originalWorkoutId);
+      setProcessingWorkoutId(storedSuggestionId);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
       
-      // Convert the suggested workout to update format
-      const updateData = {
-        name: suggestion.name,
-        description: suggestion.description,
-        exercises: suggestion.exercises || [] // This would need proper mapping from the full suggestion data
-      };
-      
       const response = await fetch(
-        `${API_BASE_URL}/api/workouts/${suggestion.originalWorkoutId}`,
+        `${API_BASE_URL}/api/users/${user.id}/suggestions/${storedSuggestionId}/confirm`,
         {
-          method: 'PUT',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(updateData)
+          body: JSON.stringify({
+            suggestionIndex: suggestionIndex,
+            accept: true
+          })
         }
       );
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error("Failed to update workout");
+        throw new Error(data.message || "Failed to accept suggestion");
       }
       
       // Refresh suggestions after accepting
@@ -293,9 +260,43 @@ export default function InsightsTab() {
     }
   };
 
-  const rejectSuggestion = async (suggestionId: string) => {
-    // TODO: Implement delete API call when available
-    console.log("TODO: Call delete suggestion API for:", suggestionId);
+  const rejectSuggestion = async (storedSuggestionId: string, suggestionIndex: number) => {
+    if (!user?.id || processingWorkoutId) return;
+
+    try {
+      setProcessingWorkoutId(storedSuggestionId);
+      
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${user.id}/suggestions/${storedSuggestionId}/confirm`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            suggestionIndex: suggestionIndex,
+            accept: false
+          })
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to reject suggestion");
+      }
+      
+      // Refresh suggestions after rejecting
+      await fetchStoredSuggestions();
+      
+    } catch (err) {
+      console.error("Error rejecting suggestion:", err);
+      setError("Failed to reject suggestion");
+    } finally {
+      setProcessingWorkoutId(null);
+    }
   };
 
   const getTypeColor = (type: string): string => {
@@ -393,11 +394,14 @@ export default function InsightsTab() {
 
   const renderSuggestionCard = (storedSuggestion: StoredWorkoutSuggestion) => {
     // Show only the highest priority suggestion from each stored suggestion set
-    const topSuggestion = storedSuggestion.suggestions
-      .sort((a, b) => b.priority - a.priority)[0];
+    const sortedSuggestions = storedSuggestion.suggestions
+      .map((suggestion, index) => ({ suggestion, originalIndex: index }))
+      .sort((a, b) => b.suggestion.priority - a.suggestion.priority);
     
-    if (!topSuggestion) return null;
+    const topSuggestionData = sortedSuggestions[0];
+    if (!topSuggestionData) return null;
 
+    const { suggestion: topSuggestion, originalIndex } = topSuggestionData;
     const changeCount = topSuggestion.changes.length;
     const changeTypes = [...new Set(topSuggestion.changes.map(c => c.type))];
     
@@ -466,7 +470,7 @@ export default function InsightsTab() {
             <Button
               variant="secondary"
               size="small"
-              onPress={() => rejectSuggestion(storedSuggestion.id)}
+              onPress={() => rejectSuggestion(storedSuggestion.id, originalIndex)}
               style={styles.suggestionButton}
             >
               Dismiss
@@ -474,11 +478,11 @@ export default function InsightsTab() {
             <Button
               variant="primary"
               size="small"
-              onPress={() => acceptSuggestion(topSuggestion)}
-              disabled={processingWorkoutId === topSuggestion.originalWorkoutId}
+              onPress={() => acceptSuggestion(storedSuggestion.id, originalIndex)}
+              disabled={processingWorkoutId === storedSuggestion.id}
               style={styles.suggestionButton}
             >
-              {processingWorkoutId === topSuggestion.originalWorkoutId ? 'Applying...' : 'Apply'}
+              {processingWorkoutId === storedSuggestion.id ? 'Applying...' : 'Apply'}
             </Button>
           </View>
         </View>

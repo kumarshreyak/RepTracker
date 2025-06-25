@@ -1478,6 +1478,7 @@ var InsightsService_ServiceDesc = grpc.ServiceDesc{
 const (
 	SuggestionsService_GenerateWorkoutSuggestions_FullMethodName = "/gymlog.v1.SuggestionsService/GenerateWorkoutSuggestions"
 	SuggestionsService_GetStoredSuggestions_FullMethodName       = "/gymlog.v1.SuggestionsService/GetStoredSuggestions"
+	SuggestionsService_ConfirmSuggestion_FullMethodName          = "/gymlog.v1.SuggestionsService/ConfirmSuggestion"
 )
 
 // SuggestionsServiceClient is the client API for SuggestionsService service.
@@ -1488,6 +1489,7 @@ const (
 type SuggestionsServiceClient interface {
 	GenerateWorkoutSuggestions(ctx context.Context, in *GenerateWorkoutSuggestionsRequest, opts ...grpc.CallOption) (*GenerateWorkoutSuggestionsResponse, error)
 	GetStoredSuggestions(ctx context.Context, in *GetStoredSuggestionsRequest, opts ...grpc.CallOption) (*GetStoredSuggestionsResponse, error)
+	ConfirmSuggestion(ctx context.Context, in *ConfirmSuggestionRequest, opts ...grpc.CallOption) (*ConfirmSuggestionResponse, error)
 }
 
 type suggestionsServiceClient struct {
@@ -1518,6 +1520,16 @@ func (c *suggestionsServiceClient) GetStoredSuggestions(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *suggestionsServiceClient) ConfirmSuggestion(ctx context.Context, in *ConfirmSuggestionRequest, opts ...grpc.CallOption) (*ConfirmSuggestionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmSuggestionResponse)
+	err := c.cc.Invoke(ctx, SuggestionsService_ConfirmSuggestion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SuggestionsServiceServer is the server API for SuggestionsService service.
 // All implementations must embed UnimplementedSuggestionsServiceServer
 // for forward compatibility.
@@ -1526,6 +1538,7 @@ func (c *suggestionsServiceClient) GetStoredSuggestions(ctx context.Context, in 
 type SuggestionsServiceServer interface {
 	GenerateWorkoutSuggestions(context.Context, *GenerateWorkoutSuggestionsRequest) (*GenerateWorkoutSuggestionsResponse, error)
 	GetStoredSuggestions(context.Context, *GetStoredSuggestionsRequest) (*GetStoredSuggestionsResponse, error)
+	ConfirmSuggestion(context.Context, *ConfirmSuggestionRequest) (*ConfirmSuggestionResponse, error)
 	mustEmbedUnimplementedSuggestionsServiceServer()
 }
 
@@ -1541,6 +1554,9 @@ func (UnimplementedSuggestionsServiceServer) GenerateWorkoutSuggestions(context.
 }
 func (UnimplementedSuggestionsServiceServer) GetStoredSuggestions(context.Context, *GetStoredSuggestionsRequest) (*GetStoredSuggestionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStoredSuggestions not implemented")
+}
+func (UnimplementedSuggestionsServiceServer) ConfirmSuggestion(context.Context, *ConfirmSuggestionRequest) (*ConfirmSuggestionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfirmSuggestion not implemented")
 }
 func (UnimplementedSuggestionsServiceServer) mustEmbedUnimplementedSuggestionsServiceServer() {}
 func (UnimplementedSuggestionsServiceServer) testEmbeddedByValue()                            {}
@@ -1599,6 +1615,24 @@ func _SuggestionsService_GetStoredSuggestions_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SuggestionsService_ConfirmSuggestion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmSuggestionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SuggestionsServiceServer).ConfirmSuggestion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SuggestionsService_ConfirmSuggestion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SuggestionsServiceServer).ConfirmSuggestion(ctx, req.(*ConfirmSuggestionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SuggestionsService_ServiceDesc is the grpc.ServiceDesc for SuggestionsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1613,6 +1647,10 @@ var SuggestionsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStoredSuggestions",
 			Handler:    _SuggestionsService_GetStoredSuggestions_Handler,
+		},
+		{
+			MethodName: "ConfirmSuggestion",
+			Handler:    _SuggestionsService_ConfirmSuggestion_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

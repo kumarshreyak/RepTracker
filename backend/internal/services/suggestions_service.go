@@ -346,10 +346,20 @@ func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.Worko
 	// Current routines
 	sb.WriteString("CURRENT ROUTINES:\n")
 	for i, routine := range routines {
-		sb.WriteString(fmt.Sprintf("\nRoutine %d: %s\n", i+1, routine.Name))
+		sb.WriteString(fmt.Sprintf("\nRoutine %d (ID: %s): %s\n", i+1, routine.Id, routine.Name))
 		for _, exercise := range routine.Exercises {
 			if exercise.Exercise != nil {
-				sb.WriteString(fmt.Sprintf("  - %s: %d sets\n", exercise.Exercise.Name, len(exercise.Sets)))
+				sb.WriteString(fmt.Sprintf("  - %s (Exercise ID: %s): %d sets", exercise.Exercise.Name, exercise.ExerciseId, len(exercise.Sets)))
+				// Add set details for context
+				if len(exercise.Sets) > 0 {
+					set := exercise.Sets[0]
+					if set.Reps > 0 && set.Weight > 0 {
+						sb.WriteString(fmt.Sprintf(" of %d reps @ %.1fkg", set.Reps, set.Weight))
+					} else if set.Reps > 0 {
+						sb.WriteString(fmt.Sprintf(" of %d reps", set.Reps))
+					}
+				}
+				sb.WriteString("\n")
 			}
 		}
 	}
@@ -372,12 +382,17 @@ For each suggestion, provide:
 2. Specific changes with one-line explanations
 3. Overall reasoning for the suggestion
 
+IMPORTANT: 
+- Use the actual routine IDs from the CURRENT ROUTINES section above. DO NOT use placeholder values like "routine_id".
+- Use the actual exercise IDs from the CURRENT ROUTINES section above. DO NOT use placeholder values like "existing_exercise_id".
+- Only suggest modifications to existing routines - do not create entirely new routines.
+
 OUTPUT FORMAT (JSON):
 {
   "analysis_summary": "2-3 sentence summary of key patterns, progress trends, and recommendations based on your analysis of the workout data",
   "suggestions": [
     {
-      "original_workout_id": "routine_id",
+      "original_workout_id": "ACTUAL_ROUTINE_ID_FROM_ABOVE",
       "name": "Improved Routine Name",
       "description": "Brief description of improvements",
       "overall_reasoning": "Why these changes align with their goal based on the patterns you identified",
@@ -393,7 +408,7 @@ OUTPUT FORMAT (JSON):
       ],
       "exercises": [
         {
-          "exercise_id": "existing_exercise_id",
+          "exercise_id": "USE_EXERCISE_ID_FROM_ORIGINAL_ROUTINE",
           "sets": [
             {"reps": 8, "weight": 0, "duration_seconds": 0, "distance": 0, "notes": ""},
           ],
@@ -662,10 +677,23 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 	var pbStoredSuggestions []*pb.StoredWorkoutSuggestion
 	var nextPageToken string
 
-	for i, stored := range storedSuggestions {
-		// Convert suggestions
-		var pbSuggestions []*pb.SuggestedWorkout
+	for _, stored := range storedSuggestions {
+		// Filter suggestions to only include pending ones
+		var pendingSuggestions []models.StoredSuggestedWorkout
 		for _, suggestion := range stored.Suggestions {
+			if suggestion.Status == "" || suggestion.Status == "pending" {
+				pendingSuggestions = append(pendingSuggestions, suggestion)
+			}
+		}
+
+		// Skip this stored suggestion if no pending suggestions remain
+		if len(pendingSuggestions) == 0 {
+			continue
+		}
+
+		// Convert pending suggestions
+		var pbSuggestions []*pb.SuggestedWorkout
+		for _, suggestion := range pendingSuggestions {
 			// Convert changes
 			var pbChanges []*pb.WorkoutChange
 			for _, change := range suggestion.Changes {
@@ -701,7 +729,7 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 				})
 			}
 
-			pbSuggestions = append(pbSuggestions, &pb.SuggestedWorkout{
+			pbSuggestion := &pb.SuggestedWorkout{
 				OriginalWorkoutId: suggestion.OriginalWorkoutID,
 				Name:              suggestion.Name,
 				Description:       suggestion.Description,
@@ -709,7 +737,14 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 				Changes:           pbChanges,
 				OverallReasoning:  suggestion.OverallReasoning,
 				Priority:          suggestion.Priority,
-			})
+				Status:            suggestion.Status,
+			}
+
+			if suggestion.StatusUpdatedAt != nil {
+				pbSuggestion.StatusUpdatedAt = timestamppb.New(*suggestion.StatusUpdatedAt)
+			}
+
+			pbSuggestions = append(pbSuggestions, pbSuggestion)
 		}
 
 		pbStoredSuggestions = append(pbStoredSuggestions, &pb.StoredWorkoutSuggestion{
@@ -721,14 +756,15 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 			CreatedAt:       timestamppb.New(stored.CreatedAt),
 			UpdatedAt:       timestamppb.New(stored.UpdatedAt),
 		})
-
-		// Set next page token if this is the last item and we have a full page
-		if i == len(storedSuggestions)-1 && len(storedSuggestions) == int(pageSize) {
-			nextPageToken = stored.CreatedAt.Format(time.RFC3339)
-		}
 	}
 
-	log.Printf("GetStoredSuggestions: Successfully fetched %d stored suggestions", len(pbStoredSuggestions))
+	// Set next page token if we have a full page of results
+	if len(storedSuggestions) == int(pageSize) && len(storedSuggestions) > 0 {
+		lastStored := storedSuggestions[len(storedSuggestions)-1]
+		nextPageToken = lastStored.CreatedAt.Format(time.RFC3339)
+	}
+
+	log.Printf("GetStoredSuggestions: Successfully fetched %d stored suggestions with pending suggestions", len(pbStoredSuggestions))
 	return &pb.GetStoredSuggestionsResponse{
 		StoredSuggestions: pbStoredSuggestions,
 		NextPageToken:     nextPageToken,
@@ -786,6 +822,7 @@ func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primit
 			Changes:           storedChanges,
 			OverallReasoning:  suggestion.OverallReasoning,
 			Priority:          suggestion.Priority,
+			Status:            "pending", // Initialize as pending
 		})
 	}
 
@@ -806,5 +843,149 @@ func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primit
 	}
 
 	log.Printf("storeSuggestions: Successfully stored %d suggestions for user %s", len(suggestions), userID.Hex())
+	return nil
+}
+
+// ConfirmSuggestion accepts or rejects a workout suggestion
+func (s *SuggestionsService) ConfirmSuggestion(ctx context.Context, req *pb.ConfirmSuggestionRequest) (*pb.ConfirmSuggestionResponse, error) {
+	log.Printf("ConfirmSuggestion: Starting for user %s, suggestion %s, index %d, accept: %t",
+		req.UserId, req.SuggestionId, req.SuggestionIndex, req.Accept)
+
+	// Validate user ID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Validate suggestion ID
+	suggestionObjectID, err := primitive.ObjectIDFromHex(req.SuggestionId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid suggestion_id")
+	}
+
+	// Find the stored suggestion
+	var storedSuggestion models.StoredWorkoutSuggestion
+	err = s.suggestionsColl.FindOne(ctx, bson.M{
+		"_id":    suggestionObjectID,
+		"userId": userObjectID,
+	}).Decode(&storedSuggestion)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, status.Error(codes.NotFound, "suggestion not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to find suggestion: %v", err)
+	}
+
+	// Validate suggestion index
+	if req.SuggestionIndex < 0 || req.SuggestionIndex >= int32(len(storedSuggestion.Suggestions)) {
+		return nil, status.Error(codes.InvalidArgument, "invalid suggestion_index")
+	}
+
+	suggestion := &storedSuggestion.Suggestions[req.SuggestionIndex]
+
+	// Check if suggestion was already processed
+	if suggestion.Status == "accepted" || suggestion.Status == "rejected" {
+		return &pb.ConfirmSuggestionResponse{
+			Success: false,
+			Message: fmt.Sprintf("Suggestion was already %s", suggestion.Status),
+		}, nil
+	}
+
+	now := time.Now()
+	var newStatus string
+	var responseMessage string
+
+	if req.Accept {
+		// Accept the suggestion - update the original workout
+		log.Printf("ConfirmSuggestion: Accepting suggestion for workout %s", suggestion.OriginalWorkoutID)
+
+		err = s.applyWorkoutSuggestion(ctx, suggestion)
+		if err != nil {
+			log.Printf("ConfirmSuggestion: Failed to apply suggestion: %v", err)
+			return nil, status.Errorf(codes.Internal, "failed to apply suggestion: %v", err)
+		}
+
+		newStatus = "accepted"
+		responseMessage = "Suggestion accepted and applied to workout"
+		log.Printf("ConfirmSuggestion: Successfully applied suggestion to workout %s", suggestion.OriginalWorkoutID)
+	} else {
+		// Reject the suggestion
+		newStatus = "rejected"
+		responseMessage = "Suggestion rejected"
+		log.Printf("ConfirmSuggestion: Suggestion rejected")
+	}
+
+	// Update the suggestion status in MongoDB
+	update := bson.M{
+		"$set": bson.M{
+			fmt.Sprintf("suggestions.%d.status", req.SuggestionIndex):          newStatus,
+			fmt.Sprintf("suggestions.%d.statusUpdatedAt", req.SuggestionIndex): now,
+			"updatedAt": now,
+		},
+	}
+
+	_, err = s.suggestionsColl.UpdateOne(ctx, bson.M{"_id": suggestionObjectID}, update)
+	if err != nil {
+		log.Printf("ConfirmSuggestion: Failed to update suggestion status: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to update suggestion status: %v", err)
+	}
+
+	log.Printf("ConfirmSuggestion: Successfully updated suggestion status to %s", newStatus)
+
+	return &pb.ConfirmSuggestionResponse{
+		Success: true,
+		Message: responseMessage,
+	}, nil
+}
+
+// applyWorkoutSuggestion applies the suggested changes to the original workout
+func (s *SuggestionsService) applyWorkoutSuggestion(ctx context.Context, suggestion *models.StoredSuggestedWorkout) error {
+	log.Printf("applyWorkoutSuggestion: Applying suggestion to workout %s", suggestion.OriginalWorkoutID)
+
+	// Validate that the original workout ID is a valid ObjectID
+	_, validateErr := primitive.ObjectIDFromHex(suggestion.OriginalWorkoutID)
+	if validateErr != nil {
+		return fmt.Errorf("invalid original workout ID '%s': %w", suggestion.OriginalWorkoutID, validateErr)
+	}
+
+	// Convert the suggested exercises to protobuf format for the update request
+	var pbExercises []*pb.WorkoutExercise
+	for _, exercise := range suggestion.Exercises {
+		var pbSets []*pb.WorkoutSet
+		for _, set := range exercise.Sets {
+			pbSets = append(pbSets, &pb.WorkoutSet{
+				Reps:            set.Reps,
+				Weight:          set.Weight,
+				DurationSeconds: float32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+			})
+		}
+
+		pbExercises = append(pbExercises, &pb.WorkoutExercise{
+			ExerciseId:  exercise.ExerciseID.Hex(),
+			Sets:        pbSets,
+			Notes:       exercise.Notes,
+			RestSeconds: exercise.RestSeconds,
+		})
+	}
+
+	// Create update request
+	updateReq := &pb.UpdateWorkoutRequest{
+		Id:          suggestion.OriginalWorkoutID,
+		Name:        suggestion.Name,
+		Description: suggestion.Description,
+		Exercises:   pbExercises,
+	}
+
+	log.Printf("applyWorkoutSuggestion: Calling UpdateWorkout with %d exercises", len(pbExercises))
+
+	// Call the workout service to update the workout
+	_, err := s.workoutService.UpdateWorkout(ctx, updateReq)
+	if err != nil {
+		return fmt.Errorf("failed to update workout: %w", err)
+	}
+
+	log.Printf("applyWorkoutSuggestion: Successfully updated workout %s", suggestion.OriginalWorkoutID)
 	return nil
 }

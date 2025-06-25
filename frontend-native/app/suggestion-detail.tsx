@@ -11,35 +11,11 @@ import { Typography, Button } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
-interface WorkoutChange {
-  type: string;
-  exerciseId?: string;
-  exerciseName: string;
-  oldValue: string;
-  newValue: string;
-  reason: string;
-}
-
-interface SuggestedWorkout {
-  originalWorkoutId: string;
-  name: string;
-  description: string;
-  exercises: any[];
-  changes: WorkoutChange[];
-  overallReasoning: string;
-  priority: number;
-}
-
-interface StoredWorkoutSuggestion {
-  id: string;
-  userId: string;
-  suggestions: SuggestedWorkout[];
-  analysisSummary: string;
-  daysAnalyzed: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { 
+  WorkoutChange, 
+  SuggestedWorkout, 
+  StoredWorkoutSuggestion 
+} from '../src/types/suggestion';
 
 export default function SuggestionDetailScreen() {
   const router = useRouter();

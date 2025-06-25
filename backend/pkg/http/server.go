@@ -301,6 +301,8 @@ type SuggestedWorkoutResponse struct {
 	Changes           []WorkoutChangeResponse   `json:"changes"`
 	OverallReasoning  string                    `json:"overallReasoning"`
 	Priority          int32                     `json:"priority"`
+	Status            string                    `json:"status,omitempty"`
+	StatusUpdatedAt   *time.Time                `json:"statusUpdatedAt,omitempty"`
 }
 
 type GenerateWorkoutSuggestionsRequest struct {
@@ -326,6 +328,16 @@ type StoredWorkoutSuggestionResponse struct {
 type GetStoredSuggestionsResponse struct {
 	StoredSuggestions []StoredWorkoutSuggestionResponse `json:"storedSuggestions"`
 	NextPageToken     string                            `json:"nextPageToken,omitempty"`
+}
+
+type ConfirmSuggestionRequest struct {
+	SuggestionIndex int32 `json:"suggestionIndex"`
+	Accept          bool  `json:"accept"`
+}
+
+type ConfirmSuggestionResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, suggestionsService *services.SuggestionsService, db *database.MongoDB) *Server {
@@ -397,6 +409,7 @@ func (s *Server) Start(port string) error {
 	// Suggestions routes
 	api.HandleFunc("/users/{userId}/suggestions/workouts", s.handleGenerateWorkoutSuggestions).Methods("POST")
 	api.HandleFunc("/users/{userId}/suggestions/stored", s.handleGetStoredSuggestions).Methods("GET")
+	api.HandleFunc("/users/{userId}/suggestions/{suggestionId}/confirm", s.handleConfirmSuggestion).Methods("POST")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -1786,7 +1799,7 @@ func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http
 			}
 		}
 
-		suggestions[i] = SuggestedWorkoutResponse{
+		suggestionResponse := SuggestedWorkoutResponse{
 			OriginalWorkoutID: suggestion.OriginalWorkoutId,
 			Name:              suggestion.Name,
 			Description:       suggestion.Description,
@@ -1794,7 +1807,15 @@ func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http
 			Changes:           changes,
 			OverallReasoning:  suggestion.OverallReasoning,
 			Priority:          suggestion.Priority,
+			Status:            suggestion.Status,
 		}
+
+		if suggestion.StatusUpdatedAt != nil {
+			t := suggestion.StatusUpdatedAt.AsTime()
+			suggestionResponse.StatusUpdatedAt = &t
+		}
+
+		suggestions[i] = suggestionResponse
 	}
 
 	response := GenerateWorkoutSuggestionsResponse{
@@ -1886,7 +1907,7 @@ func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Reque
 				}
 			}
 
-			suggestions[j] = SuggestedWorkoutResponse{
+			suggestionResponse := SuggestedWorkoutResponse{
 				OriginalWorkoutID: suggestion.OriginalWorkoutId,
 				Name:              suggestion.Name,
 				Description:       suggestion.Description,
@@ -1894,7 +1915,15 @@ func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Reque
 				Changes:           changes,
 				OverallReasoning:  suggestion.OverallReasoning,
 				Priority:          suggestion.Priority,
+				Status:            suggestion.Status,
 			}
+
+			if suggestion.StatusUpdatedAt != nil {
+				t := suggestion.StatusUpdatedAt.AsTime()
+				suggestionResponse.StatusUpdatedAt = &t
+			}
+
+			suggestions[j] = suggestionResponse
 		}
 
 		storedSuggestions[i] = StoredWorkoutSuggestionResponse{
@@ -1917,5 +1946,45 @@ func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleConfirmSuggestion(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+	suggestionID := vars["suggestionId"]
+
+	var req ConfirmSuggestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("🤖 Confirming suggestion: user=%s, suggestion=%s, index=%d, accept=%t",
+		userID, suggestionID, req.SuggestionIndex, req.Accept)
+
+	ctx := context.Background()
+	pbReq := &pb.ConfirmSuggestionRequest{
+		UserId:          userID,
+		SuggestionId:    suggestionID,
+		SuggestionIndex: req.SuggestionIndex,
+		Accept:          req.Accept,
+	}
+
+	resp, err := s.suggestionsService.ConfirmSuggestion(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to confirm suggestion: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to confirm suggestion: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := ConfirmSuggestionResponse{
+		Success: resp.Success,
+		Message: resp.Message,
+	}
+
+	log.Printf("✅ Suggestion confirmation result: success=%t, message=%s", resp.Success, resp.Message)
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }

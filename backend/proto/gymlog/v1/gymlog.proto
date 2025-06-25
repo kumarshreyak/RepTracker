@@ -619,6 +619,8 @@ message SuggestedWorkout {
   repeated WorkoutChange changes = 5;
   string overall_reasoning = 6;
   int32 priority = 7; // 1-5, 5 being most recommended
+  string status = 8; // "pending", "accepted", "rejected"
+  google.protobuf.Timestamp status_updated_at = 9;
 }
 
 message GenerateWorkoutSuggestionsRequest {
@@ -654,8 +656,22 @@ message GetStoredSuggestionsResponse {
   string next_page_token = 2;
 }
 
+// Confirm Suggestion related messages
+message ConfirmSuggestionRequest {
+  string user_id = 1;
+  string suggestion_id = 2; // ID of the StoredWorkoutSuggestion
+  int32 suggestion_index = 3; // Index of the specific suggestion within the stored suggestion
+  bool accept = 4; // true for accept, false for reject
+}
+
+message ConfirmSuggestionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 // Suggestions Service
 service SuggestionsService {
   rpc GenerateWorkoutSuggestions(GenerateWorkoutSuggestionsRequest) returns (GenerateWorkoutSuggestionsResponse);
   rpc GetStoredSuggestions(GetStoredSuggestionsRequest) returns (GetStoredSuggestionsResponse);
+  rpc ConfirmSuggestion(ConfirmSuggestionRequest) returns (ConfirmSuggestionResponse);
 } 
