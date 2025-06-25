@@ -1,0 +1,13 @@
+TO MAKE A NEW PAGE-
+
+Act as an expert senior designer. Refer the .tsx code for product context only.
+
+Design a new onboarding page layout. 
+This page opens - on sucess of signin, if any of user's height/weight/age/goal fields do not exist. 
+This onboarding page lets the user enter their height, weight, age, goal.
+
+Refer attached request and api for reference 
+
+The design should be user friendly and minimal. Use as little text as possible in the design. Remember to utilise  @TYPOGRAPHY_SYSTEM.md and @COLOR_SYSTEM.md well.
+
+Also explain your reasoning step by step.

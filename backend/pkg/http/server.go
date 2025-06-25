@@ -29,6 +29,7 @@ type Server struct {
 	workoutSessionService *services.WorkoutSessionService
 	metricsService        *services.MetricsService
 	insightsService       *services.InsightsService
+	suggestionsService    *services.SuggestionsService
 	db                    *database.MongoDB
 }
 
@@ -282,7 +283,37 @@ type GetRecentInsightsResponse struct {
 	Insights []WorkoutInsightResponse `json:"insights"`
 }
 
-func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, db *database.MongoDB) *Server {
+// Suggestions types
+type WorkoutChangeResponse struct {
+	Type         string `json:"type"`
+	ExerciseID   string `json:"exerciseId,omitempty"`
+	ExerciseName string `json:"exerciseName"`
+	OldValue     string `json:"oldValue"`
+	NewValue     string `json:"newValue"`
+	Reason       string `json:"reason"`
+}
+
+type SuggestedWorkoutResponse struct {
+	OriginalWorkoutID string                    `json:"originalWorkoutId"`
+	Name              string                    `json:"name"`
+	Description       string                    `json:"description"`
+	Exercises         []WorkoutExerciseResponse `json:"exercises"`
+	Changes           []WorkoutChangeResponse   `json:"changes"`
+	OverallReasoning  string                    `json:"overallReasoning"`
+	Priority          int32                     `json:"priority"`
+}
+
+type GenerateWorkoutSuggestionsRequest struct {
+	DaysToAnalyze  int32 `json:"daysToAnalyze,omitempty"`
+	MaxSuggestions int32 `json:"maxSuggestions,omitempty"`
+}
+
+type GenerateWorkoutSuggestionsResponse struct {
+	Suggestions     []SuggestedWorkoutResponse `json:"suggestions"`
+	AnalysisSummary string                     `json:"analysisSummary"`
+}
+
+func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, suggestionsService *services.SuggestionsService, db *database.MongoDB) *Server {
 	return &Server{
 		userService:           userService,
 		exerciseService:       exerciseService,
@@ -290,6 +321,7 @@ func NewServer(userService *services.UserService, exerciseService *services.Exer
 		workoutSessionService: workoutSessionService,
 		metricsService:        metricsService,
 		insightsService:       insightsService,
+		suggestionsService:    suggestionsService,
 		db:                    db,
 	}
 }
@@ -346,6 +378,9 @@ func (s *Server) Start(port string) error {
 	// Insights routes
 	api.HandleFunc("/users/{userId}/insights", s.handleGenerateInsights).Methods("POST")
 	api.HandleFunc("/users/{userId}/insights", s.handleGetRecentInsights).Methods("GET")
+
+	// Suggestions routes
+	api.HandleFunc("/users/{userId}/suggestions/workouts", s.handleGenerateWorkoutSuggestions).Methods("POST")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -1662,5 +1697,98 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	response := s.userToResponse(modelUser)
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// Suggestions HTTP handlers
+func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	var req GenerateWorkoutSuggestionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// Defaults will be used
+	}
+
+	ctx := context.Background()
+	pbReq := &pb.GenerateWorkoutSuggestionsRequest{
+		UserId:         userID,
+		DaysToAnalyze:  req.DaysToAnalyze,
+		MaxSuggestions: req.MaxSuggestions,
+	}
+
+	log.Printf("🤖 Generating workout suggestions for user %s", userID)
+
+	resp, err := s.suggestionsService.GenerateWorkoutSuggestions(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to generate workout suggestions: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to generate workout suggestions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert protobuf response to HTTP response
+	suggestions := make([]SuggestedWorkoutResponse, len(resp.Suggestions))
+	for i, suggestion := range resp.Suggestions {
+		// Convert exercises
+		exercises := make([]WorkoutExerciseResponse, len(suggestion.Exercises))
+		for j, ex := range suggestion.Exercises {
+			sets := make([]WorkoutSetResponse, len(ex.Sets))
+			for k, set := range ex.Sets {
+				sets[k] = WorkoutSetResponse{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				}
+			}
+
+			exercises[j] = WorkoutExerciseResponse{
+				ExerciseID:  ex.ExerciseId,
+				Sets:        sets,
+				Notes:       ex.Notes,
+				RestSeconds: ex.RestSeconds,
+			}
+
+			// Populate exercise details
+			if ex.Exercise != nil {
+				exerciseResp := exerciseToResponse(ex.Exercise)
+				exercises[j].Exercise = &exerciseResp
+			}
+		}
+
+		// Convert changes
+		changes := make([]WorkoutChangeResponse, len(suggestion.Changes))
+		for j, change := range suggestion.Changes {
+			changes[j] = WorkoutChangeResponse{
+				Type:         change.Type,
+				ExerciseID:   change.ExerciseId,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			}
+		}
+
+		suggestions[i] = SuggestedWorkoutResponse{
+			OriginalWorkoutID: suggestion.OriginalWorkoutId,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           changes,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+		}
+	}
+
+	response := GenerateWorkoutSuggestionsResponse{
+		Suggestions:     suggestions,
+		AnalysisSummary: resp.AnalysisSummary,
+	}
+
+	log.Printf("✅ Successfully generated %d workout suggestions for user %s", len(suggestions), userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }

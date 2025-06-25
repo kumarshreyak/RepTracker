@@ -48,6 +48,12 @@ func main() {
 		log.Fatalf("Failed to create insights service: %v", err)
 	}
 
+	// Create suggestions service
+	suggestionsService, err := services.NewSuggestionsService(db.Database, workoutService, userService, exerciseService, insightsService)
+	if err != nil {
+		log.Fatalf("Failed to create suggestions service: %v", err)
+	}
+
 	// Get port from environment (Cloud Run uses PORT)
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -55,7 +61,7 @@ func main() {
 	}
 
 	// Start HTTP server with all services
-	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, workoutSessionService, metricsService, insightsService, db)
+	httpServer := httpserver.NewServer(userService, exerciseService, workoutService, workoutSessionService, metricsService, insightsService, suggestionsService, db)
 	log.Printf("Starting HTTP server on port %s...", port)
 	if err := httpServer.Start(port); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)

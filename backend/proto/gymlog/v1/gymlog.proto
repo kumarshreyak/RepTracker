@@ -599,4 +599,40 @@ message GetRecentInsightsResponse {
 service InsightsService {
   rpc GenerateInsights(GenerateInsightsRequest) returns (GenerateInsightsResponse);
   rpc GetRecentInsights(GetRecentInsightsRequest) returns (GetRecentInsightsResponse);
+}
+
+// Workout Suggestions related messages
+message WorkoutChange {
+  string type = 1; // "exercise", "sets", "reps", "weight", "rest", "remove", "add"
+  string exercise_id = 2;
+  string exercise_name = 3;
+  string old_value = 4;
+  string new_value = 5;
+  string reason = 6; // One-line explanation for the change
+}
+
+message SuggestedWorkout {
+  string original_workout_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated WorkoutExercise exercises = 4;
+  repeated WorkoutChange changes = 5;
+  string overall_reasoning = 6;
+  int32 priority = 7; // 1-5, 5 being most recommended
+}
+
+message GenerateWorkoutSuggestionsRequest {
+  string user_id = 1;
+  int32 days_to_analyze = 2; // default 14 days
+  int32 max_suggestions = 3; // default 3
+}
+
+message GenerateWorkoutSuggestionsResponse {
+  repeated SuggestedWorkout suggestions = 1;
+  string analysis_summary = 2;
+}
+
+// Suggestions Service
+service SuggestionsService {
+  rpc GenerateWorkoutSuggestions(GenerateWorkoutSuggestionsRequest) returns (GenerateWorkoutSuggestionsResponse);
 } 
