@@ -36,6 +36,7 @@ type SuggestionsService struct {
 
 // NewSuggestionsService creates a new suggestions service
 func NewSuggestionsService(db *mongo.Database, workoutService *WorkoutService, userService *UserService, exerciseService *ExerciseService, insightsService *InsightsService) (*SuggestionsService, error) {
+
 	ctx := context.Background()
 
 	// Get API key from environment
@@ -119,6 +120,12 @@ func (s *SuggestionsService) GenerateWorkoutSuggestions(ctx context.Context, req
 	}
 	log.Printf("GenerateWorkoutSuggestions: Found %d routines", len(routines))
 
+	// Log routine details for debugging
+	for i, routine := range routines {
+		log.Printf("GenerateWorkoutSuggestions: Routine %d - ID: %s, Name: %s, Exercises: %d",
+			i, routine.Id, routine.Name, len(routine.Exercises))
+	}
+
 	// Fetch recent insights
 	log.Printf("GenerateWorkoutSuggestions: Fetching recent insights")
 	insights, err := s.fetchRecentInsights(ctx, userObjectID)
@@ -128,6 +135,11 @@ func (s *SuggestionsService) GenerateWorkoutSuggestions(ctx context.Context, req
 		insights = []WorkoutInsight{}
 	}
 	log.Printf("GenerateWorkoutSuggestions: Found %d insights", len(insights))
+
+	// Log insight details for debugging
+	for i, insight := range insights {
+		log.Printf("GenerateWorkoutSuggestions: Insight %d - %.100s...", i, insight.Insight)
+	}
 
 	// Generate suggestions using AI (Gemini will analyze the patterns)
 	log.Printf("GenerateWorkoutSuggestions: Generating AI suggestions with pattern analysis")
@@ -204,38 +216,76 @@ func (s *SuggestionsService) fetchRecentWorkoutSessions(ctx context.Context, use
 
 // fetchUserRoutines fetches the user's workout routines
 func (s *SuggestionsService) fetchUserRoutines(ctx context.Context, userID string) ([]*pb.Workout, error) {
+	log.Printf("fetchUserRoutines: Starting for user %s", userID)
+
 	req := &pb.ListWorkoutsRequest{
 		UserId:   userID,
 		PageSize: 50,
 	}
 
+	log.Printf("fetchUserRoutines: Calling WorkoutService.ListWorkouts with UserId=%s, PageSize=%d", req.UserId, req.PageSize)
 	resp, err := s.workoutService.ListWorkouts(ctx, req)
 	if err != nil {
+		log.Printf("fetchUserRoutines: WorkoutService.ListWorkouts failed: %v", err)
 		return nil, err
 	}
 
+	log.Printf("fetchUserRoutines: ListWorkouts returned %d total workouts", len(resp.Workouts))
+
 	// Filter for routines (no start/finish times)
 	var routines []*pb.Workout
-	for _, workout := range resp.Workouts {
+	for i, workout := range resp.Workouts {
+		log.Printf("fetchUserRoutines: Checking workout %d - ID: %s, Name: %s, StartedAt: %v, FinishedAt: %v",
+			i, workout.Id, workout.Name, workout.StartedAt, workout.FinishedAt)
+
 		if workout.StartedAt == nil && workout.FinishedAt == nil {
+			log.Printf("fetchUserRoutines: Workout %s is a routine (no start/finish times)", workout.Id)
+
 			// Populate exercise details
-			for i, exercise := range workout.Exercises {
+			for j, exercise := range workout.Exercises {
+				log.Printf("fetchUserRoutines: Populating exercise %d - ExerciseId: %s", j, exercise.ExerciseId)
 				exerciseReq := &pb.GetExerciseRequest{Id: exercise.ExerciseId}
 				exerciseDetail, err := s.exerciseService.GetExercise(ctx, exerciseReq)
 				if err == nil {
-					workout.Exercises[i].Exercise = exerciseDetail
+					workout.Exercises[j].Exercise = exerciseDetail
+					log.Printf("fetchUserRoutines: Successfully populated exercise: %s", exerciseDetail.Name)
+				} else {
+					log.Printf("fetchUserRoutines: Failed to populate exercise %s: %v", exercise.ExerciseId, err)
 				}
 			}
 			routines = append(routines, workout)
+		} else {
+			log.Printf("fetchUserRoutines: Workout %s is a session (has start/finish times), skipping", workout.Id)
 		}
 	}
 
+	log.Printf("fetchUserRoutines: Returning %d routines out of %d total workouts", len(routines), len(resp.Workouts))
 	return routines, nil
 }
 
 // fetchRecentInsights fetches recent insights for the user
 func (s *SuggestionsService) fetchRecentInsights(ctx context.Context, userID primitive.ObjectID) ([]WorkoutInsight, error) {
-	return s.insightsService.GetRecentInsights(ctx, userID, 10)
+	log.Printf("fetchRecentInsights: Starting for user %s", userID.Hex())
+
+	if s.insightsService == nil {
+		log.Printf("fetchRecentInsights: insightsService is nil")
+		return []WorkoutInsight{}, fmt.Errorf("insights service not initialized")
+	}
+
+	log.Printf("fetchRecentInsights: Calling insightsService.GetRecentInsights with userID=%s, limit=10", userID.Hex())
+	insights, err := s.insightsService.GetRecentInsights(ctx, userID, 10)
+	if err != nil {
+		log.Printf("fetchRecentInsights: insightsService.GetRecentInsights failed: %v", err)
+		return []WorkoutInsight{}, err
+	}
+
+	log.Printf("fetchRecentInsights: Successfully fetched %d insights", len(insights))
+	for i, insight := range insights {
+		log.Printf("fetchRecentInsights: Insight %d - ID: %s, Insight: %.100s...",
+			i, insight.ID.Hex(), insight.Insight)
+	}
+
+	return insights, nil
 }
 
 // generateAISuggestions uses Gemini AI to generate workout suggestions
@@ -245,6 +295,9 @@ func (s *SuggestionsService) generateAISuggestions(ctx context.Context, user *pb
 	// Prepare data for AI
 	prompt := s.prepareAIPrompt(user, sessions, routines, insights, maxSuggestions)
 	log.Printf("generateAISuggestions: Prompt length: %d characters", len(prompt))
+
+	// Log the full prompt for debugging
+	log.Printf("generateAISuggestions: GEMINI PROMPT:\n%s", prompt)
 
 	// Call Gemini API
 	log.Printf("generateAISuggestions: Calling Gemini API")
@@ -262,6 +315,10 @@ func (s *SuggestionsService) generateAISuggestions(ctx context.Context, user *pb
 	// Parse the AI response
 	log.Printf("generateAISuggestions: Parsing AI response")
 	responseText := result.Text()
+
+	// Log the full response for debugging
+	log.Printf("generateAISuggestions: GEMINI RESPONSE:\n%s", responseText)
+
 	suggestions, analysisSummary, err := s.parseAIResponse(responseText, routines)
 	if err != nil {
 		log.Printf("generateAISuggestions: Failed to parse AI response: %v", err)
@@ -477,6 +534,12 @@ func (s *SuggestionsService) parseAIResponse(responseText string, routines []*pb
 		return nil, "", fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
+	// Validate the AI response before processing
+	if err := s.validateAIResponse(&aiResponse, routines); err != nil {
+		log.Printf("parseAIResponse: AI response validation failed: %v", err)
+		return nil, "", fmt.Errorf("AI response validation failed: %w", err)
+	}
+
 	// Convert to protobuf
 	var suggestions []*pb.SuggestedWorkout
 	for _, suggestion := range aiResponse.Suggestions {
@@ -545,6 +608,66 @@ func (s *SuggestionsService) parseAIResponse(responseText string, routines []*pb
 	}
 
 	return suggestions, aiResponse.AnalysisSummary, nil
+}
+
+// validateAIResponse validates that the AI response contains valid routine and exercise IDs
+func (s *SuggestionsService) validateAIResponse(response *struct {
+	AnalysisSummary string `json:"analysis_summary"`
+	Suggestions     []struct {
+		OriginalWorkoutID string `json:"original_workout_id"`
+		Name              string `json:"name"`
+		Description       string `json:"description"`
+		OverallReasoning  string `json:"overall_reasoning"`
+		Priority          int32  `json:"priority"`
+		Changes           []struct {
+			Type         string `json:"type"`
+			ExerciseName string `json:"exercise_name"`
+			OldValue     string `json:"old_value"`
+			NewValue     string `json:"new_value"`
+			Reason       string `json:"reason"`
+		} `json:"changes"`
+		Exercises []struct {
+			ExerciseID string `json:"exercise_id"`
+			Sets       []struct {
+				Reps            int32   `json:"reps"`
+				Weight          float32 `json:"weight"`
+				DurationSeconds float32 `json:"duration_seconds"`
+				Distance        float32 `json:"distance"`
+				Notes           string  `json:"notes"`
+			} `json:"sets"`
+			Notes       string `json:"notes"`
+			RestSeconds int32  `json:"rest_seconds"`
+		} `json:"exercises"`
+	} `json:"suggestions"`
+}, routines []*pb.Workout) error {
+	validRoutineIds := make(map[string]bool)
+
+	// Build valid routine ID map
+	for _, routine := range routines {
+		validRoutineIds[routine.Id] = true
+	}
+
+	// Validate each suggestion
+	for i, suggestion := range response.Suggestions {
+		// Check routine ID
+		if !validRoutineIds[suggestion.OriginalWorkoutID] {
+			return fmt.Errorf("suggestion %d: invalid routine ID '%s'",
+				i, suggestion.OriginalWorkoutID)
+		}
+
+		// Check exercise IDs against the database (allow any valid exercise, not just those in the routine)
+		for j, exercise := range suggestion.Exercises {
+			ctx := context.Background()
+			exerciseReq := &pb.GetExerciseRequest{Id: exercise.ExerciseID}
+			_, err := s.exerciseService.GetExercise(ctx, exerciseReq)
+			if err != nil {
+				return fmt.Errorf("suggestion %d, exercise %d: invalid exercise ID '%s' - exercise not found in database",
+					i, j, exercise.ExerciseID)
+			}
+		}
+	}
+
+	return nil
 }
 
 func min(a, b int) int {

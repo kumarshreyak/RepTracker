@@ -94,7 +94,7 @@ export default function HomeTab() {
       setError(null);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-      const url = `${API_BASE_URL}/api/workouts?user_id=${user.id}`;
+      const url = `${API_BASE_URL}/api/workouts?userId=${user.id}`;
       console.log('[fetchRoutines] API Base URL:', API_BASE_URL);
       console.log('[fetchRoutines] Full URL:', url);
       

@@ -7,6 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Text,
 } from 'react-native';
 import { Typography, Button } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
@@ -15,6 +16,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { 
   WorkoutInsight, 
   StoredWorkoutSuggestion, 
+  SuggestedWorkout,
   GenerateWorkoutSuggestionsRequest 
 } from '../../src/types/suggestion';
 
@@ -393,23 +395,108 @@ export default function InsightsTab() {
   );
 
   const renderSuggestionCard = (storedSuggestion: StoredWorkoutSuggestion) => {
-    // Show only the highest priority suggestion from each stored suggestion set
-    const sortedSuggestions = storedSuggestion.suggestions
-      .map((suggestion, index) => ({ suggestion, originalIndex: index }))
-      .sort((a, b) => b.suggestion.priority - a.suggestion.priority);
-    
-    const topSuggestionData = sortedSuggestions[0];
-    if (!topSuggestionData) return null;
+    if (!storedSuggestion.suggestions || storedSuggestion.suggestions.length === 0) return null;
 
-    const { suggestion: topSuggestion, originalIndex } = topSuggestionData;
-    const changeCount = topSuggestion.changes.length;
-    const changeTypes = [...new Set(topSuggestion.changes.map(c => c.type))];
-    
+    // Filter to show only pending suggested workouts
+    const pendingSuggestions = storedSuggestion.suggestions.filter(
+      suggestedWorkout => !suggestedWorkout.status || suggestedWorkout.status === 'pending'
+    );
+
+    // If no pending suggested workouts, don't render the card
+    if (pendingSuggestions.length === 0) return null;
+
     const handleCardPress = () => {
       router.push({
         pathname: '/suggestion-detail',
         params: { suggestion: JSON.stringify(storedSuggestion) }
       });
+    };
+
+    const renderSuggestedWorkout = (suggestion: SuggestedWorkout, index: number) => {
+      const changeCount = suggestion.changes.length;
+      const changeTypes = [...new Set(suggestion.changes.map(c => c.type))];
+      
+      return (
+        <View key={index} style={styles.suggestedWorkoutItem}>
+          {/* Priority indicator */}
+          <View 
+            style={[
+              styles.workoutPriorityIndicator,
+              { backgroundColor: suggestion.priority >= 4 ? getColor('accent') : getColor('borderOpaque') }
+            ]} 
+          />
+          
+          <View style={styles.suggestedWorkoutContent}>
+            {/* Header with workout name and change count */}
+            <View style={styles.workoutHeader}>
+              <View style={{ flex: 1 }}>
+                <Typography variant="label-medium" color="contentPrimary">
+                  {suggestion.name}
+                </Typography>
+              </View>
+              <View style={styles.changeCountBadge}>
+                <Typography variant="label-xsmall" color="contentOnColor">
+                  {changeCount} {changeCount === 1 ? 'change' : 'changes'}
+                </Typography>
+              </View>
+            </View>
+            
+            {/* Change type indicators */}
+            <View style={styles.changeTypesRow}>
+              {changeTypes.slice(0, 3).map((type, typeIndex) => (
+                <View key={typeIndex} style={styles.changeTypeBadge}>
+                  <Typography variant="label-xsmall" color="contentSecondary">
+                    {type}
+                  </Typography>
+                </View>
+              ))}
+              {changeTypes.length > 3 && (
+                <Typography variant="label-xsmall" color="contentTertiary">
+                  +{changeTypes.length - 3}
+                </Typography>
+              )}
+            </View>
+            
+            {/* Brief reasoning */}
+            <View style={styles.workoutReasoning}>
+              <Text 
+                style={{
+                  fontFamily: 'Uber Move Text',
+                  fontSize: 12,
+                  lineHeight: 20,
+                  fontWeight: '400',
+                  color: getColor('contentSecondary'),
+                }}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {suggestion.overallReasoning}
+              </Text>
+            </View>
+            
+            {/* Action buttons */}
+            <View style={styles.workoutActions}>
+              <Button
+                variant="secondary"
+                size="small"
+                onPress={() => rejectSuggestion(storedSuggestion.id, index)}
+                style={styles.suggestionButton}
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="primary"
+                size="small"
+                onPress={() => acceptSuggestion(storedSuggestion.id, index)}
+                disabled={processingWorkoutId === storedSuggestion.id}
+                style={styles.suggestionButton}
+              >
+                {processingWorkoutId === storedSuggestion.id ? 'Applying...' : 'Apply'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      );
     };
     
     return (
@@ -419,71 +506,32 @@ export default function InsightsTab() {
         onPress={handleCardPress}
         activeOpacity={0.7}
       >
-        {/* Priority indicator */}
-        <View 
-          style={[
-            styles.suggestionPriorityIndicator,
-            { backgroundColor: topSuggestion.priority >= 4 ? getColor('accent') : getColor('borderOpaque') }
-          ]} 
-        />
-        
-        <View style={styles.suggestionContent}>
-          {/* Header with workout name and change count */}
-          <View style={styles.suggestionHeader}>
-            <View style={{ flex: 1 }}>
-              <Typography variant="label-medium" color="contentPrimary">
-                {topSuggestion.name}
-              </Typography>
-            </View>
-            <View style={styles.changeCountBadge}>
-              <Typography variant="label-xsmall" color="contentOnColor">
-                {changeCount} {changeCount === 1 ? 'change' : 'changes'}
-              </Typography>
-            </View>
-          </View>
-          
-          {/* Change type indicators */}
-          <View style={styles.changeTypesRow}>
-            {changeTypes.slice(0, 3).map((type, index) => (
-              <View key={index} style={styles.changeTypeBadge}>
-                <Typography variant="label-xsmall" color="contentSecondary">
-                  {type}
-                </Typography>
-              </View>
-            ))}
-            {changeTypes.length > 3 && (
-              <Typography variant="label-xsmall" color="contentTertiary">
-                +{changeTypes.length - 3}
-              </Typography>
-            )}
-          </View>
-          
-          {/* Brief reasoning */}
-          <View style={styles.suggestionReasoning}>
-            <Typography variant="paragraph-xsmall" color="contentSecondary">
-              {topSuggestion.overallReasoning}
+        <View style={styles.suggestionCardContent}>
+          {/* Analysis summary header */}
+          <View style={styles.analysisHeader}>
+            <Typography variant="heading-xsmall" color="contentPrimary">
+              Workout Analysis
             </Typography>
+            <Text 
+              style={[
+                {
+                  fontFamily: 'Uber Move Text',
+                  fontSize: 12,
+                  lineHeight: 20,
+                  fontWeight: '400',
+                  color: getColor('contentSecondary'),
+                }
+              ]}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {storedSuggestion.analysisSummary}
+            </Text>
           </View>
           
-          {/* Action buttons */}
-          <View style={styles.suggestionActions}>
-            <Button
-              variant="secondary"
-              size="small"
-              onPress={() => rejectSuggestion(storedSuggestion.id, originalIndex)}
-              style={styles.suggestionButton}
-            >
-              Dismiss
-            </Button>
-            <Button
-              variant="primary"
-              size="small"
-              onPress={() => acceptSuggestion(storedSuggestion.id, originalIndex)}
-              disabled={processingWorkoutId === storedSuggestion.id}
-              style={styles.suggestionButton}
-            >
-              {processingWorkoutId === storedSuggestion.id ? 'Applying...' : 'Apply'}
-            </Button>
+          {/* List of suggested workouts */}
+          <View style={styles.suggestedWorkoutsList}>
+            {pendingSuggestions.map(renderSuggestedWorkout)}
           </View>
         </View>
       </TouchableOpacity>
@@ -656,13 +704,59 @@ const styles = StyleSheet.create({
   },
   
   suggestionCard: {
-    flexDirection: 'row',
     backgroundColor: getColor('backgroundPrimary'),
     borderRadius: 8,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: getColor('borderOpaque'),
     overflow: 'hidden',
+  },
+  
+  suggestionCardContent: {
+    padding: 16,
+  },
+  
+  analysisHeader: {
+    marginBottom: 16,
+  },
+  
+  suggestedWorkoutsList: {
+    gap: 12,
+  },
+  
+  suggestedWorkoutItem: {
+    flexDirection: 'row',
+    backgroundColor: getColor('backgroundSecondary'),
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: getColor('borderOpaque'),
+    overflow: 'hidden',
+  },
+  
+  workoutPriorityIndicator: {
+    width: 4,
+  },
+  
+  suggestedWorkoutContent: {
+    flex: 1,
+    padding: 12,
+  },
+  
+  workoutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  
+  workoutReasoning: {
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  
+  workoutActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   
   suggestionPriorityIndicator: {

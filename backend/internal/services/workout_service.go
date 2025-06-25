@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -258,15 +259,19 @@ func (s *WorkoutService) DeleteWorkout(ctx context.Context, req *pb.DeleteWorkou
 
 // ListWorkouts lists workouts with optional filtering
 func (s *WorkoutService) ListWorkouts(ctx context.Context, req *pb.ListWorkoutsRequest) (*pb.ListWorkoutsResponse, error) {
+	log.Printf("[ListWorkouts] Starting request - UserID: %s, PageSize: %d, PageToken: %s", req.UserId, req.PageSize, req.PageToken)
+
 	filter := bson.M{}
 
 	// Apply filters
 	if req.UserId != "" {
 		userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
 		if err != nil {
+			log.Printf("[ListWorkouts] Error parsing user ID %s: %v", req.UserId, err)
 			return nil, status.Error(codes.InvalidArgument, "invalid user_id")
 		}
 		filter["user_id"] = userObjectID
+		log.Printf("[ListWorkouts] Added user filter for ObjectID: %s", userObjectID.Hex())
 	}
 
 	// Filter by date range
@@ -274,9 +279,11 @@ func (s *WorkoutService) ListWorkouts(ctx context.Context, req *pb.ListWorkoutsR
 		dateFilter := bson.M{}
 		if req.StartDate != nil {
 			dateFilter["$gte"] = req.StartDate.AsTime()
+			log.Printf("[ListWorkouts] Added start date filter: %v", req.StartDate.AsTime())
 		}
 		if req.EndDate != nil {
 			dateFilter["$lte"] = req.EndDate.AsTime()
+			log.Printf("[ListWorkouts] Added end date filter: %v", req.EndDate.AsTime())
 		}
 		filter["started_at"] = dateFilter
 	}
@@ -286,24 +293,32 @@ func (s *WorkoutService) ListWorkouts(ctx context.Context, req *pb.ListWorkoutsR
 	if pageSize <= 0 {
 		pageSize = 50 // Default page size
 	}
+	log.Printf("[ListWorkouts] Using page size: %d", pageSize)
 
 	skip := int64(0)
 	if req.PageToken != "" {
 		// In a real app, decode the page token to get the skip value
 		// For simplicity, we're not implementing pagination here
+		log.Printf("[ListWorkouts] Page token provided but not implemented: %s", req.PageToken)
 	}
 
+	log.Printf("[ListWorkouts] Final filter: %+v", filter)
 	opts := options.Find().SetLimit(pageSize).SetSkip(skip).SetSort(bson.D{{"updated_at", -1}})
+
 	cursor, err := s.workoutColl.Find(ctx, filter, opts)
 	if err != nil {
+		log.Printf("[ListWorkouts] Error finding workouts: %v", err)
 		return nil, status.Error(codes.Internal, "failed to list workouts")
 	}
 	defer cursor.Close(ctx)
 
 	var workouts []models.Workout
 	if err := cursor.All(ctx, &workouts); err != nil {
+		log.Printf("[ListWorkouts] Error decoding workouts: %v", err)
 		return nil, status.Error(codes.Internal, "failed to decode workouts")
 	}
+
+	log.Printf("[ListWorkouts] Found %d workouts", len(workouts))
 
 	var protoWorkouts []*pb.Workout
 	for _, workout := range workouts {
@@ -317,8 +332,10 @@ func (s *WorkoutService) ListWorkouts(ctx context.Context, req *pb.ListWorkoutsR
 	// Set next page token if there are more results
 	if int64(len(workouts)) == pageSize {
 		response.NextPageToken = "next_page" // In real app, encode the next skip position
+		log.Printf("[ListWorkouts] More results available, setting next page token")
 	}
 
+	log.Printf("[ListWorkouts] Returning %d workouts for user %s", len(protoWorkouts), req.UserId)
 	return response, nil
 }
 
