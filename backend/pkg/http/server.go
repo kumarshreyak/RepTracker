@@ -315,24 +315,31 @@ type GenerateWorkoutSuggestionsResponse struct {
 	AnalysisSummary string                     `json:"analysisSummary"`
 }
 
-type StoredWorkoutSuggestionResponse struct {
-	ID              string                     `json:"id"`
-	UserID          string                     `json:"userId"`
-	Suggestions     []SuggestedWorkoutResponse `json:"suggestions"`
-	AnalysisSummary string                     `json:"analysisSummary"`
-	DaysAnalyzed    int32                      `json:"daysAnalyzed"`
-	CreatedAt       time.Time                  `json:"createdAt"`
-	UpdatedAt       time.Time                  `json:"updatedAt"`
+type StoredSuggestedWorkoutResponse struct {
+	ID                string                    `json:"id"`
+	UserID            string                    `json:"userId"`
+	OriginalWorkoutID string                    `json:"originalWorkoutId"`
+	Name              string                    `json:"name"`
+	Description       string                    `json:"description"`
+	Exercises         []WorkoutExerciseResponse `json:"exercises"`
+	Changes           []WorkoutChangeResponse   `json:"changes"`
+	OverallReasoning  string                    `json:"overallReasoning"`
+	Priority          int32                     `json:"priority"`
+	Status            string                    `json:"status,omitempty"`
+	StatusUpdatedAt   *time.Time                `json:"statusUpdatedAt,omitempty"`
+	AnalysisSummary   string                    `json:"analysisSummary"`
+	DaysAnalyzed      int32                     `json:"daysAnalyzed"`
+	CreatedAt         time.Time                 `json:"createdAt"`
+	UpdatedAt         time.Time                 `json:"updatedAt"`
 }
 
 type GetStoredSuggestionsResponse struct {
-	StoredSuggestions []StoredWorkoutSuggestionResponse `json:"storedSuggestions"`
-	NextPageToken     string                            `json:"nextPageToken,omitempty"`
+	SuggestedWorkouts []StoredSuggestedWorkoutResponse `json:"suggestedWorkouts"`
+	NextPageToken     string                           `json:"nextPageToken,omitempty"`
 }
 
 type ConfirmSuggestionRequest struct {
-	SuggestionIndex int32 `json:"suggestionIndex"`
-	Accept          bool  `json:"accept"`
+	Accept bool `json:"accept"`
 }
 
 type ConfirmSuggestionResponse struct {
@@ -1861,88 +1868,87 @@ func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Convert protobuf response to HTTP response
-	storedSuggestions := make([]StoredWorkoutSuggestionResponse, len(resp.StoredSuggestions))
+	suggestedWorkouts := make([]StoredSuggestedWorkoutResponse, len(resp.StoredSuggestions))
 	for i, stored := range resp.StoredSuggestions {
-		// Convert suggestions
-		suggestions := make([]SuggestedWorkoutResponse, len(stored.Suggestions))
-		for j, suggestion := range stored.Suggestions {
-			// Convert exercises
-			exercises := make([]WorkoutExerciseResponse, len(suggestion.Exercises))
-			for k, ex := range suggestion.Exercises {
-				sets := make([]WorkoutSetResponse, len(ex.Sets))
-				for l, set := range ex.Sets {
-					sets[l] = WorkoutSetResponse{
-						Reps:            set.Reps,
-						Weight:          set.Weight,
-						DurationSeconds: set.DurationSeconds,
-						Distance:        set.Distance,
-						Notes:           set.Notes,
-					}
-				}
-
-				exercises[k] = WorkoutExerciseResponse{
-					ExerciseID:  ex.ExerciseId,
-					Sets:        sets,
-					Notes:       ex.Notes,
-					RestSeconds: ex.RestSeconds,
-				}
-
-				// Populate exercise details if available
-				if ex.Exercise != nil {
-					exerciseResp := exerciseToResponse(ex.Exercise)
-					exercises[k].Exercise = &exerciseResp
-				}
-			}
-
-			// Convert changes
-			changes := make([]WorkoutChangeResponse, len(suggestion.Changes))
-			for k, change := range suggestion.Changes {
-				changes[k] = WorkoutChangeResponse{
-					Type:         change.Type,
-					ExerciseID:   change.ExerciseId,
-					ExerciseName: change.ExerciseName,
-					OldValue:     change.OldValue,
-					NewValue:     change.NewValue,
-					Reason:       change.Reason,
-				}
-			}
-
-			suggestionResponse := SuggestedWorkoutResponse{
-				OriginalWorkoutID: suggestion.OriginalWorkoutId,
-				Name:              suggestion.Name,
-				Description:       suggestion.Description,
-				Exercises:         exercises,
-				Changes:           changes,
-				OverallReasoning:  suggestion.OverallReasoning,
-				Priority:          suggestion.Priority,
-				Status:            suggestion.Status,
-			}
-
-			if suggestion.StatusUpdatedAt != nil {
-				t := suggestion.StatusUpdatedAt.AsTime()
-				suggestionResponse.StatusUpdatedAt = &t
-			}
-
-			suggestions[j] = suggestionResponse
+		// Since we now have individual suggestions, each stored suggestion should contain exactly one suggestion
+		if len(stored.Suggestions) == 0 {
+			continue // Skip empty suggestions
 		}
 
-		storedSuggestions[i] = StoredWorkoutSuggestionResponse{
-			ID:              stored.Id,
-			UserID:          stored.UserId,
-			Suggestions:     suggestions,
-			AnalysisSummary: stored.AnalysisSummary,
-			DaysAnalyzed:    stored.DaysAnalyzed,
-			CreatedAt:       stored.CreatedAt.AsTime(),
-			UpdatedAt:       stored.UpdatedAt.AsTime(),
+		suggestion := stored.Suggestions[0] // Get the single suggestion
+
+		// Convert exercises
+		exercises := make([]WorkoutExerciseResponse, len(suggestion.Exercises))
+		for j, ex := range suggestion.Exercises {
+			sets := make([]WorkoutSetResponse, len(ex.Sets))
+			for k, set := range ex.Sets {
+				sets[k] = WorkoutSetResponse{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				}
+			}
+
+			exercises[j] = WorkoutExerciseResponse{
+				ExerciseID:  ex.ExerciseId,
+				Sets:        sets,
+				Notes:       ex.Notes,
+				RestSeconds: ex.RestSeconds,
+			}
+
+			// Populate exercise details if available
+			if ex.Exercise != nil {
+				exerciseResp := exerciseToResponse(ex.Exercise)
+				exercises[j].Exercise = &exerciseResp
+			}
+		}
+
+		// Convert changes
+		changes := make([]WorkoutChangeResponse, len(suggestion.Changes))
+		for j, change := range suggestion.Changes {
+			changes[j] = WorkoutChangeResponse{
+				Type:         change.Type,
+				ExerciseID:   change.ExerciseId,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			}
+		}
+
+		var statusUpdatedAt *time.Time
+		if suggestion.StatusUpdatedAt != nil {
+			t := suggestion.StatusUpdatedAt.AsTime()
+			statusUpdatedAt = &t
+		}
+
+		suggestedWorkouts[i] = StoredSuggestedWorkoutResponse{
+			ID:                stored.Id,
+			UserID:            stored.UserId,
+			OriginalWorkoutID: suggestion.OriginalWorkoutId,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           changes,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+			Status:            suggestion.Status,
+			StatusUpdatedAt:   statusUpdatedAt,
+			AnalysisSummary:   stored.AnalysisSummary,
+			DaysAnalyzed:      stored.DaysAnalyzed,
+			CreatedAt:         stored.CreatedAt.AsTime(),
+			UpdatedAt:         stored.UpdatedAt.AsTime(),
 		}
 	}
 
 	response := GetStoredSuggestionsResponse{
-		StoredSuggestions: storedSuggestions,
+		SuggestedWorkouts: suggestedWorkouts,
 		NextPageToken:     resp.NextPageToken,
 	}
 
-	log.Printf("✅ Successfully retrieved %d stored workout suggestions for user %s", len(storedSuggestions), userID)
+	log.Printf("✅ Successfully retrieved %d suggested workouts for user %s", len(suggestedWorkouts), userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -1960,15 +1966,14 @@ func (s *Server) handleConfirmSuggestion(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Printf("🤖 Confirming suggestion: user=%s, suggestion=%s, index=%d, accept=%t",
-		userID, suggestionID, req.SuggestionIndex, req.Accept)
+	log.Printf("🤖 Confirming suggestion: user=%s, suggestion=%s, accept=%t",
+		userID, suggestionID, req.Accept)
 
 	ctx := context.Background()
 	pbReq := &pb.ConfirmSuggestionRequest{
-		UserId:          userID,
-		SuggestionId:    suggestionID,
-		SuggestionIndex: req.SuggestionIndex,
-		Accept:          req.Accept,
+		UserId:       userID,
+		SuggestionId: suggestionID,
+		Accept:       req.Accept,
 	}
 
 	resp, err := s.suggestionsService.ConfirmSuggestion(ctx, pbReq)

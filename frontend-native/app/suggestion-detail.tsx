@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { 
   WorkoutChange, 
   SuggestedWorkout, 
-  StoredWorkoutSuggestion 
+  StoredSuggestedWorkout 
 } from '../src/types/suggestion';
 
 export default function SuggestionDetailScreen() {
@@ -23,12 +23,10 @@ export default function SuggestionDetailScreen() {
   const [expandedChanges, setExpandedChanges] = useState<Set<number>>(new Set());
   const [processing, setProcessing] = useState(false);
   
-  // In a real app, this would come from props or API
-  // For now, using mock data structure
-  const suggestion: StoredWorkoutSuggestion = JSON.parse(params.suggestion as string || '{}');
-  const topSuggestion = suggestion.suggestions?.sort((a, b) => b.priority - a.priority)[0];
+  // Parse the individual suggested workout
+  const suggestion: StoredSuggestedWorkout = JSON.parse(params.suggestion as string || '{}');
   
-  if (!topSuggestion) {
+  if (!suggestion.id) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -126,21 +124,21 @@ export default function SuggestionDetailScreen() {
             <View 
               style={[
                 styles.priorityIndicator,
-                { backgroundColor: topSuggestion.priority >= 4 ? getColor('accent') : getColor('borderOpaque') }
+                { backgroundColor: suggestion.priority >= 4 ? getColor('accent') : getColor('borderOpaque') }
               ]}
             />
             <Typography variant="label-xsmall" color="contentSecondary">
-              Priority {topSuggestion.priority}/5
+              Priority {suggestion.priority}/5
             </Typography>
           </View>
           
           <Typography variant="label-medium" color="contentPrimary" style={styles.workoutName}>
-            {topSuggestion.name}
+            {suggestion.name}
           </Typography>
           
-          {topSuggestion.description && (
+          {suggestion.description && (
             <Typography variant="paragraph-small" color="contentSecondary" style={styles.workoutDescription}>
-              {topSuggestion.description}
+              {suggestion.description}
             </Typography>
           )}
         </View>
@@ -155,7 +153,7 @@ export default function SuggestionDetailScreen() {
           </View>
           
           <Typography variant="paragraph-small" color="contentSecondary" style={styles.summaryText}>
-            {topSuggestion.overallReasoning}
+            {suggestion.overallReasoning}
           </Typography>
           
           <View style={styles.summaryMeta}>
@@ -168,7 +166,7 @@ export default function SuggestionDetailScreen() {
             <View style={styles.metaItem}>
               <Ionicons name="fitness-outline" size={16} color={getColor('contentTertiary')} />
               <Typography variant="paragraph-xsmall" color="contentTertiary">
-                {topSuggestion.changes.length} improvements
+                {suggestion.changes.length} improvements
               </Typography>
             </View>
           </View>
@@ -180,7 +178,7 @@ export default function SuggestionDetailScreen() {
             Suggested Changes
           </Typography>
           
-          {topSuggestion.changes.map((change, index) => {
+          {suggestion.changes.map((change: WorkoutChange, index: number) => {
             const isExpanded = expandedChanges.has(index);
             const changeColor = getChangeTypeColor(change.type);
             

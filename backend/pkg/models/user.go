@@ -132,6 +132,8 @@ type StoredWorkoutChange struct {
 }
 
 type StoredSuggestedWorkout struct {
+	ID                primitive.ObjectID    `bson:"_id,omitempty" json:"id"`
+	UserID            primitive.ObjectID    `bson:"userId" json:"userId"`
 	OriginalWorkoutID string                `bson:"originalWorkoutId" json:"originalWorkoutId"`
 	Name              string                `bson:"name" json:"name"`
 	Description       string                `bson:"description" json:"description"`
@@ -141,14 +143,8 @@ type StoredSuggestedWorkout struct {
 	Priority          int32                 `bson:"priority" json:"priority"`
 	Status            string                `bson:"status,omitempty" json:"status,omitempty"` // "pending", "accepted", "rejected"
 	StatusUpdatedAt   *time.Time            `bson:"statusUpdatedAt,omitempty" json:"statusUpdatedAt,omitempty"`
-}
-
-type StoredWorkoutSuggestion struct {
-	ID              primitive.ObjectID       `bson:"_id,omitempty" json:"id"`
-	UserID          primitive.ObjectID       `bson:"userId" json:"userId"`
-	Suggestions     []StoredSuggestedWorkout `bson:"suggestions" json:"suggestions"`
-	AnalysisSummary string                   `bson:"analysisSummary" json:"analysisSummary"`
-	DaysAnalyzed    int32                    `bson:"daysAnalyzed" json:"daysAnalyzed"`
-	CreatedAt       time.Time                `bson:"createdAt" json:"createdAt"`
-	UpdatedAt       time.Time                `bson:"updatedAt" json:"updatedAt"`
+	AnalysisSummary   string                `bson:"analysisSummary" json:"analysisSummary"`
+	DaysAnalyzed      int32                 `bson:"daysAnalyzed" json:"daysAnalyzed"`
+	CreatedAt         time.Time             `bson:"createdAt" json:"createdAt"`
+	UpdatedAt         time.Time             `bson:"updatedAt" json:"updatedAt"`
 }

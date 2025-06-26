@@ -61,7 +61,7 @@ func NewSuggestionsService(db *mongo.Database, workoutService *WorkoutService, u
 		userService:     userService,
 		exerciseService: exerciseService,
 		insightsService: insightsService,
-		suggestionsColl: db.Collection("workout_suggestions"),
+		suggestionsColl: db.Collection("suggested_workouts"),
 	}, nil
 }
 
@@ -400,10 +400,10 @@ func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.Worko
 		sb.WriteString("\n")
 	}
 
-	// Current routines
-	sb.WriteString("CURRENT ROUTINES:\n")
+	// Current workouts
+	sb.WriteString("CURRENT WORKOUTS:\n")
 	for i, routine := range routines {
-		sb.WriteString(fmt.Sprintf("\nRoutine %d (ID: %s): %s\n", i+1, routine.Id, routine.Name))
+		sb.WriteString(fmt.Sprintf("\nWorkout %d (ID: %s): %s\n", i+1, routine.Id, routine.Name))
 		for _, exercise := range routine.Exercises {
 			if exercise.Exercise != nil {
 				sb.WriteString(fmt.Sprintf("  - %s (Exercise ID: %s): %d sets", exercise.Exercise.Name, exercise.ExerciseId, len(exercise.Sets)))
@@ -449,7 +449,7 @@ OUTPUT FORMAT (JSON):
   "analysis_summary": "2-3 sentence summary of key patterns, progress trends, and recommendations based on your analysis of the workout data",
   "suggestions": [
     {
-      "original_workout_id": "ACTUAL_ROUTINE_ID_FROM_ABOVE",
+      "original_workout_id": "ACTUAL_WORKOUT_ID_FROM_ABOVE",
       "name": "Improved Routine Name",
       "description": "Brief description of improvements",
       "overall_reasoning": "Why these changes align with their goal based on the patterns you identified",
@@ -465,7 +465,7 @@ OUTPUT FORMAT (JSON):
       ],
       "exercises": [
         {
-          "exercise_id": "USE_EXERCISE_ID_FROM_ORIGINAL_ROUTINE",
+          "exercise_id": "USE_EXERCISE_ID_FROM_ORIGINAL_WORKOUT",
           "sets": [
             {"reps": 8, "weight": 0, "duration_seconds": 0, "distance": 0, "notes": ""},
           ],
@@ -484,6 +484,7 @@ Focus your analysis on:
 - Aligning changes with the user's specific goal
 - Being specific with numbers and reasoning based on actual data patterns
 - Identifying which exercises are progressing well vs struggling
+- Only suggest changes to exercises that are in the CURRENT WORKOUTS section above. Do not add new exercises.
 `, maxSuggestions, user.Goal))
 
 	return sb.String()
@@ -766,8 +767,15 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 		pageSize = 50 // Maximum 50 suggestions per page
 	}
 
-	// Build filter
-	filter := bson.M{"userId": userObjectID}
+	// Build filter to only get pending suggestions
+	filter := bson.M{
+		"userId": userObjectID,
+		"$or": []bson.M{
+			{"status": "pending"},
+			{"status": bson.M{"$exists": false}},
+			{"status": ""},
+		},
+	}
 
 	// Handle pagination
 	opts := options.Find().
@@ -790,104 +798,87 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 	defer cursor.Close(ctx)
 
 	// Decode results
-	var storedSuggestions []models.StoredWorkoutSuggestion
-	if err = cursor.All(ctx, &storedSuggestions); err != nil {
+	var suggestedWorkouts []models.StoredSuggestedWorkout
+	if err = cursor.All(ctx, &suggestedWorkouts); err != nil {
 		log.Printf("GetStoredSuggestions: Failed to decode suggestions: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to decode suggestions: %v", err)
 	}
 
-	// Convert to protobuf
+	// Convert to protobuf and create individual stored suggestions for each suggested workout
 	var pbStoredSuggestions []*pb.StoredWorkoutSuggestion
-	var nextPageToken string
 
-	for _, stored := range storedSuggestions {
-		// Filter suggestions to only include pending ones
-		var pendingSuggestions []models.StoredSuggestedWorkout
-		for _, suggestion := range stored.Suggestions {
-			if suggestion.Status == "" || suggestion.Status == "pending" {
-				pendingSuggestions = append(pendingSuggestions, suggestion)
-			}
+	for _, suggestion := range suggestedWorkouts {
+		// Convert changes
+		var pbChanges []*pb.WorkoutChange
+		for _, change := range suggestion.Changes {
+			pbChanges = append(pbChanges, &pb.WorkoutChange{
+				Type:         change.Type,
+				ExerciseId:   change.ExerciseID,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			})
 		}
 
-		// Skip this stored suggestion if no pending suggestions remain
-		if len(pendingSuggestions) == 0 {
-			continue
-		}
-
-		// Convert pending suggestions
-		var pbSuggestions []*pb.SuggestedWorkout
-		for _, suggestion := range pendingSuggestions {
-			// Convert changes
-			var pbChanges []*pb.WorkoutChange
-			for _, change := range suggestion.Changes {
-				pbChanges = append(pbChanges, &pb.WorkoutChange{
-					Type:         change.Type,
-					ExerciseId:   change.ExerciseID,
-					ExerciseName: change.ExerciseName,
-					OldValue:     change.OldValue,
-					NewValue:     change.NewValue,
-					Reason:       change.Reason,
+		// Convert exercises
+		var pbExercises []*pb.WorkoutExercise
+		for _, exercise := range suggestion.Exercises {
+			var pbSets []*pb.WorkoutSet
+			for _, set := range exercise.Sets {
+				pbSets = append(pbSets, &pb.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: float32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
 				})
 			}
 
-			// Convert exercises
-			var pbExercises []*pb.WorkoutExercise
-			for _, exercise := range suggestion.Exercises {
-				var pbSets []*pb.WorkoutSet
-				for _, set := range exercise.Sets {
-					pbSets = append(pbSets, &pb.WorkoutSet{
-						Reps:            set.Reps,
-						Weight:          set.Weight,
-						DurationSeconds: float32(set.DurationSeconds),
-						Distance:        set.Distance,
-						Notes:           set.Notes,
-					})
-				}
-
-				pbExercises = append(pbExercises, &pb.WorkoutExercise{
-					ExerciseId:  exercise.ExerciseID.Hex(),
-					Sets:        pbSets,
-					Notes:       exercise.Notes,
-					RestSeconds: exercise.RestSeconds,
-				})
-			}
-
-			pbSuggestion := &pb.SuggestedWorkout{
-				OriginalWorkoutId: suggestion.OriginalWorkoutID,
-				Name:              suggestion.Name,
-				Description:       suggestion.Description,
-				Exercises:         pbExercises,
-				Changes:           pbChanges,
-				OverallReasoning:  suggestion.OverallReasoning,
-				Priority:          suggestion.Priority,
-				Status:            suggestion.Status,
-			}
-
-			if suggestion.StatusUpdatedAt != nil {
-				pbSuggestion.StatusUpdatedAt = timestamppb.New(*suggestion.StatusUpdatedAt)
-			}
-
-			pbSuggestions = append(pbSuggestions, pbSuggestion)
+			pbExercises = append(pbExercises, &pb.WorkoutExercise{
+				ExerciseId:  exercise.ExerciseID.Hex(),
+				Sets:        pbSets,
+				Notes:       exercise.Notes,
+				RestSeconds: exercise.RestSeconds,
+			})
 		}
 
+		pbSuggestion := &pb.SuggestedWorkout{
+			OriginalWorkoutId: suggestion.OriginalWorkoutID,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         pbExercises,
+			Changes:           pbChanges,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+			Status:            suggestion.Status,
+		}
+
+		if suggestion.StatusUpdatedAt != nil {
+			pbSuggestion.StatusUpdatedAt = timestamppb.New(*suggestion.StatusUpdatedAt)
+		}
+
+		// Create individual StoredWorkoutSuggestion for each suggestion
+		// Use the individual suggestion's ID as the stored suggestion ID
 		pbStoredSuggestions = append(pbStoredSuggestions, &pb.StoredWorkoutSuggestion{
-			Id:              stored.ID.Hex(),
-			UserId:          stored.UserID.Hex(),
-			Suggestions:     pbSuggestions,
-			AnalysisSummary: stored.AnalysisSummary,
-			DaysAnalyzed:    stored.DaysAnalyzed,
-			CreatedAt:       timestamppb.New(stored.CreatedAt),
-			UpdatedAt:       timestamppb.New(stored.UpdatedAt),
+			Id:              suggestion.ID.Hex(), // Use individual suggestion ID
+			UserId:          req.UserId,
+			Suggestions:     []*pb.SuggestedWorkout{pbSuggestion}, // Single suggestion per stored suggestion
+			AnalysisSummary: suggestion.AnalysisSummary,
+			DaysAnalyzed:    suggestion.DaysAnalyzed,
+			CreatedAt:       timestamppb.New(suggestion.CreatedAt),
+			UpdatedAt:       timestamppb.New(suggestion.UpdatedAt),
 		})
 	}
 
 	// Set next page token if we have a full page of results
-	if len(storedSuggestions) == int(pageSize) && len(storedSuggestions) > 0 {
-		lastStored := storedSuggestions[len(storedSuggestions)-1]
-		nextPageToken = lastStored.CreatedAt.Format(time.RFC3339)
+	var nextPageToken string
+	if len(suggestedWorkouts) == int(pageSize) && len(suggestedWorkouts) > 0 {
+		lastSuggestion := suggestedWorkouts[len(suggestedWorkouts)-1]
+		nextPageToken = lastSuggestion.CreatedAt.Format(time.RFC3339)
 	}
 
-	log.Printf("GetStoredSuggestions: Successfully fetched %d stored suggestions with pending suggestions", len(pbStoredSuggestions))
+	log.Printf("GetStoredSuggestions: Successfully fetched %d individual suggested workouts as stored suggestions", len(pbStoredSuggestions))
 	return &pb.GetStoredSuggestionsResponse{
 		StoredSuggestions: pbStoredSuggestions,
 		NextPageToken:     nextPageToken,
@@ -898,8 +889,8 @@ func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.G
 func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primitive.ObjectID, suggestions []*pb.SuggestedWorkout, analysisSummary string, daysAnalyzed int32) error {
 	now := time.Now()
 
-	// Convert protobuf suggestions to MongoDB model
-	var storedSuggestions []models.StoredSuggestedWorkout
+	// Convert protobuf suggestions to MongoDB model and store each as individual document
+	var documentsToInsert []interface{}
 	for _, suggestion := range suggestions {
 		// Convert changes
 		var storedChanges []models.StoredWorkoutChange
@@ -937,7 +928,8 @@ func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primit
 			})
 		}
 
-		storedSuggestions = append(storedSuggestions, models.StoredSuggestedWorkout{
+		storedSuggestion := models.StoredSuggestedWorkout{
+			UserID:            userID,
 			OriginalWorkoutID: suggestion.OriginalWorkoutId,
 			Name:              suggestion.Name,
 			Description:       suggestion.Description,
@@ -946,33 +938,31 @@ func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primit
 			OverallReasoning:  suggestion.OverallReasoning,
 			Priority:          suggestion.Priority,
 			Status:            "pending", // Initialize as pending
-		})
+			AnalysisSummary:   analysisSummary,
+			DaysAnalyzed:      daysAnalyzed,
+			CreatedAt:         now,
+			UpdatedAt:         now,
+		}
+
+		documentsToInsert = append(documentsToInsert, storedSuggestion)
 	}
 
-	// Create the stored workout suggestion document
-	storedSuggestion := models.StoredWorkoutSuggestion{
-		UserID:          userID,
-		Suggestions:     storedSuggestions,
-		AnalysisSummary: analysisSummary,
-		DaysAnalyzed:    daysAnalyzed,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+	// Insert all suggestions as individual documents
+	if len(documentsToInsert) > 0 {
+		_, err := s.suggestionsColl.InsertMany(ctx, documentsToInsert)
+		if err != nil {
+			return fmt.Errorf("failed to insert suggestions: %w", err)
+		}
 	}
 
-	// Insert into MongoDB
-	_, err := s.suggestionsColl.InsertOne(ctx, storedSuggestion)
-	if err != nil {
-		return fmt.Errorf("failed to insert suggestions: %w", err)
-	}
-
-	log.Printf("storeSuggestions: Successfully stored %d suggestions for user %s", len(suggestions), userID.Hex())
+	log.Printf("storeSuggestions: Successfully stored %d individual suggestions for user %s", len(suggestions), userID.Hex())
 	return nil
 }
 
 // ConfirmSuggestion accepts or rejects a workout suggestion
 func (s *SuggestionsService) ConfirmSuggestion(ctx context.Context, req *pb.ConfirmSuggestionRequest) (*pb.ConfirmSuggestionResponse, error) {
-	log.Printf("ConfirmSuggestion: Starting for user %s, suggestion %s, index %d, accept: %t",
-		req.UserId, req.SuggestionId, req.SuggestionIndex, req.Accept)
+	log.Printf("ConfirmSuggestion: Starting for user %s, suggestion %s, accept: %t",
+		req.UserId, req.SuggestionId, req.Accept)
 
 	// Validate user ID
 	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
@@ -987,24 +977,17 @@ func (s *SuggestionsService) ConfirmSuggestion(ctx context.Context, req *pb.Conf
 	}
 
 	// Find the stored suggestion
-	var storedSuggestion models.StoredWorkoutSuggestion
+	var suggestion models.StoredSuggestedWorkout
 	err = s.suggestionsColl.FindOne(ctx, bson.M{
 		"_id":    suggestionObjectID,
 		"userId": userObjectID,
-	}).Decode(&storedSuggestion)
+	}).Decode(&suggestion)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, status.Error(codes.NotFound, "suggestion not found")
 		}
 		return nil, status.Errorf(codes.Internal, "failed to find suggestion: %v", err)
 	}
-
-	// Validate suggestion index
-	if req.SuggestionIndex < 0 || req.SuggestionIndex >= int32(len(storedSuggestion.Suggestions)) {
-		return nil, status.Error(codes.InvalidArgument, "invalid suggestion_index")
-	}
-
-	suggestion := &storedSuggestion.Suggestions[req.SuggestionIndex]
 
 	// Check if suggestion was already processed
 	if suggestion.Status == "accepted" || suggestion.Status == "rejected" {
@@ -1022,7 +1005,7 @@ func (s *SuggestionsService) ConfirmSuggestion(ctx context.Context, req *pb.Conf
 		// Accept the suggestion - update the original workout
 		log.Printf("ConfirmSuggestion: Accepting suggestion for workout %s", suggestion.OriginalWorkoutID)
 
-		err = s.applyWorkoutSuggestion(ctx, suggestion)
+		err = s.applyWorkoutSuggestion(ctx, &suggestion)
 		if err != nil {
 			log.Printf("ConfirmSuggestion: Failed to apply suggestion: %v", err)
 			return nil, status.Errorf(codes.Internal, "failed to apply suggestion: %v", err)
@@ -1041,9 +1024,9 @@ func (s *SuggestionsService) ConfirmSuggestion(ctx context.Context, req *pb.Conf
 	// Update the suggestion status in MongoDB
 	update := bson.M{
 		"$set": bson.M{
-			fmt.Sprintf("suggestions.%d.status", req.SuggestionIndex):          newStatus,
-			fmt.Sprintf("suggestions.%d.statusUpdatedAt", req.SuggestionIndex): now,
-			"updatedAt": now,
+			"status":          newStatus,
+			"statusUpdatedAt": now,
+			"updatedAt":       now,
 		},
 	}
 

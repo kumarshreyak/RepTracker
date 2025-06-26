@@ -23,10 +23,18 @@ export interface SuggestedWorkout {
   statusUpdatedAt?: string;
 }
 
-export interface StoredWorkoutSuggestion {
+export interface StoredSuggestedWorkout {
   id: string;
   userId: string;
-  suggestions: SuggestedWorkout[];
+  originalWorkoutId: string;
+  name: string;
+  description: string;
+  exercises: WorkoutExercise[];
+  changes: WorkoutChange[];
+  overallReasoning: string;
+  priority: number; // 1-5, 5 being most recommended
+  status?: string; // "pending", "accepted", "rejected"
+  statusUpdatedAt?: string;
   analysisSummary: string;
   daysAnalyzed: number;
   createdAt: string;
@@ -44,12 +52,11 @@ export interface GenerateWorkoutSuggestionsResponse {
 }
 
 export interface GetStoredSuggestionsResponse {
-  storedSuggestions: StoredWorkoutSuggestion[];
+  suggestedWorkouts: StoredSuggestedWorkout[];
   nextPageToken?: string;
 }
 
 export interface ConfirmSuggestionRequest {
-  suggestionIndex: number; // Index of the specific suggestion within the stored suggestion
   accept: boolean; // true for accept, false for reject
 }
 
