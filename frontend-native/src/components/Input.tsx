@@ -136,6 +136,7 @@ export const Input = forwardRef<TextInput, InputProps>(({
           }}
           editable={!disabled}
           placeholderTextColor={getColor(actualVariant === 'disabled' ? 'contentStateDisabled' : 'contentTertiary')}
+          selectTextOnFocus={false}
           {...textInputProps}
         />
         
