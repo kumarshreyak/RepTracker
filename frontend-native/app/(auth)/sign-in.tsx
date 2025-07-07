@@ -65,7 +65,7 @@ export default function SignInRoute() {
         <View style={styles.card}>
           <View style={styles.header}>
             <Typography variant="heading-large" color="contentPrimary" style={styles.title}>
-              Welcome to GymLog
+              Welcome to RepTracker
             </Typography>
             <Typography variant="paragraph-medium" color="contentSecondary" style={styles.subtitle}>
               Track your workouts and progress
