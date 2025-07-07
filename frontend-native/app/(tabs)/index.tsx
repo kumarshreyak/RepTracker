@@ -331,7 +331,7 @@ export default function HomeTab() {
       {/* App Bar */}
       <View style={styles.appBar}>
         <Typography variant="heading-xsmall" color="contentPrimary">
-          GymLog
+          RepTracker
         </Typography>
       </View>
 

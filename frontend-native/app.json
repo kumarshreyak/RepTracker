@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "frontend-native",
-    "slug": "frontend-native",
+    "name": "RepTracker",
+    "slug": "reptracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -45,5 +45,5 @@
       }
     }
   },
-  "name": "frontend-native"
+  "name": "RepTracker"
 }
