@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -126,24 +128,9 @@ func (s *SuggestionsService) GenerateWorkoutSuggestions(ctx context.Context, req
 			i, routine.Id, routine.Name, len(routine.Exercises))
 	}
 
-	// Fetch recent insights
-	log.Printf("GenerateWorkoutSuggestions: Fetching recent insights")
-	insights, err := s.fetchRecentInsights(ctx, userObjectID)
-	if err != nil {
-		// Not critical, continue without insights
-		log.Printf("GenerateWorkoutSuggestions: Failed to fetch insights: %v", err)
-		insights = []WorkoutInsight{}
-	}
-	log.Printf("GenerateWorkoutSuggestions: Found %d insights", len(insights))
-
-	// Log insight details for debugging
-	for i, insight := range insights {
-		log.Printf("GenerateWorkoutSuggestions: Insight %d - %.100s...", i, insight.Insight)
-	}
-
 	// Generate suggestions using AI (Gemini will analyze the patterns)
 	log.Printf("GenerateWorkoutSuggestions: Generating AI suggestions with pattern analysis")
-	suggestions, analysisSummary, err := s.generateAISuggestions(ctx, user, sessions, routines, insights, int(maxSuggestions))
+	suggestions, analysisSummary, err := s.generateAISuggestions(ctx, user, sessions, routines, int(maxSuggestions))
 	if err != nil {
 		log.Printf("GenerateWorkoutSuggestions: Failed to generate AI suggestions: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to generate suggestions: %v", err)
@@ -263,37 +250,12 @@ func (s *SuggestionsService) fetchUserRoutines(ctx context.Context, userID strin
 	return routines, nil
 }
 
-// fetchRecentInsights fetches recent insights for the user
-func (s *SuggestionsService) fetchRecentInsights(ctx context.Context, userID primitive.ObjectID) ([]WorkoutInsight, error) {
-	log.Printf("fetchRecentInsights: Starting for user %s", userID.Hex())
-
-	if s.insightsService == nil {
-		log.Printf("fetchRecentInsights: insightsService is nil")
-		return []WorkoutInsight{}, fmt.Errorf("insights service not initialized")
-	}
-
-	log.Printf("fetchRecentInsights: Calling insightsService.GetRecentInsights with userID=%s, limit=10", userID.Hex())
-	insights, err := s.insightsService.GetRecentInsights(ctx, userID, 10)
-	if err != nil {
-		log.Printf("fetchRecentInsights: insightsService.GetRecentInsights failed: %v", err)
-		return []WorkoutInsight{}, err
-	}
-
-	log.Printf("fetchRecentInsights: Successfully fetched %d insights", len(insights))
-	for i, insight := range insights {
-		log.Printf("fetchRecentInsights: Insight %d - ID: %s, Insight: %.100s...",
-			i, insight.ID.Hex(), insight.Insight)
-	}
-
-	return insights, nil
-}
-
 // generateAISuggestions uses Gemini AI to generate workout suggestions
-func (s *SuggestionsService) generateAISuggestions(ctx context.Context, user *pb.User, sessions []*pb.WorkoutSession, routines []*pb.Workout, insights []WorkoutInsight, maxSuggestions int) ([]*pb.SuggestedWorkout, string, error) {
+func (s *SuggestionsService) generateAISuggestions(ctx context.Context, user *pb.User, sessions []*pb.WorkoutSession, routines []*pb.Workout, maxSuggestions int) ([]*pb.SuggestedWorkout, string, error) {
 	log.Printf("generateAISuggestions: Starting AI generation")
 
 	// Prepare data for AI
-	prompt := s.prepareAIPrompt(user, sessions, routines, insights, maxSuggestions)
+	prompt := s.prepareAIPrompt(user, sessions, routines, maxSuggestions)
 	log.Printf("generateAISuggestions: Prompt length: %d characters", len(prompt))
 
 	// Log the full prompt for debugging
@@ -329,23 +291,55 @@ func (s *SuggestionsService) generateAISuggestions(ctx context.Context, user *pb
 	return suggestions, analysisSummary, nil
 }
 
-func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.WorkoutSession, routines []*pb.Workout, insights []WorkoutInsight, maxSuggestions int) string {
+// loadPromptTemplate loads the AI prompt template from file
+func (s *SuggestionsService) loadPromptTemplate() (string, error) {
+	// Get the path relative to the project root
+	promptPath := filepath.Join("prompts", "suggestion_prompt.txt")
+
+	file, err := os.Open(promptPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open prompt template file: %w", err)
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to read prompt template file: %w", err)
+	}
+
+	return string(content), nil
+}
+
+func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.WorkoutSession, routines []*pb.Workout, maxSuggestions int) string {
+	// Load the prompt template
+	template, err := s.loadPromptTemplate()
+	if err != nil {
+		log.Printf("Failed to load prompt template, using fallback: %v", err)
+		// Fallback to the original hardcoded prompt
+		template = s.getFallbackPromptTemplate()
+	}
+
+	// Build recent sessions data with routine information
+	recentSessionsData := s.buildRecentSessionsDataWithRoutines(sessions, routines)
+
+	// Replace template variables
+	prompt := strings.ReplaceAll(template, "{{USER_GOAL}}", user.Goal)
+	prompt = strings.ReplaceAll(prompt, "{{USER_HEIGHT}}", fmt.Sprintf("%.1f", user.Height))
+	prompt = strings.ReplaceAll(prompt, "{{USER_WEIGHT}}", fmt.Sprintf("%.1f", user.Weight))
+	prompt = strings.ReplaceAll(prompt, "{{USER_AGE}}", fmt.Sprintf("%d", user.Age))
+	prompt = strings.ReplaceAll(prompt, "{{TOTAL_SESSIONS}}", fmt.Sprintf("%d", len(sessions)))
+	prompt = strings.ReplaceAll(prompt, "{{RECENT_SESSIONS_DATA}}", recentSessionsData)
+	prompt = strings.ReplaceAll(prompt, "{{MAX_SUGGESTIONS}}", fmt.Sprintf("%d", maxSuggestions))
+
+	return prompt
+}
+
+// buildRecentSessionsData builds the recent sessions data section
+func (s *SuggestionsService) buildRecentSessionsData(sessions []*pb.WorkoutSession) string {
 	var sb strings.Builder
 
-	sb.WriteString("You are an expert personal trainer analyzing a user's workout history to suggest improved workout routines.\n\n")
-
-	// User profile
-	sb.WriteString("USER PROFILE:\n")
-	sb.WriteString(fmt.Sprintf("- Goal: %s\n", user.Goal))
-	sb.WriteString(fmt.Sprintf("- Height: %.1f cm, Weight: %.1f kg, Age: %d\n", user.Height, user.Weight, user.Age))
-	sb.WriteString("\n")
-
-	// Recent workout sessions raw data
-	sb.WriteString("RECENT WORKOUT SESSIONS (Last 2 weeks):\n")
-	sb.WriteString(fmt.Sprintf("Total sessions: %d\n\n", len(sessions)))
-
 	for i, session := range sessions {
-		if i >= 10 { // Limit to most recent 10 sessions to avoid overwhelming the prompt
+		if i >= 10 { // Limit to most recent 10 sessions
 			break
 		}
 
@@ -391,39 +385,108 @@ func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.Worko
 		sb.WriteString("\n")
 	}
 
-	// Recent insights
-	if len(insights) > 0 {
-		sb.WriteString("RECENT INSIGHTS:\n")
-		for _, insight := range insights[:min(5, len(insights))] {
-			sb.WriteString(fmt.Sprintf("- %s\n", insight.Insight))
+	return sb.String()
+}
+
+// buildRecentSessionsDataWithRoutines builds the recent sessions data section with routine information
+func (s *SuggestionsService) buildRecentSessionsDataWithRoutines(sessions []*pb.WorkoutSession, routines []*pb.Workout) string {
+	var sb strings.Builder
+
+	// Build a map of routine ID to routine for quick lookup
+	routineMap := make(map[string]*pb.Workout)
+	for _, routine := range routines {
+		routineMap[routine.Id] = routine
+	}
+
+	for i, session := range sessions {
+		if i >= 10 { // Limit to most recent 10 sessions
+			break
+		}
+
+		duration := ""
+		if session.DurationSeconds > 0 {
+			duration = fmt.Sprintf("%.1f minutes", float64(session.DurationSeconds)/60.0)
+		}
+
+		rpe := ""
+		if session.RpeRating > 0 {
+			rpe = fmt.Sprintf("RPE: %d/10", session.RpeRating)
+		}
+
+		sb.WriteString(fmt.Sprintf("Session %d (%s):\n", i+1, session.FinishedAt.AsTime().Format("2006-01-02")))
+		sb.WriteString(fmt.Sprintf("  Workout: %s (Routine ID: %s)\n", session.Name, session.RoutineId))
+		sb.WriteString(fmt.Sprintf("  Duration: %s, %s\n", duration, rpe))
+		sb.WriteString("  Exercises:\n")
+
+		for _, exercise := range session.Exercises {
+			if exercise.Exercise == nil {
+				continue
+			}
+
+			completedSets := 0
+			totalVolume := 0.0
+			maxWeight := 0.0
+
+			for _, set := range exercise.Sets {
+				if set.Completed {
+					completedSets++
+					weight := float64(set.ActualWeight)
+					reps := float64(set.ActualReps)
+					totalVolume += weight * reps
+					if weight > maxWeight {
+						maxWeight = weight
+					}
+				}
+			}
+
+			// Get exercise ID from the session
+			exerciseId := exercise.ExerciseId
+
+			muscles := strings.Join(exercise.Exercise.PrimaryMuscles, ", ")
+			sb.WriteString(fmt.Sprintf("    - %s (Exercise ID: %s, %s): %d sets, max weight: %.1fkg, volume: %.1fkg\n",
+				exercise.Exercise.Name, exerciseId, muscles, completedSets, maxWeight, totalVolume))
+		}
+
+		// Add routine template information if available
+		if routine, exists := routineMap[session.RoutineId]; exists {
+			sb.WriteString("  Original routine template:\n")
+			for _, routineExercise := range routine.Exercises {
+				if routineExercise.Exercise != nil {
+					sb.WriteString(fmt.Sprintf("    - %s (Exercise ID: %s): %d sets",
+						routineExercise.Exercise.Name, routineExercise.ExerciseId, len(routineExercise.Sets)))
+					// Add set details for context
+					if len(routineExercise.Sets) > 0 {
+						set := routineExercise.Sets[0]
+						if set.Reps > 0 && set.Weight > 0 {
+							sb.WriteString(fmt.Sprintf(" of %d reps @ %.1fkg", set.Reps, set.Weight))
+						} else if set.Reps > 0 {
+							sb.WriteString(fmt.Sprintf(" of %d reps", set.Reps))
+						}
+					}
+					sb.WriteString("\n")
+				}
+			}
 		}
 		sb.WriteString("\n")
 	}
 
-	// Current workouts
-	sb.WriteString("CURRENT WORKOUTS:\n")
-	for i, routine := range routines {
-		sb.WriteString(fmt.Sprintf("\nWorkout %d (ID: %s): %s\n", i+1, routine.Id, routine.Name))
-		for _, exercise := range routine.Exercises {
-			if exercise.Exercise != nil {
-				sb.WriteString(fmt.Sprintf("  - %s (Exercise ID: %s): %d sets", exercise.Exercise.Name, exercise.ExerciseId, len(exercise.Sets)))
-				// Add set details for context
-				if len(exercise.Sets) > 0 {
-					set := exercise.Sets[0]
-					if set.Reps > 0 && set.Weight > 0 {
-						sb.WriteString(fmt.Sprintf(" of %d reps @ %.1fkg", set.Reps, set.Weight))
-					} else if set.Reps > 0 {
-						sb.WriteString(fmt.Sprintf(" of %d reps", set.Reps))
-					}
-				}
-				sb.WriteString("\n")
-			}
-		}
-	}
-	sb.WriteString("\n")
+	return sb.String()
+}
 
-	// Instructions
-	sb.WriteString(fmt.Sprintf(`TASK: 
+// getFallbackPromptTemplate returns the original hardcoded prompt as fallback
+func (s *SuggestionsService) getFallbackPromptTemplate() string {
+	return `You are an expert personal trainer analyzing a user's workout history to suggest improved workout routines.
+
+USER PROFILE:
+- Goal: {{USER_GOAL}}
+- Height: {{USER_HEIGHT}} cm, Weight: {{USER_WEIGHT}} kg, Age: {{USER_AGE}}
+
+RECENT WORKOUT SESSIONS (Last 2 weeks):
+Total sessions: {{TOTAL_SESSIONS}}
+
+{{RECENT_SESSIONS_DATA}}
+
+TASK: 
 1. ANALYZE the workout data above to identify:
    - Workout frequency and patterns
    - Exercise progression trends (weight, reps, volume changes over time)
@@ -432,17 +495,17 @@ func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.Worko
    - Average workout metrics (duration, exercises, sets, RPE)
    - Strengths and weaknesses in their current approach
 
-2. Generate %d improved workout routine suggestions based on the user's goal (%s) and your analysis.
+2. Generate {{MAX_SUGGESTIONS}} improved workout suggestions based on the user's goal ({{USER_GOAL}}) and your analysis.
 
 For each suggestion, provide:
-1. A modified version of one of their existing routines
+1. A modified version of one of their existing workouts
 2. Specific changes with one-line explanations
 3. Overall reasoning for the suggestion
 
 IMPORTANT: 
-- Use the actual routine IDs from the CURRENT ROUTINES section above. DO NOT use placeholder values like "routine_id".
-- Use the actual exercise IDs from the CURRENT ROUTINES section above. DO NOT use placeholder values like "existing_exercise_id".
-- Only suggest modifications to existing routines - do not create entirely new routines.
+- Use the actual workout IDs from the recent sessions above. DO NOT use placeholder values like "workout_id".
+- Use the actual exercise IDs from the recent sessions above. DO NOT use placeholder values like "existing_exercise_id".
+- Only suggest modifications to existing workouts - do not create entirely new workouts.
 
 OUTPUT FORMAT (JSON):
 {
@@ -450,7 +513,7 @@ OUTPUT FORMAT (JSON):
   "suggestions": [
     {
       "original_workout_id": "ACTUAL_WORKOUT_ID_FROM_ABOVE",
-      "name": "Improved Routine Name",
+      "name": "Improved Workout Name",
       "description": "Brief description of improvements",
       "overall_reasoning": "Why these changes align with their goal based on the patterns you identified",
       "priority": 5,
@@ -484,10 +547,7 @@ Focus your analysis on:
 - Aligning changes with the user's specific goal
 - Being specific with numbers and reasoning based on actual data patterns
 - Identifying which exercises are progressing well vs struggling
-- Only suggest changes to exercises that are in the CURRENT WORKOUTS section above. Do not add new exercises.
-`, maxSuggestions, user.Goal))
-
-	return sb.String()
+- Only suggest changes to exercises that appear in the recent workout sessions above. Do not add new exercises.`
 }
 
 func (s *SuggestionsService) parseAIResponse(responseText string, routines []*pb.Workout) ([]*pb.SuggestedWorkout, string, error) {
