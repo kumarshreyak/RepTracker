@@ -29,6 +29,7 @@ type Server struct {
 	workoutSessionService *services.WorkoutSessionService
 	metricsService        *services.MetricsService
 	insightsService       *services.InsightsService
+	suggestionsService    *services.SuggestionsService
 	db                    *database.MongoDB
 }
 
@@ -282,7 +283,71 @@ type GetRecentInsightsResponse struct {
 	Insights []WorkoutInsightResponse `json:"insights"`
 }
 
-func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, db *database.MongoDB) *Server {
+// Suggestions types
+type WorkoutChangeResponse struct {
+	Type         string `json:"type"`
+	ExerciseID   string `json:"exerciseId,omitempty"`
+	ExerciseName string `json:"exerciseName"`
+	OldValue     string `json:"oldValue"`
+	NewValue     string `json:"newValue"`
+	Reason       string `json:"reason"`
+}
+
+type SuggestedWorkoutResponse struct {
+	OriginalWorkoutID string                    `json:"originalWorkoutId"`
+	Name              string                    `json:"name"`
+	Description       string                    `json:"description"`
+	Exercises         []WorkoutExerciseResponse `json:"exercises"`
+	Changes           []WorkoutChangeResponse   `json:"changes"`
+	OverallReasoning  string                    `json:"overallReasoning"`
+	Priority          int32                     `json:"priority"`
+	Status            string                    `json:"status,omitempty"`
+	StatusUpdatedAt   *time.Time                `json:"statusUpdatedAt,omitempty"`
+}
+
+type GenerateWorkoutSuggestionsRequest struct {
+	DaysToAnalyze  int32 `json:"daysToAnalyze,omitempty"`
+	MaxSuggestions int32 `json:"maxSuggestions,omitempty"`
+}
+
+type GenerateWorkoutSuggestionsResponse struct {
+	Suggestions     []SuggestedWorkoutResponse `json:"suggestions"`
+	AnalysisSummary string                     `json:"analysisSummary"`
+}
+
+type StoredSuggestedWorkoutResponse struct {
+	ID                string                    `json:"id"`
+	UserID            string                    `json:"userId"`
+	OriginalWorkoutID string                    `json:"originalWorkoutId"`
+	Name              string                    `json:"name"`
+	Description       string                    `json:"description"`
+	Exercises         []WorkoutExerciseResponse `json:"exercises"`
+	Changes           []WorkoutChangeResponse   `json:"changes"`
+	OverallReasoning  string                    `json:"overallReasoning"`
+	Priority          int32                     `json:"priority"`
+	Status            string                    `json:"status,omitempty"`
+	StatusUpdatedAt   *time.Time                `json:"statusUpdatedAt,omitempty"`
+	AnalysisSummary   string                    `json:"analysisSummary"`
+	DaysAnalyzed      int32                     `json:"daysAnalyzed"`
+	CreatedAt         time.Time                 `json:"createdAt"`
+	UpdatedAt         time.Time                 `json:"updatedAt"`
+}
+
+type GetStoredSuggestionsResponse struct {
+	SuggestedWorkouts []StoredSuggestedWorkoutResponse `json:"suggestedWorkouts"`
+	NextPageToken     string                           `json:"nextPageToken,omitempty"`
+}
+
+type ConfirmSuggestionRequest struct {
+	Accept bool `json:"accept"`
+}
+
+type ConfirmSuggestionResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, suggestionsService *services.SuggestionsService, db *database.MongoDB) *Server {
 	return &Server{
 		userService:           userService,
 		exerciseService:       exerciseService,
@@ -290,6 +355,7 @@ func NewServer(userService *services.UserService, exerciseService *services.Exer
 		workoutSessionService: workoutSessionService,
 		metricsService:        metricsService,
 		insightsService:       insightsService,
+		suggestionsService:    suggestionsService,
 		db:                    db,
 	}
 }
@@ -346,6 +412,11 @@ func (s *Server) Start(port string) error {
 	// Insights routes
 	api.HandleFunc("/users/{userId}/insights", s.handleGenerateInsights).Methods("POST")
 	api.HandleFunc("/users/{userId}/insights", s.handleGetRecentInsights).Methods("GET")
+
+	// Suggestions routes
+	api.HandleFunc("/users/{userId}/suggestions/workouts", s.handleGenerateWorkoutSuggestions).Methods("POST")
+	api.HandleFunc("/users/{userId}/suggestions/stored", s.handleGetStoredSuggestions).Methods("GET")
+	api.HandleFunc("/users/{userId}/suggestions/{suggestionId}/confirm", s.handleConfirmSuggestion).Methods("POST")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -1661,6 +1732,264 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := s.userToResponse(modelUser)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// Suggestions HTTP handlers
+func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	var req GenerateWorkoutSuggestionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// Defaults will be used
+	}
+
+	ctx := context.Background()
+	pbReq := &pb.GenerateWorkoutSuggestionsRequest{
+		UserId:         userID,
+		DaysToAnalyze:  req.DaysToAnalyze,
+		MaxSuggestions: req.MaxSuggestions,
+	}
+
+	log.Printf("🤖 Generating workout suggestions for user %s", userID)
+
+	resp, err := s.suggestionsService.GenerateWorkoutSuggestions(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to generate workout suggestions: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to generate workout suggestions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert protobuf response to HTTP response
+	suggestions := make([]SuggestedWorkoutResponse, len(resp.Suggestions))
+	for i, suggestion := range resp.Suggestions {
+		// Convert exercises
+		exercises := make([]WorkoutExerciseResponse, len(suggestion.Exercises))
+		for j, ex := range suggestion.Exercises {
+			sets := make([]WorkoutSetResponse, len(ex.Sets))
+			for k, set := range ex.Sets {
+				sets[k] = WorkoutSetResponse{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				}
+			}
+
+			exercises[j] = WorkoutExerciseResponse{
+				ExerciseID:  ex.ExerciseId,
+				Sets:        sets,
+				Notes:       ex.Notes,
+				RestSeconds: ex.RestSeconds,
+			}
+
+			// Populate exercise details
+			if ex.Exercise != nil {
+				exerciseResp := exerciseToResponse(ex.Exercise)
+				exercises[j].Exercise = &exerciseResp
+			}
+		}
+
+		// Convert changes
+		changes := make([]WorkoutChangeResponse, len(suggestion.Changes))
+		for j, change := range suggestion.Changes {
+			changes[j] = WorkoutChangeResponse{
+				Type:         change.Type,
+				ExerciseID:   change.ExerciseId,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			}
+		}
+
+		suggestionResponse := SuggestedWorkoutResponse{
+			OriginalWorkoutID: suggestion.OriginalWorkoutId,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           changes,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+			Status:            suggestion.Status,
+		}
+
+		if suggestion.StatusUpdatedAt != nil {
+			t := suggestion.StatusUpdatedAt.AsTime()
+			suggestionResponse.StatusUpdatedAt = &t
+		}
+
+		suggestions[i] = suggestionResponse
+	}
+
+	response := GenerateWorkoutSuggestionsResponse{
+		Suggestions:     suggestions,
+		AnalysisSummary: resp.AnalysisSummary,
+	}
+
+	log.Printf("✅ Successfully generated %d workout suggestions for user %s", len(suggestions), userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	// Parse query parameters
+	pageSize := int32(10) // default
+	if ps := r.URL.Query().Get("pageSize"); ps != "" {
+		if parsed, err := strconv.ParseInt(ps, 10, 32); err == nil && parsed > 0 {
+			pageSize = int32(parsed)
+		}
+	}
+
+	pageToken := r.URL.Query().Get("pageToken")
+
+	ctx := context.Background()
+	pbReq := &pb.GetStoredSuggestionsRequest{
+		UserId:    userID,
+		PageSize:  pageSize,
+		PageToken: pageToken,
+	}
+
+	log.Printf("📊 Getting stored workout suggestions for user %s", userID)
+
+	resp, err := s.suggestionsService.GetStoredSuggestions(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to get stored workout suggestions: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to get stored workout suggestions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert protobuf response to HTTP response
+	suggestedWorkouts := make([]StoredSuggestedWorkoutResponse, len(resp.StoredSuggestions))
+	for i, stored := range resp.StoredSuggestions {
+		// Since we now have individual suggestions, each stored suggestion should contain exactly one suggestion
+		if len(stored.Suggestions) == 0 {
+			continue // Skip empty suggestions
+		}
+
+		suggestion := stored.Suggestions[0] // Get the single suggestion
+
+		// Convert exercises
+		exercises := make([]WorkoutExerciseResponse, len(suggestion.Exercises))
+		for j, ex := range suggestion.Exercises {
+			sets := make([]WorkoutSetResponse, len(ex.Sets))
+			for k, set := range ex.Sets {
+				sets[k] = WorkoutSetResponse{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				}
+			}
+
+			exercises[j] = WorkoutExerciseResponse{
+				ExerciseID:  ex.ExerciseId,
+				Sets:        sets,
+				Notes:       ex.Notes,
+				RestSeconds: ex.RestSeconds,
+			}
+
+			// Populate exercise details if available
+			if ex.Exercise != nil {
+				exerciseResp := exerciseToResponse(ex.Exercise)
+				exercises[j].Exercise = &exerciseResp
+			}
+		}
+
+		// Convert changes
+		changes := make([]WorkoutChangeResponse, len(suggestion.Changes))
+		for j, change := range suggestion.Changes {
+			changes[j] = WorkoutChangeResponse{
+				Type:         change.Type,
+				ExerciseID:   change.ExerciseId,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			}
+		}
+
+		var statusUpdatedAt *time.Time
+		if suggestion.StatusUpdatedAt != nil {
+			t := suggestion.StatusUpdatedAt.AsTime()
+			statusUpdatedAt = &t
+		}
+
+		suggestedWorkouts[i] = StoredSuggestedWorkoutResponse{
+			ID:                stored.Id,
+			UserID:            stored.UserId,
+			OriginalWorkoutID: suggestion.OriginalWorkoutId,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           changes,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+			Status:            suggestion.Status,
+			StatusUpdatedAt:   statusUpdatedAt,
+			AnalysisSummary:   stored.AnalysisSummary,
+			DaysAnalyzed:      stored.DaysAnalyzed,
+			CreatedAt:         stored.CreatedAt.AsTime(),
+			UpdatedAt:         stored.UpdatedAt.AsTime(),
+		}
+	}
+
+	response := GetStoredSuggestionsResponse{
+		SuggestedWorkouts: suggestedWorkouts,
+		NextPageToken:     resp.NextPageToken,
+	}
+
+	log.Printf("✅ Successfully retrieved %d suggested workouts for user %s", len(suggestedWorkouts), userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleConfirmSuggestion(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+	suggestionID := vars["suggestionId"]
+
+	var req ConfirmSuggestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("🤖 Confirming suggestion: user=%s, suggestion=%s, accept=%t",
+		userID, suggestionID, req.Accept)
+
+	ctx := context.Background()
+	pbReq := &pb.ConfirmSuggestionRequest{
+		UserId:       userID,
+		SuggestionId: suggestionID,
+		Accept:       req.Accept,
+	}
+
+	resp, err := s.suggestionsService.ConfirmSuggestion(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to confirm suggestion: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to confirm suggestion: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := ConfirmSuggestionResponse{
+		Success: resp.Success,
+		Message: resp.Message,
+	}
+
+	log.Printf("✅ Suggestion confirmation result: success=%t, message=%s", resp.Success, resp.Message)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }

@@ -191,7 +191,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         }
       }, 100);
     }
-  }, [isEditing, autoFocus, selectTextOnFocus, inputValue.length]);
+  }, [isEditing, autoFocus, selectTextOnFocus]);
 
   const getInputStyle = (): TextStyle => {
     // Base styles that match the display variant

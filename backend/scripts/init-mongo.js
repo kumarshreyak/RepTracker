@@ -10,6 +10,7 @@ db.createCollection('sessions');
 db.createCollection('exercises');
 db.createCollection('workouts');
 db.createCollection('workout_sessions');
+db.createCollection('workout_suggestions');
 
 // Create indexes for better performance
 print('Creating indexes...');
@@ -38,5 +39,10 @@ db.workout_sessions.createIndex({ "user_id": 1 });
 db.workout_sessions.createIndex({ "routine_id": 1 });
 db.workout_sessions.createIndex({ "is_active": 1 });
 db.workout_sessions.createIndex({ "created_at": -1 });
+
+// Workout suggestions collection indexes
+db.workout_suggestions.createIndex({ "userId": 1 });
+db.workout_suggestions.createIndex({ "createdAt": -1 });
+db.workout_suggestions.createIndex({ "userId": 1, "createdAt": -1 });
 
 print('GymLog database initialized successfully!'); 

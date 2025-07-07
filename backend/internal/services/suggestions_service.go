@@ -1,0 +1,1157 @@
+package services
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"gymlog-backend/pkg/models"
+	pb "gymlog-backend/proto/gymlog/v1"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/genai"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// SuggestionsService handles AI-powered workout suggestions
+type SuggestionsService struct {
+	pb.UnimplementedSuggestionsServiceServer
+	db              *mongo.Database
+	genAIClient     *genai.Client
+	workoutService  *WorkoutService
+	userService     *UserService
+	exerciseService *ExerciseService
+	insightsService *InsightsService
+	suggestionsColl *mongo.Collection
+}
+
+// NewSuggestionsService creates a new suggestions service
+func NewSuggestionsService(db *mongo.Database, workoutService *WorkoutService, userService *UserService, exerciseService *ExerciseService, insightsService *InsightsService) (*SuggestionsService, error) {
+
+	ctx := context.Background()
+
+	// Get API key from environment
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY environment variable not set")
+	}
+
+	// Create Gemini client
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  apiKey,
+		Backend: genai.BackendGeminiAPI,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
+	}
+
+	return &SuggestionsService{
+		db:              db,
+		genAIClient:     client,
+		workoutService:  workoutService,
+		userService:     userService,
+		exerciseService: exerciseService,
+		insightsService: insightsService,
+		suggestionsColl: db.Collection("suggested_workouts"),
+	}, nil
+}
+
+// GenerateWorkoutSuggestions generates AI-powered workout suggestions based on recent sessions
+func (s *SuggestionsService) GenerateWorkoutSuggestions(ctx context.Context, req *pb.GenerateWorkoutSuggestionsRequest) (*pb.GenerateWorkoutSuggestionsResponse, error) {
+	log.Printf("GenerateWorkoutSuggestions: Starting for user %s", req.UserId)
+
+	// Validate user ID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Set defaults
+	daysToAnalyze := req.DaysToAnalyze
+	if daysToAnalyze <= 0 {
+		daysToAnalyze = 14 // Default to 2 weeks
+	}
+	maxSuggestions := req.MaxSuggestions
+	if maxSuggestions <= 0 {
+		maxSuggestions = 3 // Default to 3 suggestions
+	}
+
+	// Fetch user data and goal
+	log.Printf("GenerateWorkoutSuggestions: Fetching user data for %s", req.UserId)
+	userReq := &pb.GetUserRequest{Id: req.UserId}
+	user, err := s.userService.GetUser(ctx, userReq)
+	if err != nil {
+		log.Printf("GenerateWorkoutSuggestions: Failed to fetch user: %v", err)
+		return nil, status.Errorf(codes.NotFound, "user not found: %v", err)
+	}
+	log.Printf("GenerateWorkoutSuggestions: User goal: %s", user.Goal)
+
+	// Fetch recent workout sessions
+	log.Printf("GenerateWorkoutSuggestions: Fetching workout sessions from last %d days", daysToAnalyze)
+	sessions, err := s.fetchRecentWorkoutSessions(ctx, userObjectID, int(daysToAnalyze))
+	if err != nil {
+		log.Printf("GenerateWorkoutSuggestions: Failed to fetch workout sessions: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch workout sessions: %v", err)
+	}
+	log.Printf("GenerateWorkoutSuggestions: Found %d workout sessions", len(sessions))
+
+	if len(sessions) == 0 {
+		return &pb.GenerateWorkoutSuggestionsResponse{
+			Suggestions:     []*pb.SuggestedWorkout{},
+			AnalysisSummary: "No recent workout sessions found to analyze.",
+		}, nil
+	}
+
+	// Fetch user's routines/workouts
+	log.Printf("GenerateWorkoutSuggestions: Fetching user's routines")
+	routines, err := s.fetchUserRoutines(ctx, req.UserId)
+	if err != nil {
+		log.Printf("GenerateWorkoutSuggestions: Failed to fetch routines: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch routines: %v", err)
+	}
+	log.Printf("GenerateWorkoutSuggestions: Found %d routines", len(routines))
+
+	// Log routine details for debugging
+	for i, routine := range routines {
+		log.Printf("GenerateWorkoutSuggestions: Routine %d - ID: %s, Name: %s, Exercises: %d",
+			i, routine.Id, routine.Name, len(routine.Exercises))
+	}
+
+	// Generate suggestions using AI (Gemini will analyze the patterns)
+	log.Printf("GenerateWorkoutSuggestions: Generating AI suggestions with pattern analysis")
+	suggestions, analysisSummary, err := s.generateAISuggestions(ctx, user, sessions, routines, int(maxSuggestions))
+	if err != nil {
+		log.Printf("GenerateWorkoutSuggestions: Failed to generate AI suggestions: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to generate suggestions: %v", err)
+	}
+
+	// Store suggestions in MongoDB
+	log.Printf("GenerateWorkoutSuggestions: Storing suggestions in MongoDB")
+	err = s.storeSuggestions(ctx, userObjectID, suggestions, analysisSummary, daysToAnalyze)
+	if err != nil {
+		log.Printf("GenerateWorkoutSuggestions: Failed to store suggestions: %v", err)
+		// Don't fail the request if storage fails, just log the error
+	}
+
+	log.Printf("GenerateWorkoutSuggestions: Successfully generated %d suggestions", len(suggestions))
+	return &pb.GenerateWorkoutSuggestionsResponse{
+		Suggestions:     suggestions,
+		AnalysisSummary: analysisSummary,
+	}, nil
+}
+
+// fetchRecentWorkoutSessions fetches workout sessions from the past N days
+func (s *SuggestionsService) fetchRecentWorkoutSessions(ctx context.Context, userID primitive.ObjectID, days int) ([]*pb.WorkoutSession, error) {
+	collection := s.db.Collection("workout_sessions")
+
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -days)
+
+	filter := bson.M{
+		"user_id": userID,
+		"finished_at": bson.M{
+			"$gte": startDate,
+			"$lte": endDate,
+			"$ne":  nil,
+		},
+		"is_active": false,
+	}
+
+	opts := options.Find().SetSort(bson.D{{Key: "finished_at", Value: -1}})
+
+	cursor, err := collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var sessions []models.WorkoutSession
+	if err = cursor.All(ctx, &sessions); err != nil {
+		return nil, err
+	}
+
+	// Convert to protobuf
+	var pbSessions []*pb.WorkoutSession
+	for _, session := range sessions {
+		pbSession := s.workoutSessionToProto(&session)
+
+		// Populate exercise details
+		for i, exercise := range pbSession.Exercises {
+			exerciseReq := &pb.GetExerciseRequest{Id: exercise.ExerciseId}
+			exerciseDetail, err := s.exerciseService.GetExercise(ctx, exerciseReq)
+			if err == nil {
+				pbSession.Exercises[i].Exercise = exerciseDetail
+			}
+		}
+
+		pbSessions = append(pbSessions, pbSession)
+	}
+
+	return pbSessions, nil
+}
+
+// fetchUserRoutines fetches the user's workout routines
+func (s *SuggestionsService) fetchUserRoutines(ctx context.Context, userID string) ([]*pb.Workout, error) {
+	log.Printf("fetchUserRoutines: Starting for user %s", userID)
+
+	req := &pb.ListWorkoutsRequest{
+		UserId:   userID,
+		PageSize: 50,
+	}
+
+	log.Printf("fetchUserRoutines: Calling WorkoutService.ListWorkouts with UserId=%s, PageSize=%d", req.UserId, req.PageSize)
+	resp, err := s.workoutService.ListWorkouts(ctx, req)
+	if err != nil {
+		log.Printf("fetchUserRoutines: WorkoutService.ListWorkouts failed: %v", err)
+		return nil, err
+	}
+
+	log.Printf("fetchUserRoutines: ListWorkouts returned %d total workouts", len(resp.Workouts))
+
+	// Filter for routines (no start/finish times)
+	var routines []*pb.Workout
+	for i, workout := range resp.Workouts {
+		log.Printf("fetchUserRoutines: Checking workout %d - ID: %s, Name: %s, StartedAt: %v, FinishedAt: %v",
+			i, workout.Id, workout.Name, workout.StartedAt, workout.FinishedAt)
+
+		if workout.StartedAt == nil && workout.FinishedAt == nil {
+			log.Printf("fetchUserRoutines: Workout %s is a routine (no start/finish times)", workout.Id)
+
+			// Populate exercise details
+			for j, exercise := range workout.Exercises {
+				log.Printf("fetchUserRoutines: Populating exercise %d - ExerciseId: %s", j, exercise.ExerciseId)
+				exerciseReq := &pb.GetExerciseRequest{Id: exercise.ExerciseId}
+				exerciseDetail, err := s.exerciseService.GetExercise(ctx, exerciseReq)
+				if err == nil {
+					workout.Exercises[j].Exercise = exerciseDetail
+					log.Printf("fetchUserRoutines: Successfully populated exercise: %s", exerciseDetail.Name)
+				} else {
+					log.Printf("fetchUserRoutines: Failed to populate exercise %s: %v", exercise.ExerciseId, err)
+				}
+			}
+			routines = append(routines, workout)
+		} else {
+			log.Printf("fetchUserRoutines: Workout %s is a session (has start/finish times), skipping", workout.Id)
+		}
+	}
+
+	log.Printf("fetchUserRoutines: Returning %d routines out of %d total workouts", len(routines), len(resp.Workouts))
+	return routines, nil
+}
+
+// generateAISuggestions uses Gemini AI to generate workout suggestions
+func (s *SuggestionsService) generateAISuggestions(ctx context.Context, user *pb.User, sessions []*pb.WorkoutSession, routines []*pb.Workout, maxSuggestions int) ([]*pb.SuggestedWorkout, string, error) {
+	log.Printf("generateAISuggestions: Starting AI generation")
+
+	// Prepare data for AI
+	prompt := s.prepareAIPrompt(user, sessions, routines, maxSuggestions)
+	log.Printf("generateAISuggestions: Prompt length: %d characters", len(prompt))
+
+	// Log the full prompt for debugging
+	log.Printf("generateAISuggestions: GEMINI PROMPT:\n%s", prompt)
+
+	// Call Gemini API
+	log.Printf("generateAISuggestions: Calling Gemini API")
+	result, err := s.genAIClient.Models.GenerateContent(
+		ctx,
+		"gemini-2.5-flash",
+		genai.Text(prompt),
+		nil,
+	)
+	if err != nil {
+		log.Printf("generateAISuggestions: Gemini API error: %v", err)
+		return nil, "", fmt.Errorf("failed to generate content: %w", err)
+	}
+
+	// Parse the AI response
+	log.Printf("generateAISuggestions: Parsing AI response")
+	responseText := result.Text()
+
+	// Log the full response for debugging
+	log.Printf("generateAISuggestions: GEMINI RESPONSE:\n%s", responseText)
+
+	suggestions, analysisSummary, err := s.parseAIResponse(responseText, routines)
+	if err != nil {
+		log.Printf("generateAISuggestions: Failed to parse AI response: %v", err)
+		return nil, "", fmt.Errorf("failed to parse AI response: %w", err)
+	}
+
+	log.Printf("generateAISuggestions: Successfully parsed %d suggestions", len(suggestions))
+	return suggestions, analysisSummary, nil
+}
+
+// loadPromptTemplate loads the AI prompt template from file
+func (s *SuggestionsService) loadPromptTemplate() (string, error) {
+	// Get the path relative to the project root
+	promptPath := filepath.Join("prompts", "suggestion_prompt.txt")
+
+	file, err := os.Open(promptPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open prompt template file: %w", err)
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to read prompt template file: %w", err)
+	}
+
+	return string(content), nil
+}
+
+func (s *SuggestionsService) prepareAIPrompt(user *pb.User, sessions []*pb.WorkoutSession, routines []*pb.Workout, maxSuggestions int) string {
+	// Load the prompt template
+	template, err := s.loadPromptTemplate()
+	if err != nil {
+		log.Printf("Failed to load prompt template, using fallback: %v", err)
+		// Fallback to the original hardcoded prompt
+		template = s.getFallbackPromptTemplate()
+	}
+
+	// Build recent sessions data with routine information
+	recentSessionsData := s.buildRecentSessionsDataWithRoutines(sessions, routines)
+
+	// Replace template variables
+	prompt := strings.ReplaceAll(template, "{{USER_GOAL}}", user.Goal)
+	prompt = strings.ReplaceAll(prompt, "{{USER_HEIGHT}}", fmt.Sprintf("%.1f", user.Height))
+	prompt = strings.ReplaceAll(prompt, "{{USER_WEIGHT}}", fmt.Sprintf("%.1f", user.Weight))
+	prompt = strings.ReplaceAll(prompt, "{{USER_AGE}}", fmt.Sprintf("%d", user.Age))
+	prompt = strings.ReplaceAll(prompt, "{{TOTAL_SESSIONS}}", fmt.Sprintf("%d", len(sessions)))
+	prompt = strings.ReplaceAll(prompt, "{{RECENT_SESSIONS_DATA}}", recentSessionsData)
+	prompt = strings.ReplaceAll(prompt, "{{MAX_SUGGESTIONS}}", fmt.Sprintf("%d", maxSuggestions))
+
+	return prompt
+}
+
+// buildRecentSessionsData builds the recent sessions data section
+func (s *SuggestionsService) buildRecentSessionsData(sessions []*pb.WorkoutSession) string {
+	var sb strings.Builder
+
+	for i, session := range sessions {
+		if i >= 10 { // Limit to most recent 10 sessions
+			break
+		}
+
+		duration := ""
+		if session.DurationSeconds > 0 {
+			duration = fmt.Sprintf("%.1f minutes", float64(session.DurationSeconds)/60.0)
+		}
+
+		rpe := ""
+		if session.RpeRating > 0 {
+			rpe = fmt.Sprintf("RPE: %d/10", session.RpeRating)
+		}
+
+		sb.WriteString(fmt.Sprintf("Session %d (%s):\n", i+1, session.FinishedAt.AsTime().Format("2006-01-02")))
+		sb.WriteString(fmt.Sprintf("  Duration: %s, %s\n", duration, rpe))
+		sb.WriteString("  Exercises:\n")
+
+		for _, exercise := range session.Exercises {
+			if exercise.Exercise == nil {
+				continue
+			}
+
+			completedSets := 0
+			totalVolume := 0.0
+			maxWeight := 0.0
+
+			for _, set := range exercise.Sets {
+				if set.Completed {
+					completedSets++
+					weight := float64(set.ActualWeight)
+					reps := float64(set.ActualReps)
+					totalVolume += weight * reps
+					if weight > maxWeight {
+						maxWeight = weight
+					}
+				}
+			}
+
+			muscles := strings.Join(exercise.Exercise.PrimaryMuscles, ", ")
+			sb.WriteString(fmt.Sprintf("    - %s (%s): %d sets, max weight: %.1fkg, volume: %.1fkg\n",
+				exercise.Exercise.Name, muscles, completedSets, maxWeight, totalVolume))
+		}
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+// buildRecentSessionsDataWithRoutines builds the recent sessions data section with routine information
+func (s *SuggestionsService) buildRecentSessionsDataWithRoutines(sessions []*pb.WorkoutSession, routines []*pb.Workout) string {
+	var sb strings.Builder
+
+	// Build a map of routine ID to routine for quick lookup
+	routineMap := make(map[string]*pb.Workout)
+	for _, routine := range routines {
+		routineMap[routine.Id] = routine
+	}
+
+	for i, session := range sessions {
+		if i >= 10 { // Limit to most recent 10 sessions
+			break
+		}
+
+		duration := ""
+		if session.DurationSeconds > 0 {
+			duration = fmt.Sprintf("%.1f minutes", float64(session.DurationSeconds)/60.0)
+		}
+
+		rpe := ""
+		if session.RpeRating > 0 {
+			rpe = fmt.Sprintf("RPE: %d/10", session.RpeRating)
+		}
+
+		sb.WriteString(fmt.Sprintf("Session %d (%s):\n", i+1, session.FinishedAt.AsTime().Format("2006-01-02")))
+		sb.WriteString(fmt.Sprintf("  Workout: %s (Routine ID: %s)\n", session.Name, session.RoutineId))
+		sb.WriteString(fmt.Sprintf("  Duration: %s, %s\n", duration, rpe))
+		sb.WriteString("  Exercises:\n")
+
+		for _, exercise := range session.Exercises {
+			if exercise.Exercise == nil {
+				continue
+			}
+
+			completedSets := 0
+			totalVolume := 0.0
+			maxWeight := 0.0
+
+			for _, set := range exercise.Sets {
+				if set.Completed {
+					completedSets++
+					weight := float64(set.ActualWeight)
+					reps := float64(set.ActualReps)
+					totalVolume += weight * reps
+					if weight > maxWeight {
+						maxWeight = weight
+					}
+				}
+			}
+
+			// Get exercise ID from the session
+			exerciseId := exercise.ExerciseId
+
+			muscles := strings.Join(exercise.Exercise.PrimaryMuscles, ", ")
+			sb.WriteString(fmt.Sprintf("    - %s (Exercise ID: %s, %s): %d sets, max weight: %.1fkg, volume: %.1fkg\n",
+				exercise.Exercise.Name, exerciseId, muscles, completedSets, maxWeight, totalVolume))
+		}
+
+		// Add routine template information if available
+		if routine, exists := routineMap[session.RoutineId]; exists {
+			sb.WriteString("  Original routine template:\n")
+			for _, routineExercise := range routine.Exercises {
+				if routineExercise.Exercise != nil {
+					sb.WriteString(fmt.Sprintf("    - %s (Exercise ID: %s): %d sets",
+						routineExercise.Exercise.Name, routineExercise.ExerciseId, len(routineExercise.Sets)))
+					// Add set details for context
+					if len(routineExercise.Sets) > 0 {
+						set := routineExercise.Sets[0]
+						if set.Reps > 0 && set.Weight > 0 {
+							sb.WriteString(fmt.Sprintf(" of %d reps @ %.1fkg", set.Reps, set.Weight))
+						} else if set.Reps > 0 {
+							sb.WriteString(fmt.Sprintf(" of %d reps", set.Reps))
+						}
+					}
+					sb.WriteString("\n")
+				}
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+// getFallbackPromptTemplate returns the original hardcoded prompt as fallback
+func (s *SuggestionsService) getFallbackPromptTemplate() string {
+	return `You are an expert personal trainer analyzing a user's workout history to suggest improved workout routines.
+
+USER PROFILE:
+- Goal: {{USER_GOAL}}
+- Height: {{USER_HEIGHT}} cm, Weight: {{USER_WEIGHT}} kg, Age: {{USER_AGE}}
+
+RECENT WORKOUT SESSIONS (Last 2 weeks):
+Total sessions: {{TOTAL_SESSIONS}}
+
+{{RECENT_SESSIONS_DATA}}
+
+TASK: 
+1. ANALYZE the workout data above to identify:
+   - Workout frequency and patterns
+   - Exercise progression trends (weight, reps, volume changes over time)
+   - Muscle group distribution and potential imbalances
+   - Recovery patterns between similar muscle groups
+   - Average workout metrics (duration, exercises, sets, RPE)
+   - Strengths and weaknesses in their current approach
+
+2. Generate {{MAX_SUGGESTIONS}} improved workout suggestions based on the user's goal ({{USER_GOAL}}) and your analysis.
+
+For each suggestion, provide:
+1. A modified version of one of their existing workouts
+2. Specific changes with one-line explanations
+3. Overall reasoning for the suggestion
+
+IMPORTANT: 
+- Use the actual workout IDs from the recent sessions above. DO NOT use placeholder values like "workout_id".
+- Use the actual exercise IDs from the recent sessions above. DO NOT use placeholder values like "existing_exercise_id".
+- Only suggest modifications to existing workouts - do not create entirely new workouts.
+
+OUTPUT FORMAT (JSON):
+{
+  "analysis_summary": "2-3 sentence summary of key patterns, progress trends, and recommendations based on your analysis of the workout data",
+  "suggestions": [
+    {
+      "original_workout_id": "ACTUAL_WORKOUT_ID_FROM_ABOVE",
+      "name": "Improved Workout Name",
+      "description": "Brief description of improvements",
+      "overall_reasoning": "Why these changes align with their goal based on the patterns you identified",
+      "priority": 5,
+      "changes": [
+        {
+          "type": "reps|sets|weight|rest|add|remove|exercise",
+          "exercise_name": "Exercise Name",
+          "old_value": "3 sets x 10 reps",
+          "new_value": "4 sets x 8 reps",
+          "reason": "Increased sets and lowered reps to build more strength based on observed weight progression"
+        }
+      ],
+      "exercises": [
+        {
+          "exercise_id": "USE_EXERCISE_ID_FROM_ORIGINAL_WORKOUT",
+          "sets": [
+            {"reps": 8, "weight": 0, "duration_seconds": 0, "distance": 0, "notes": ""},
+          ],
+          "notes": "",
+          "rest_seconds": 90
+        }
+      ]
+    }
+  ]
+}
+
+Focus your analysis on:
+- Progressive overload opportunities based on exercise performance trends
+- Addressing muscle imbalances you identify in the data
+- Optimizing recovery based on observed workout frequency patterns
+- Aligning changes with the user's specific goal
+- Being specific with numbers and reasoning based on actual data patterns
+- Identifying which exercises are progressing well vs struggling
+- Only suggest changes to exercises that appear in the recent workout sessions above. Do not add new exercises.`
+}
+
+func (s *SuggestionsService) parseAIResponse(responseText string, routines []*pb.Workout) ([]*pb.SuggestedWorkout, string, error) {
+	// Extract JSON from response
+	startIdx := strings.Index(responseText, "{")
+	endIdx := strings.LastIndex(responseText, "}")
+	if startIdx == -1 || endIdx == -1 || startIdx >= endIdx {
+		return nil, "", fmt.Errorf("no valid JSON found in response")
+	}
+
+	jsonStr := responseText[startIdx : endIdx+1]
+
+	// Parse JSON
+	var aiResponse struct {
+		AnalysisSummary string `json:"analysis_summary"`
+		Suggestions     []struct {
+			OriginalWorkoutID string `json:"original_workout_id"`
+			Name              string `json:"name"`
+			Description       string `json:"description"`
+			OverallReasoning  string `json:"overall_reasoning"`
+			Priority          int32  `json:"priority"`
+			Changes           []struct {
+				Type         string `json:"type"`
+				ExerciseName string `json:"exercise_name"`
+				OldValue     string `json:"old_value"`
+				NewValue     string `json:"new_value"`
+				Reason       string `json:"reason"`
+			} `json:"changes"`
+			Exercises []struct {
+				ExerciseID string `json:"exercise_id"`
+				Sets       []struct {
+					Reps            int32   `json:"reps"`
+					Weight          float32 `json:"weight"`
+					DurationSeconds float32 `json:"duration_seconds"`
+					Distance        float32 `json:"distance"`
+					Notes           string  `json:"notes"`
+				} `json:"sets"`
+				Notes       string `json:"notes"`
+				RestSeconds int32  `json:"rest_seconds"`
+			} `json:"exercises"`
+		} `json:"suggestions"`
+	}
+
+	if err := json.Unmarshal([]byte(jsonStr), &aiResponse); err != nil {
+		return nil, "", fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	// Validate the AI response before processing
+	if err := s.validateAIResponse(&aiResponse, routines); err != nil {
+		log.Printf("parseAIResponse: AI response validation failed: %v", err)
+		return nil, "", fmt.Errorf("AI response validation failed: %w", err)
+	}
+
+	// Convert to protobuf
+	var suggestions []*pb.SuggestedWorkout
+	for _, suggestion := range aiResponse.Suggestions {
+		// Find exercise IDs for changes
+		exerciseIDMap := make(map[string]string)
+		for _, routine := range routines {
+			if routine.Id == suggestion.OriginalWorkoutID {
+				for _, ex := range routine.Exercises {
+					if ex.Exercise != nil {
+						exerciseIDMap[ex.Exercise.Name] = ex.ExerciseId
+					}
+				}
+			}
+		}
+
+		// Convert changes
+		var changes []*pb.WorkoutChange
+		for _, change := range suggestion.Changes {
+			pbChange := &pb.WorkoutChange{
+				Type:         change.Type,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			}
+
+			// Try to find exercise ID
+			if exerciseID, ok := exerciseIDMap[change.ExerciseName]; ok {
+				pbChange.ExerciseId = exerciseID
+			}
+
+			changes = append(changes, pbChange)
+		}
+
+		// Convert exercises
+		var exercises []*pb.WorkoutExercise
+		for _, ex := range suggestion.Exercises {
+			var sets []*pb.WorkoutSet
+			for _, set := range ex.Sets {
+				sets = append(sets, &pb.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				})
+			}
+
+			exercises = append(exercises, &pb.WorkoutExercise{
+				ExerciseId:  ex.ExerciseID,
+				Sets:        sets,
+				Notes:       ex.Notes,
+				RestSeconds: ex.RestSeconds,
+			})
+		}
+
+		suggestions = append(suggestions, &pb.SuggestedWorkout{
+			OriginalWorkoutId: suggestion.OriginalWorkoutID,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           changes,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+		})
+	}
+
+	return suggestions, aiResponse.AnalysisSummary, nil
+}
+
+// validateAIResponse validates that the AI response contains valid routine and exercise IDs
+func (s *SuggestionsService) validateAIResponse(response *struct {
+	AnalysisSummary string `json:"analysis_summary"`
+	Suggestions     []struct {
+		OriginalWorkoutID string `json:"original_workout_id"`
+		Name              string `json:"name"`
+		Description       string `json:"description"`
+		OverallReasoning  string `json:"overall_reasoning"`
+		Priority          int32  `json:"priority"`
+		Changes           []struct {
+			Type         string `json:"type"`
+			ExerciseName string `json:"exercise_name"`
+			OldValue     string `json:"old_value"`
+			NewValue     string `json:"new_value"`
+			Reason       string `json:"reason"`
+		} `json:"changes"`
+		Exercises []struct {
+			ExerciseID string `json:"exercise_id"`
+			Sets       []struct {
+				Reps            int32   `json:"reps"`
+				Weight          float32 `json:"weight"`
+				DurationSeconds float32 `json:"duration_seconds"`
+				Distance        float32 `json:"distance"`
+				Notes           string  `json:"notes"`
+			} `json:"sets"`
+			Notes       string `json:"notes"`
+			RestSeconds int32  `json:"rest_seconds"`
+		} `json:"exercises"`
+	} `json:"suggestions"`
+}, routines []*pb.Workout) error {
+	validRoutineIds := make(map[string]bool)
+
+	// Build valid routine ID map
+	for _, routine := range routines {
+		validRoutineIds[routine.Id] = true
+	}
+
+	// Validate each suggestion
+	for i, suggestion := range response.Suggestions {
+		// Check routine ID
+		if !validRoutineIds[suggestion.OriginalWorkoutID] {
+			return fmt.Errorf("suggestion %d: invalid routine ID '%s'",
+				i, suggestion.OriginalWorkoutID)
+		}
+
+		// Check exercise IDs against the database (allow any valid exercise, not just those in the routine)
+		for j, exercise := range suggestion.Exercises {
+			ctx := context.Background()
+			exerciseReq := &pb.GetExerciseRequest{Id: exercise.ExerciseID}
+			_, err := s.exerciseService.GetExercise(ctx, exerciseReq)
+			if err != nil {
+				return fmt.Errorf("suggestion %d, exercise %d: invalid exercise ID '%s' - exercise not found in database",
+					i, j, exercise.ExerciseID)
+			}
+		}
+	}
+
+	return nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// Helper function to convert workout session model to proto
+func (s *SuggestionsService) workoutSessionToProto(session *models.WorkoutSession) *pb.WorkoutSession {
+	exercises := make([]*pb.WorkoutSessionExercise, len(session.Exercises))
+	for i, ex := range session.Exercises {
+		sets := make([]*pb.WorkoutSessionSet, len(ex.Sets))
+		for j, set := range ex.Sets {
+			var startedAt, finishedAt *timestamppb.Timestamp
+			if set.StartedAt != nil {
+				startedAt = timestamppb.New(*set.StartedAt)
+			}
+			if set.FinishedAt != nil {
+				finishedAt = timestamppb.New(*set.FinishedAt)
+			}
+
+			sets[j] = &pb.WorkoutSessionSet{
+				TargetReps:      set.TargetReps,
+				TargetWeight:    set.TargetWeight,
+				ActualReps:      set.ActualReps,
+				ActualWeight:    set.ActualWeight,
+				DurationSeconds: float32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+				Completed:       set.Completed,
+				StartedAt:       startedAt,
+				FinishedAt:      finishedAt,
+			}
+		}
+
+		var exerciseStartedAt, exerciseFinishedAt *timestamppb.Timestamp
+		if ex.StartedAt != nil {
+			exerciseStartedAt = timestamppb.New(*ex.StartedAt)
+		}
+		if ex.FinishedAt != nil {
+			exerciseFinishedAt = timestamppb.New(*ex.FinishedAt)
+		}
+
+		exercises[i] = &pb.WorkoutSessionExercise{
+			ExerciseId:  ex.ExerciseID.Hex(),
+			Sets:        sets,
+			Notes:       ex.Notes,
+			RestSeconds: ex.RestSeconds,
+			Completed:   ex.Completed,
+			StartedAt:   exerciseStartedAt,
+			FinishedAt:  exerciseFinishedAt,
+		}
+	}
+
+	var finishedAt *timestamppb.Timestamp
+	if session.FinishedAt != nil {
+		finishedAt = timestamppb.New(*session.FinishedAt)
+	}
+
+	return &pb.WorkoutSession{
+		Id:              session.ID.Hex(),
+		UserId:          session.UserID.Hex(),
+		RoutineId:       session.RoutineID.Hex(),
+		Name:            session.Name,
+		Description:     session.Description,
+		Exercises:       exercises,
+		StartedAt:       timestamppb.New(session.StartedAt),
+		FinishedAt:      finishedAt,
+		DurationSeconds: session.DurationSeconds,
+		Notes:           session.Notes,
+		RpeRating:       session.RPERating,
+		IsActive:        session.IsActive,
+		CreatedAt:       timestamppb.New(session.CreatedAt),
+		UpdatedAt:       timestamppb.New(session.UpdatedAt),
+	}
+}
+
+// GetStoredSuggestions retrieves stored workout suggestions in decreasing order of creation
+func (s *SuggestionsService) GetStoredSuggestions(ctx context.Context, req *pb.GetStoredSuggestionsRequest) (*pb.GetStoredSuggestionsResponse, error) {
+	log.Printf("GetStoredSuggestions: Starting for user %s", req.UserId)
+
+	// Validate user ID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Set defaults
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 10 // Default to 10 suggestions per page
+	}
+	if pageSize > 50 {
+		pageSize = 50 // Maximum 50 suggestions per page
+	}
+
+	// Build filter to only get pending suggestions
+	filter := bson.M{
+		"userId": userObjectID,
+		"$or": []bson.M{
+			{"status": "pending"},
+			{"status": bson.M{"$exists": false}},
+			{"status": ""},
+		},
+	}
+
+	// Handle pagination
+	opts := options.Find().
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
+		SetLimit(int64(pageSize))
+
+	if req.PageToken != "" {
+		// Decode page token (it's a timestamp-based token)
+		if tokenTime, err := time.Parse(time.RFC3339, req.PageToken); err == nil {
+			filter["createdAt"] = bson.M{"$lt": tokenTime}
+		}
+	}
+
+	// Fetch suggestions
+	cursor, err := s.suggestionsColl.Find(ctx, filter, opts)
+	if err != nil {
+		log.Printf("GetStoredSuggestions: Failed to fetch suggestions: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch suggestions: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	// Decode results
+	var suggestedWorkouts []models.StoredSuggestedWorkout
+	if err = cursor.All(ctx, &suggestedWorkouts); err != nil {
+		log.Printf("GetStoredSuggestions: Failed to decode suggestions: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to decode suggestions: %v", err)
+	}
+
+	// Convert to protobuf and create individual stored suggestions for each suggested workout
+	var pbStoredSuggestions []*pb.StoredWorkoutSuggestion
+
+	for _, suggestion := range suggestedWorkouts {
+		// Convert changes
+		var pbChanges []*pb.WorkoutChange
+		for _, change := range suggestion.Changes {
+			pbChanges = append(pbChanges, &pb.WorkoutChange{
+				Type:         change.Type,
+				ExerciseId:   change.ExerciseID,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			})
+		}
+
+		// Convert exercises
+		var pbExercises []*pb.WorkoutExercise
+		for _, exercise := range suggestion.Exercises {
+			var pbSets []*pb.WorkoutSet
+			for _, set := range exercise.Sets {
+				pbSets = append(pbSets, &pb.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: float32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				})
+			}
+
+			pbExercises = append(pbExercises, &pb.WorkoutExercise{
+				ExerciseId:  exercise.ExerciseID.Hex(),
+				Sets:        pbSets,
+				Notes:       exercise.Notes,
+				RestSeconds: exercise.RestSeconds,
+			})
+		}
+
+		pbSuggestion := &pb.SuggestedWorkout{
+			OriginalWorkoutId: suggestion.OriginalWorkoutID,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         pbExercises,
+			Changes:           pbChanges,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+			Status:            suggestion.Status,
+		}
+
+		if suggestion.StatusUpdatedAt != nil {
+			pbSuggestion.StatusUpdatedAt = timestamppb.New(*suggestion.StatusUpdatedAt)
+		}
+
+		// Create individual StoredWorkoutSuggestion for each suggestion
+		// Use the individual suggestion's ID as the stored suggestion ID
+		pbStoredSuggestions = append(pbStoredSuggestions, &pb.StoredWorkoutSuggestion{
+			Id:              suggestion.ID.Hex(), // Use individual suggestion ID
+			UserId:          req.UserId,
+			Suggestions:     []*pb.SuggestedWorkout{pbSuggestion}, // Single suggestion per stored suggestion
+			AnalysisSummary: suggestion.AnalysisSummary,
+			DaysAnalyzed:    suggestion.DaysAnalyzed,
+			CreatedAt:       timestamppb.New(suggestion.CreatedAt),
+			UpdatedAt:       timestamppb.New(suggestion.UpdatedAt),
+		})
+	}
+
+	// Set next page token if we have a full page of results
+	var nextPageToken string
+	if len(suggestedWorkouts) == int(pageSize) && len(suggestedWorkouts) > 0 {
+		lastSuggestion := suggestedWorkouts[len(suggestedWorkouts)-1]
+		nextPageToken = lastSuggestion.CreatedAt.Format(time.RFC3339)
+	}
+
+	log.Printf("GetStoredSuggestions: Successfully fetched %d individual suggested workouts as stored suggestions", len(pbStoredSuggestions))
+	return &pb.GetStoredSuggestionsResponse{
+		StoredSuggestions: pbStoredSuggestions,
+		NextPageToken:     nextPageToken,
+	}, nil
+}
+
+// storeSuggestions stores the generated suggestions in MongoDB
+func (s *SuggestionsService) storeSuggestions(ctx context.Context, userID primitive.ObjectID, suggestions []*pb.SuggestedWorkout, analysisSummary string, daysAnalyzed int32) error {
+	now := time.Now()
+
+	// Convert protobuf suggestions to MongoDB model and store each as individual document
+	var documentsToInsert []interface{}
+	for _, suggestion := range suggestions {
+		// Convert changes
+		var storedChanges []models.StoredWorkoutChange
+		for _, change := range suggestion.Changes {
+			storedChanges = append(storedChanges, models.StoredWorkoutChange{
+				Type:         change.Type,
+				ExerciseID:   change.ExerciseId,
+				ExerciseName: change.ExerciseName,
+				OldValue:     change.OldValue,
+				NewValue:     change.NewValue,
+				Reason:       change.Reason,
+			})
+		}
+
+		// Convert exercises
+		var exercises []models.WorkoutExercise
+		for _, exercise := range suggestion.Exercises {
+			var sets []models.WorkoutSet
+			for _, set := range exercise.Sets {
+				sets = append(sets, models.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: int32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				})
+			}
+
+			exerciseID, _ := primitive.ObjectIDFromHex(exercise.ExerciseId)
+			exercises = append(exercises, models.WorkoutExercise{
+				ExerciseID:  exerciseID,
+				Sets:        sets,
+				Notes:       exercise.Notes,
+				RestSeconds: exercise.RestSeconds,
+			})
+		}
+
+		storedSuggestion := models.StoredSuggestedWorkout{
+			UserID:            userID,
+			OriginalWorkoutID: suggestion.OriginalWorkoutId,
+			Name:              suggestion.Name,
+			Description:       suggestion.Description,
+			Exercises:         exercises,
+			Changes:           storedChanges,
+			OverallReasoning:  suggestion.OverallReasoning,
+			Priority:          suggestion.Priority,
+			Status:            "pending", // Initialize as pending
+			AnalysisSummary:   analysisSummary,
+			DaysAnalyzed:      daysAnalyzed,
+			CreatedAt:         now,
+			UpdatedAt:         now,
+		}
+
+		documentsToInsert = append(documentsToInsert, storedSuggestion)
+	}
+
+	// Insert all suggestions as individual documents
+	if len(documentsToInsert) > 0 {
+		_, err := s.suggestionsColl.InsertMany(ctx, documentsToInsert)
+		if err != nil {
+			return fmt.Errorf("failed to insert suggestions: %w", err)
+		}
+	}
+
+	log.Printf("storeSuggestions: Successfully stored %d individual suggestions for user %s", len(suggestions), userID.Hex())
+	return nil
+}
+
+// ConfirmSuggestion accepts or rejects a workout suggestion
+func (s *SuggestionsService) ConfirmSuggestion(ctx context.Context, req *pb.ConfirmSuggestionRequest) (*pb.ConfirmSuggestionResponse, error) {
+	log.Printf("ConfirmSuggestion: Starting for user %s, suggestion %s, accept: %t",
+		req.UserId, req.SuggestionId, req.Accept)
+
+	// Validate user ID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Validate suggestion ID
+	suggestionObjectID, err := primitive.ObjectIDFromHex(req.SuggestionId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid suggestion_id")
+	}
+
+	// Find the stored suggestion
+	var suggestion models.StoredSuggestedWorkout
+	err = s.suggestionsColl.FindOne(ctx, bson.M{
+		"_id":    suggestionObjectID,
+		"userId": userObjectID,
+	}).Decode(&suggestion)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, status.Error(codes.NotFound, "suggestion not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to find suggestion: %v", err)
+	}
+
+	// Check if suggestion was already processed
+	if suggestion.Status == "accepted" || suggestion.Status == "rejected" {
+		return &pb.ConfirmSuggestionResponse{
+			Success: false,
+			Message: fmt.Sprintf("Suggestion was already %s", suggestion.Status),
+		}, nil
+	}
+
+	now := time.Now()
+	var newStatus string
+	var responseMessage string
+
+	if req.Accept {
+		// Accept the suggestion - update the original workout
+		log.Printf("ConfirmSuggestion: Accepting suggestion for workout %s", suggestion.OriginalWorkoutID)
+
+		err = s.applyWorkoutSuggestion(ctx, &suggestion)
+		if err != nil {
+			log.Printf("ConfirmSuggestion: Failed to apply suggestion: %v", err)
+			return nil, status.Errorf(codes.Internal, "failed to apply suggestion: %v", err)
+		}
+
+		newStatus = "accepted"
+		responseMessage = "Suggestion accepted and applied to workout"
+		log.Printf("ConfirmSuggestion: Successfully applied suggestion to workout %s", suggestion.OriginalWorkoutID)
+	} else {
+		// Reject the suggestion
+		newStatus = "rejected"
+		responseMessage = "Suggestion rejected"
+		log.Printf("ConfirmSuggestion: Suggestion rejected")
+	}
+
+	// Update the suggestion status in MongoDB
+	update := bson.M{
+		"$set": bson.M{
+			"status":          newStatus,
+			"statusUpdatedAt": now,
+			"updatedAt":       now,
+		},
+	}
+
+	_, err = s.suggestionsColl.UpdateOne(ctx, bson.M{"_id": suggestionObjectID}, update)
+	if err != nil {
+		log.Printf("ConfirmSuggestion: Failed to update suggestion status: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to update suggestion status: %v", err)
+	}
+
+	log.Printf("ConfirmSuggestion: Successfully updated suggestion status to %s", newStatus)
+
+	return &pb.ConfirmSuggestionResponse{
+		Success: true,
+		Message: responseMessage,
+	}, nil
+}
+
+// applyWorkoutSuggestion applies the suggested changes to the original workout
+func (s *SuggestionsService) applyWorkoutSuggestion(ctx context.Context, suggestion *models.StoredSuggestedWorkout) error {
+	log.Printf("applyWorkoutSuggestion: Applying suggestion to workout %s", suggestion.OriginalWorkoutID)
+
+	// Validate that the original workout ID is a valid ObjectID
+	_, validateErr := primitive.ObjectIDFromHex(suggestion.OriginalWorkoutID)
+	if validateErr != nil {
+		return fmt.Errorf("invalid original workout ID '%s': %w", suggestion.OriginalWorkoutID, validateErr)
+	}
+
+	// Convert the suggested exercises to protobuf format for the update request
+	var pbExercises []*pb.WorkoutExercise
+	for _, exercise := range suggestion.Exercises {
+		var pbSets []*pb.WorkoutSet
+		for _, set := range exercise.Sets {
+			pbSets = append(pbSets, &pb.WorkoutSet{
+				Reps:            set.Reps,
+				Weight:          set.Weight,
+				DurationSeconds: float32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+			})
+		}
+
+		pbExercises = append(pbExercises, &pb.WorkoutExercise{
+			ExerciseId:  exercise.ExerciseID.Hex(),
+			Sets:        pbSets,
+			Notes:       exercise.Notes,
+			RestSeconds: exercise.RestSeconds,
+		})
+	}
+
+	// Create update request
+	updateReq := &pb.UpdateWorkoutRequest{
+		Id:          suggestion.OriginalWorkoutID,
+		Name:        suggestion.Name,
+		Description: suggestion.Description,
+		Exercises:   pbExercises,
+	}
+
+	log.Printf("applyWorkoutSuggestion: Calling UpdateWorkout with %d exercises", len(pbExercises))
+
+	// Call the workout service to update the workout
+	_, err := s.workoutService.UpdateWorkout(ctx, updateReq)
+	if err != nil {
+		return fmt.Errorf("failed to update workout: %w", err)
+	}
+
+	log.Printf("applyWorkoutSuggestion: Successfully updated workout %s", suggestion.OriginalWorkoutID)
+	return nil
+}

@@ -8,42 +8,181 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Typography, Button, Input } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { RoutineExercise, WorkoutSet } from '@/types/exercise';
 
+// Workout interface for API responses
+interface Workout {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  exercises: {
+    exerciseId: string;
+    exercise?: {
+      id: string;
+      name: string;
+      primaryMuscles: string[];
+      secondaryMuscles: string[];
+    };
+    sets: {
+      reps: number;
+      weight: number;
+      durationSeconds?: number;
+      distance?: number;
+      notes?: string;
+    }[];
+    notes?: string;
+    restSeconds?: number;
+  }[];
+  startedAt?: string;
+  finishedAt?: string;
+  durationSeconds?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Quick add exercises will be fetched from the API
 
 export default function CreateRoutineRoute() {
   const { user } = useAuth();
+  const { routineId } = useLocalSearchParams<{ routineId?: string }>();
+  const isEditing = !!routineId;
+  
   const [routineName, setRoutineName] = useState("");
   const [exercises, setExercises] = useState<RoutineExercise[]>([]);
   const [quickAddExercises, setQuickAddExercises] = useState<RoutineExercise[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialDataLoading, setInitialDataLoading] = useState(isEditing);
+
+  // Load existing routine data if editing
+  useEffect(() => {
+    if (isEditing && routineId) {
+      fetchExistingRoutine(routineId);
+    }
+  }, [isEditing, routineId]);
+
+  const fetchExistingRoutine = async (id: string) => {
+    console.log('🔄 fetchExistingRoutine: Starting fetch for routineId:', id);
+    try {
+      setInitialDataLoading(true);
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_BASE_URL}/api/workouts/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch routine');
+      }
+      
+      const workout: Workout = await response.json();
+      console.log('📦 fetchExistingRoutine: Received workout data:', JSON.stringify(workout, null, 2));
+      
+      // Set routine name
+      setRoutineName(workout.name);
+      
+      // Fetch detailed exercise information for each exercise
+      console.log('🔄 fetchExistingRoutine: Fetching detailed exercise data for each exercise');
+      const routineExercises: RoutineExercise[] = await Promise.all(
+        workout.exercises.map(async (ex) => {
+          try {
+            // Fetch detailed exercise data from the exercise API
+            const exerciseResponse = await fetch(`${API_BASE_URL}/api/exercises/${ex.exerciseId}`);
+            
+            if (exerciseResponse.ok) {
+              const exerciseData = await exerciseResponse.json();
+              console.log(`📦 fetchExistingRoutine: Fetched exercise ${ex.exerciseId}:`, exerciseData.name);
+              
+              return {
+                id: ex.exerciseId,
+                name: exerciseData.name,
+                primaryMuscles: exerciseData.primaryMuscles || [],
+                secondaryMuscles: exerciseData.secondaryMuscles || [],
+                sets: ex.sets.map(set => ({
+                  reps: set.reps,
+                  weight: set.weight,
+                  durationSeconds: set.durationSeconds,
+                  distance: set.distance,
+                  notes: set.notes,
+                }))
+              };
+            } else {
+              // Fallback to workout data if exercise API fails
+              console.warn(`⚠️ fetchExistingRoutine: Failed to fetch exercise ${ex.exerciseId}, using fallback data`);
+              return {
+                id: ex.exerciseId,
+                name: ex.exercise?.name || `Exercise ${ex.exerciseId}`,
+                primaryMuscles: ex.exercise?.primaryMuscles || [],
+                secondaryMuscles: ex.exercise?.secondaryMuscles || [],
+                sets: ex.sets.map(set => ({
+                  reps: set.reps,
+                  weight: set.weight,
+                  durationSeconds: set.durationSeconds,
+                  distance: set.distance,
+                  notes: set.notes,
+                }))
+              };
+            }
+          } catch (error) {
+            console.error(`❌ fetchExistingRoutine: Error fetching exercise ${ex.exerciseId}:`, error);
+            // Fallback to workout data if exercise API fails
+            return {
+              id: ex.exerciseId,
+              name: ex.exercise?.name || `Exercise ${ex.exerciseId}`,
+              primaryMuscles: ex.exercise?.primaryMuscles || [],
+              secondaryMuscles: ex.exercise?.secondaryMuscles || [],
+              sets: ex.sets.map(set => ({
+                reps: set.reps,
+                weight: set.weight,
+                durationSeconds: set.durationSeconds,
+                distance: set.distance,
+                notes: set.notes,
+              }))
+            };
+          }
+        })
+      );
+      
+      setExercises(routineExercises);
+      console.log('✅ fetchExistingRoutine: Successfully loaded routine data with detailed exercise information');
+    } catch (error) {
+      console.error('❌ fetchExistingRoutine: Error:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load routine data. Please try again.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } finally {
+      setInitialDataLoading(false);
+    }
+  };
 
   // Load exercises from AsyncStorage and fetch quick add exercises on mount
   useEffect(() => {
-    const loadExercises = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('routineExercises');
-        if (saved) {
-          const parsedExercises = JSON.parse(saved);
-          // Ensure exercises have the new structure
-          const normalizedExercises = parsedExercises.map((ex: any) => ({
-            ...ex,
-            primaryMuscles: ex.primaryMuscles || (ex.muscleGroup ? [ex.muscleGroup] : []),
-            secondaryMuscles: ex.secondaryMuscles || []
-          }));
-          setExercises(normalizedExercises);
+    if (!isEditing) {
+      const loadExercises = async () => {
+        try {
+          const saved = await AsyncStorage.getItem('routineExercises');
+          if (saved) {
+            const parsedExercises = JSON.parse(saved);
+            // Ensure exercises have the new structure
+            const normalizedExercises = parsedExercises.map((ex: any) => ({
+              ...ex,
+              primaryMuscles: ex.primaryMuscles || (ex.muscleGroup ? [ex.muscleGroup] : []),
+              secondaryMuscles: ex.secondaryMuscles || []
+            }));
+            setExercises(normalizedExercises);
+          }
+        } catch (error) {
+          console.error('Error loading exercises from AsyncStorage:', error);
+          setExercises([]);
         }
-      } catch (error) {
-        console.error('Error loading exercises from AsyncStorage:', error);
-        setExercises([]);
-      }
-    };
+      };
+      loadExercises();
+    }
 
     const fetchQuickAddExercises = async () => {
       console.log('🏋️ fetchQuickAddExercises: Starting fetch process');
@@ -114,9 +253,8 @@ export default function CreateRoutineRoute() {
       }
     };
 
-    loadExercises();
     fetchQuickAddExercises();
-  }, [user?.id]);
+  }, [user?.id, isEditing]);
 
   // Refresh exercises when screen comes back into focus
   useFocusEffect(
@@ -132,15 +270,32 @@ export default function CreateRoutineRoute() {
               primaryMuscles: ex.primaryMuscles || (ex.muscleGroup ? [ex.muscleGroup] : []),
               secondaryMuscles: ex.secondaryMuscles || []
             }));
-            setExercises(normalizedExercises);
-          } else {
+            
+            if (isEditing) {
+              // In edit mode, combine existing routine exercises with newly added ones from AsyncStorage
+              // Only add exercises that aren't already in the routine (avoid duplicates)
+                             setExercises(prevExercises => {
+                 const existingIds = new Set(prevExercises.map((ex: RoutineExercise) => ex.id));
+                 const newExercises = normalizedExercises.filter((ex: RoutineExercise) => !existingIds.has(ex.id));
+                 return [...prevExercises, ...newExercises];
+               });
+            } else {
+              // In create mode, replace exercises with AsyncStorage content
+              setExercises(normalizedExercises);
+            }
+          } else if (!isEditing) {
+            // Only clear exercises if we're in create mode and there's nothing in AsyncStorage
             setExercises([]);
           }
         } catch (error) {
           console.error('Error loading exercises from AsyncStorage on focus:', error);
-          setExercises([]);
+          if (!isEditing) {
+            setExercises([]);
+          }
         }
       };
+      
+      loadExercises();
 
       const fetchQuickAddExercises = async () => {
         console.log('🔄 fetchQuickAddExercises (focus): Starting fetch process');
@@ -210,30 +365,82 @@ export default function CreateRoutineRoute() {
         }
       };
 
-      loadExercises();
       fetchQuickAddExercises();
-    }, [user?.id])
+    }, [user?.id, isEditing])
   );
 
   const handleQuickAdd = async (exercise: RoutineExercise) => {
     const newExercises = [...exercises, exercise];
     setExercises(newExercises);
-    await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
+    
+    if (isEditing) {
+      // In edit mode, save only the newly added exercise to AsyncStorage
+      // (it will be combined with existing routine exercises)
+      try {
+        const existingAsyncExercises = await AsyncStorage.getItem('routineExercises');
+        const exercisesList = existingAsyncExercises ? JSON.parse(existingAsyncExercises) : [];
+        
+        // Check if this exercise is already in AsyncStorage
+        const alreadyExists = exercisesList.some((ex: RoutineExercise) => ex.id === exercise.id);
+        if (!alreadyExists) {
+          exercisesList.push(exercise);
+          await AsyncStorage.setItem('routineExercises', JSON.stringify(exercisesList));
+        }
+      } catch (error) {
+        console.error('Error saving exercise to AsyncStorage in edit mode:', error);
+      }
+    } else {
+      // In create mode, save all exercises to AsyncStorage
+      await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
+    }
   };
 
   const removeExercise = async (index: number) => {
+    const exerciseToRemove = exercises[index];
     const newExercises = exercises.filter((_, i) => i !== index);
     setExercises(newExercises);
-    await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
+    
+    if (isEditing) {
+      // In edit mode, remove the exercise from AsyncStorage if it was newly added
+      try {
+        const existingAsyncExercises = await AsyncStorage.getItem('routineExercises');
+        if (existingAsyncExercises) {
+          const exercisesList = JSON.parse(existingAsyncExercises);
+          const filteredList = exercisesList.filter((ex: RoutineExercise) => ex.id !== exerciseToRemove.id);
+          await AsyncStorage.setItem('routineExercises', JSON.stringify(filteredList));
+        }
+      } catch (error) {
+        console.error('Error removing exercise from AsyncStorage in edit mode:', error);
+      }
+    } else {
+      // In create mode, save all remaining exercises to AsyncStorage
+      await AsyncStorage.setItem('routineExercises', JSON.stringify(newExercises));
+    }
   };
 
   const clearAllExercises = async () => {
-    setExercises([]);
-    await AsyncStorage.removeItem('routineExercises');
+    if (isEditing) {
+      // In edit mode, only clear newly added exercises from AsyncStorage
+      // but reset the exercises state to original routine exercises
+      try {
+        await AsyncStorage.removeItem('routineExercises');
+        // Reload the original routine data
+        if (routineId) {
+          await fetchExistingRoutine(routineId);
+        }
+      } catch (error) {
+        console.error('Error clearing AsyncStorage in edit mode:', error);
+      }
+    } else {
+      // In create mode, clear everything
+      setExercises([]);
+      await AsyncStorage.removeItem('routineExercises');
+    }
   };
 
   const handleSaveRoutine = async () => {
-    console.log('🚀 handleSaveRoutine: Starting routine save process');
+    const actionName = isEditing ? 'update' : 'create';
+    console.log(`🚀 handleSaveRoutine: Starting routine ${actionName} process`);
     console.log('📝 handleSaveRoutine: Current state:', {
       routineName: routineName.trim(),
       exercisesCount: exercises.length,
@@ -242,13 +449,15 @@ export default function CreateRoutineRoute() {
       userObject: user,
       userIdType: typeof user?.id,
       userIdLength: user?.id?.length,
+      isEditing,
+      routineId,
     });
 
     // Check if user_id is in proper MongoDB ObjectID format (24 characters)
     const isValidUserId = user?.id && typeof user.id === 'string' && user.id.length === 24;
     
     if (!routineName.trim() || exercises.length === 0 || !user?.id || !isValidUserId) {
-      console.log('❌ handleSaveRoutine: Validation failed:', {
+      console.log(`❌ handleSaveRoutine: Validation failed:`, {
         hasRoutineName: !!routineName.trim(),
         hasExercises: exercises.length > 0,
         hasUserId: !!user?.id,
@@ -271,7 +480,7 @@ export default function CreateRoutineRoute() {
       return;
     }
 
-    console.log('✅ handleSaveRoutine: Validation passed, proceeding with save');
+    console.log(`✅ handleSaveRoutine: Validation passed, proceeding with ${actionName}`);
     setLoading(true);
     
     try {
@@ -284,9 +493,9 @@ export default function CreateRoutineRoute() {
         sets: exercise.sets.map(set => ({
           reps: set.reps,
           weight: set.weight,
-          durationSeconds: 0,
-          distance: 0,
-          notes: "",
+          durationSeconds: set.durationSeconds || 0,
+          distance: set.distance || 0,
+          notes: set.notes || "",
         })),
         notes: "",
         restSeconds: 60,
@@ -294,26 +503,45 @@ export default function CreateRoutineRoute() {
 
       console.log('🔧 handleSaveRoutine: Transformed workout exercises:', JSON.stringify(workoutExercises, null, 2));
 
-      const workoutData = {
-        userId: user.id,
-        name: routineName,
-        description: `Workout routine with ${exercises.length} exercises`,
-        exercises: workoutExercises,
-        startedAt: null,
-        notes: "",
-      };
-
-      console.log('📦 handleSaveRoutine: Final workout data:', JSON.stringify(workoutData, null, 2));
-
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      console.log('🌐 handleSaveRoutine: Making API request to:', `${API_BASE_URL}/api/workouts`);
+      
+      let url: string;
+      let method: string;
+      let requestData: any;
 
-      const response = await fetch(`${API_BASE_URL}/api/workouts`, {
-        method: 'POST',
+      if (isEditing) {
+        // Update existing routine
+        url = `${API_BASE_URL}/api/workouts/${routineId}`;
+        method = 'PUT';
+        requestData = {
+          name: routineName,
+          description: `Workout routine with ${exercises.length} exercises`,
+          exercises: workoutExercises,
+          notes: "",
+        };
+      } else {
+        // Create new routine
+        url = `${API_BASE_URL}/api/workouts`;
+        method = 'POST';
+        requestData = {
+          userId: user.id,
+          name: routineName,
+          description: `Workout routine with ${exercises.length} exercises`,
+          exercises: workoutExercises,
+          startedAt: null,
+          notes: "",
+        };
+      }
+
+      console.log(`📦 handleSaveRoutine: Final ${actionName} data:`, JSON.stringify(requestData, null, 2));
+      console.log(`🌐 handleSaveRoutine: Making API request to:`, url);
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(workoutData),
+        body: JSON.stringify(requestData),
       });
 
       console.log('📡 handleSaveRoutine: Response received:', {
@@ -325,25 +553,25 @@ export default function CreateRoutineRoute() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ handleSaveRoutine: Response not ok:', {
+        console.error(`❌ handleSaveRoutine: Response not ok:`, {
           status: response.status,
           statusText: response.statusText,
           errorBody: errorText,
         });
-        throw new Error(`Failed to save routine: ${response.statusText} - ${errorText}`);
+        throw new Error(`Failed to ${actionName} routine: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ handleSaveRoutine: Routine saved successfully:', JSON.stringify(result, null, 2));
+      console.log(`✅ handleSaveRoutine: Routine ${actionName}d successfully:`, JSON.stringify(result, null, 2));
 
-      // Clear AsyncStorage after successful save
+      // Clear AsyncStorage after successful save (both create and edit modes)
       console.log('🗑️ handleSaveRoutine: Clearing AsyncStorage');
       await AsyncStorage.removeItem('routineExercises');
       console.log('✅ handleSaveRoutine: AsyncStorage cleared successfully');
       
       Alert.alert(
         'Success',
-        'Routine saved successfully!',
+        `Routine ${isEditing ? 'updated' : 'saved'} successfully!`,
         [
           {
             text: 'OK',
@@ -355,11 +583,11 @@ export default function CreateRoutineRoute() {
         ]
       );
     } catch (error) {
-      console.error('💥 handleSaveRoutine: Error occurred during save:', error);
-      console.error('💥 handleSaveRoutine: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error(`💥 handleSaveRoutine: Error occurred during ${actionName}:`, error);
+      console.error(`💥 handleSaveRoutine: Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
       Alert.alert(
         'Error',
-        'Failed to save routine. Please try again.'
+        `Failed to ${actionName} routine. Please try again.`
       );
     } finally {
       console.log('🏁 handleSaveRoutine: Setting loading to false');
@@ -416,6 +644,20 @@ export default function CreateRoutineRoute() {
     return null;
   }
 
+  // Show loading screen while fetching existing routine data
+  if (initialDataLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={getColor('contentAccent')} />
+          <Typography variant="paragraph-medium" color="contentSecondary" style={styles.loadingText}>
+            Loading routine...
+          </Typography>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentWrapper}>
@@ -427,7 +669,7 @@ export default function CreateRoutineRoute() {
             </Typography>
           </TouchableOpacity>
           <Typography variant="label-medium" color="contentPrimary">
-            New Routine
+            {isEditing ? 'Edit Routine' : 'New Routine'}
           </Typography>
           <View style={styles.backButton} />
         </View>
@@ -443,7 +685,7 @@ export default function CreateRoutineRoute() {
               value={routineName}
               onChangeText={setRoutineName}
               placeholder="Routine name"
-              autoFocus
+              autoFocus={!isEditing}
             />
           </View>
 
@@ -501,7 +743,7 @@ export default function CreateRoutineRoute() {
             onPress={handleSaveRoutine}
             disabled={!routineName.trim() || exercises.length === 0 || loading}
           >
-            {loading ? "Creating..." : "Create"}
+            {loading ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update" : "Create")}
           </Button>
         </View>
       </View>
@@ -516,6 +758,15 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',

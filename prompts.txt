@@ -1,0 +1,15 @@
+TO MAKE A NEW PAGE-
+
+Act as an expert senior designer. Refer the .tsx code for product context only.
+
+Design a new suggestions section in insights tab. This section has the following -
+1. A generate button which calls generate api in suggestions service.
+2. Show a minimal summary card of the suggested changes. This card is an entry point to a new page, which will show the changes in detail. For this use get store suggestions api.
+3. An accept/reject button. On clicking accept update the workout using the original workout id. On reject add a TODO to call delete api in suggestion service
+
+
+Refer attached request and api for reference 
+
+The design should be user friendly and minimal. Use as little text as possible in the design. Remember to utilise  @TYPOGRAPHY_SYSTEM.md and @COLOR_SYSTEM.md well.
+
+Also explain your reasoning step by step.

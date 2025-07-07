@@ -94,7 +94,7 @@ export default function HomeTab() {
       setError(null);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-      const url = `${API_BASE_URL}/api/workouts?user_id=${user.id}`;
+      const url = `${API_BASE_URL}/api/workouts?userId=${user.id}`;
       console.log('[fetchRoutines] API Base URL:', API_BASE_URL);
       console.log('[fetchRoutines] Full URL:', url);
       
@@ -204,8 +204,7 @@ export default function HomeTab() {
   };
 
   const handleEditRoutine = (routineId: string) => {
-    // TODO: Navigate to edit routine screen
-    console.log('Edit routine:', routineId);
+    router.push(`/create-routine?routineId=${routineId}`);
   };
 
   const handleStartRoutineWorkout = (routineId: string) => {
@@ -264,13 +263,27 @@ export default function HomeTab() {
       style={styles.routineCard}
       onPress={() => handleStartRoutineWorkout(routine.id)}
     >
-      <View style={styles.routineCardContent}>
-        <Typography variant="label-medium" color="contentPrimary" style={styles.routineName}>
-          {routine.name}
-        </Typography>
-        <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.routineExerciseCount}>
-          {routine.exercises?.length || 0} exercises
-        </Typography>
+      <View style={styles.routineCardHeader}>
+        <View style={styles.routineCardContent}>
+          <Typography variant="label-medium" color="contentPrimary" style={styles.routineName}>
+            {routine.name}
+          </Typography>
+          <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.routineExerciseCount}>
+            {routine.exercises?.length || 0} exercises
+          </Typography>
+        </View>
+        
+        <Pressable 
+          style={styles.editButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleEditRoutine(routine.id);
+          }}
+        >
+          <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.editIcon}>
+            ✏️
+          </Typography>
+        </Pressable>
       </View>
       
       <View style={styles.playButton}>
@@ -483,11 +496,25 @@ const styles = StyleSheet.create({
     padding: 16,
     justifyContent: 'space-between',
   },
+  routineCardHeader: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   routineCardContent: {
     flex: 1,
   },
   routineName: {
     marginBottom: 4,
+  },
+  editButton: {
+    padding: 4,
+    marginTop: -4,
+    marginRight: -4,
+  },
+  editIcon: {
+    fontSize: 16,
   },
   routineExerciseCount: {
     marginBottom: 0,

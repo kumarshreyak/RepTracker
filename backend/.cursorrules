@@ -134,6 +134,10 @@ make generate-proto
 - **exercise_filters.go**: Filter and query models for advanced searches
 - **user.go**: Core data models including the updated Exercise struct
 - **METRICS.md**: Comprehensive guide to the workout metrics system with all formulas, calculations, and API usage
+- **COLOR_SYSTEM.md**: Complete semantic color system documentation with examples and best practices
+- **TYPOGRAPHY_SYSTEM.md**: Complete typography system documentation with hierarchy guidelines and usage patterns
+- **ColorDemo component**: Interactive showcase of all available semantic colors
+- **Colors.ts**: Implementation of the three-layer semantic color architecture
 
 ### Best Practices
 1. **Type safety**: Leverage Go's type system with the defined constants
@@ -248,4 +252,31 @@ func (s *ExerciseService) GetExercise(ctx context.Context, req *pb.GetExerciseRe
 **Remember: 
 - Always use the typed constants and validation functions. When in doubt, check EXERCISE_CONSTANTS_README.md for proper usage patterns.
 - For metrics-related work, always refer to METRICS.md for formulas, data models, and integration patterns.
-- Always use `make generate-proto` when modifying protobuf definitions - never run protoc manually.** 
+- Always use `make generate-proto` when modifying protobuf definitions - never run protoc manually.**
+
+## 📚 API Documentation Sync
+**CRITICAL: Always keep the README.md in sync with server.go API endpoints**
+
+### README.md Sync Rules:
+- ✅ **When adding new HTTP routes in `pkg/http/server.go`**: ALWAYS update the "API Endpoints" section in `README.md`
+- ✅ **When modifying existing endpoints**: Update the corresponding documentation in `README.md`
+- ✅ **When adding new HTTP request/response types**: Document the API structure with examples in `README.md`
+- ✅ **When adding query parameters**: Document all parameters, defaults, and validation rules in `README.md`
+- ✅ **When changing endpoint paths**: Update all references in `README.md` immediately
+
+### Documentation Standards:
+- **Group endpoints by feature**: Authentication, Users, Exercises, Workouts, etc.
+- **Include HTTP methods**: `GET`, `POST`, `PUT`, `DELETE`
+- **Document request/response examples**: Show JSON structure for complex endpoints
+- **List query parameters**: Include defaults, required fields, and validation
+- **Specify response formats**: Show success and error response structures
+- **Add pagination details**: Document pageSize, pageToken usage patterns
+
+### Examples of Proper Documentation:
+```
+### Workout Suggestions
+- `POST /api/users/{userId}/suggestions/workouts` - Generate AI workout suggestions
+- `GET /api/users/{userId}/suggestions/stored` - Get stored workout suggestions (paginated, ordered by creation date desc)
+```
+
+**The README.md serves as the single source of truth for API documentation - always keep it current when modifying server.go**
