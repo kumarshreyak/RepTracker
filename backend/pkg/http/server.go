@@ -403,6 +403,7 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/start", s.handleStartExercise).Methods("POST")
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/finish", s.handleFinishExercise).Methods("POST")
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}", s.handleUpdateSet).Methods("PUT")
+	api.HandleFunc("/workout-sessions/{id}/progressive-overload", s.handleApplyProgressiveOverload).Methods("POST")
 
 	// Metrics routes
 	api.HandleFunc("/users/{userId}/metrics", s.handleGetUserMetrics).Methods("GET")
@@ -1247,6 +1248,47 @@ func (s *Server) handleUpdateSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := workoutSessionToResponse(session)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleApplyProgressiveOverload(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sessionID := vars["id"]
+
+	// Parse request body for workout ID
+	var reqBody struct {
+		WorkoutID string `json:"workoutId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if reqBody.WorkoutID == "" {
+		http.Error(w, "workoutId is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	req := &pb.ApplyProgressiveOverloadRequest{
+		SessionId: sessionID,
+		WorkoutId: reqBody.WorkoutID,
+	}
+
+	resp, err := s.workoutSessionService.ApplyProgressiveOverload(ctx, req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to apply progressive overload: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert response
+	response := map[string]interface{}{
+		"success":        resp.Success,
+		"message":        resp.Message,
+		"updatedWorkout": workoutToResponse(resp.UpdatedWorkout),
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
