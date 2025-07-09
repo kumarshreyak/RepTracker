@@ -314,6 +314,18 @@ message UpdateSetRequest {
   bool completed = 9;
 }
 
+// Progressive Overload related messages
+message ApplyProgressiveOverloadRequest {
+  string session_id = 1; // The workout session ID
+  string workout_id = 2;  // The routine/workout ID to update
+}
+
+message ApplyProgressiveOverloadResponse {
+  bool success = 1;
+  string message = 2;
+  Workout updated_workout = 3; // The updated workout with new rep/weight values
+}
+
 // Metrics related messages
 message VolumeMetrics {
   double total_volume_load = 1;
@@ -559,6 +571,7 @@ service WorkoutSessionService {
   rpc StartExercise(StartExerciseRequest) returns (WorkoutSession);
   rpc FinishExercise(FinishExerciseRequest) returns (WorkoutSession);
   rpc UpdateSet(UpdateSetRequest) returns (WorkoutSession);
+  rpc ApplyProgressiveOverload(ApplyProgressiveOverloadRequest) returns (ApplyProgressiveOverloadResponse);
 }
 
 service MetricsService {

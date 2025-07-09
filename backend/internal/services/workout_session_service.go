@@ -534,6 +534,108 @@ func (s *WorkoutSessionService) UpdateSet(ctx context.Context, req *pb.UpdateSet
 	return s.UpdateWorkoutSession(ctx, updateReq)
 }
 
+// ApplyProgressiveOverload applies progressive overload to a workout based on session performance
+func (s *WorkoutSessionService) ApplyProgressiveOverload(ctx context.Context, req *pb.ApplyProgressiveOverloadRequest) (*pb.ApplyProgressiveOverloadResponse, error) {
+	if req.SessionId == "" {
+		return nil, status.Error(codes.InvalidArgument, "session_id is required")
+	}
+	if req.WorkoutId == "" {
+		return nil, status.Error(codes.InvalidArgument, "workout_id is required")
+	}
+
+	// Get the workout session
+	sessionReq := &pb.GetWorkoutSessionRequest{Id: req.SessionId}
+	session, err := s.GetWorkoutSession(ctx, sessionReq)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "workout session not found: %v", err)
+	}
+
+	// Get the workout/routine
+	workoutReq := &pb.GetWorkoutRequest{Id: req.WorkoutId}
+	workout, err := s.workoutService.GetWorkout(ctx, workoutReq)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "workout not found: %v", err)
+	}
+
+	// Create a map of exercise IDs to session exercises for quick lookup
+	sessionExerciseMap := make(map[string]*pb.WorkoutSessionExercise)
+	for _, sessionExercise := range session.Exercises {
+		sessionExerciseMap[sessionExercise.ExerciseId] = sessionExercise
+	}
+
+	// Track if any changes were made
+	modified := false
+
+	// Process each exercise in the workout
+	for i, workoutExercise := range workout.Exercises {
+		sessionExercise, exists := sessionExerciseMap[workoutExercise.ExerciseId]
+		if !exists {
+			// Exercise doesn't exist in session, skip
+			continue
+		}
+
+		// Process each set in the workout exercise
+		for j := range workoutExercise.Sets {
+			// Find the corresponding session set (by index)
+			if j >= len(sessionExercise.Sets) {
+				// No corresponding session set, skip
+				continue
+			}
+
+			sessionSet := sessionExercise.Sets[j]
+
+			// Only process completed sets
+			if !sessionSet.Completed {
+				continue
+			}
+
+			// Apply progressive overload logic
+			// Step 1: Increase rep count by 1
+			newReps := sessionSet.ActualReps + 1
+			newWeight := sessionSet.ActualWeight
+
+			// Step 2: If rep count > 15, increase weight by 2.5 and set reps to 8 (only if weight is non-zero)
+			if newReps > 15 && sessionSet.ActualWeight > 0 {
+				newWeight = sessionSet.ActualWeight + 2.5
+				newReps = 8
+			}
+
+			// Update the workout set with new values
+			workout.Exercises[i].Sets[j].Reps = newReps
+			workout.Exercises[i].Sets[j].Weight = newWeight
+			modified = true
+		}
+	}
+
+	if !modified {
+		return &pb.ApplyProgressiveOverloadResponse{
+			Success:        true,
+			Message:        "No changes made - no completed sets found or no matching exercises",
+			UpdatedWorkout: workout,
+		}, nil
+	}
+
+	// Update the workout with the new values
+	updateWorkoutReq := &pb.UpdateWorkoutRequest{
+		Id:          req.WorkoutId,
+		Name:        workout.Name,
+		Description: workout.Description,
+		Exercises:   workout.Exercises,
+		Notes:       workout.Notes,
+	}
+
+	updatedWorkout, err := s.workoutService.UpdateWorkout(ctx, updateWorkoutReq)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update workout: %v", err)
+	}
+
+	return &pb.ApplyProgressiveOverloadResponse{
+		Success:        true,
+		Message:        "Progressive overload applied successfully",
+		UpdatedWorkout: updatedWorkout,
+	}, nil
+}
+
 // modelToProto converts a workout session model to protobuf workout session
 func (s *WorkoutSessionService) modelToProto(session *models.WorkoutSession) *pb.WorkoutSession {
 	var exercises []*pb.WorkoutSessionExercise

@@ -89,6 +89,78 @@ The server will start both:
 - `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/start` - Start exercise
 - `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/finish` - Finish exercise
 - `PUT /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}` - Update set
+- `POST /api/workout-sessions/{id}/progressive-overload` - Apply progressive overload to workout
+
+#### Progressive Overload API Details
+
+**Apply Progressive Overload**
+```
+POST /api/workout-sessions/{id}/progressive-overload
+```
+Applies progressive overload to a workout based on the performance recorded in a workout session. This automatically increases the difficulty of the workout for future use.
+
+**Progressive Overload Logic:**
+For each exercise in the workout session:
+1. **Increase rep count by 1** for all completed sets
+2. **If rep count > 15 after step 1:**
+   - If weight is non-zero: increase weight by 2.5 and set rep count to 8
+   - If weight is zero: do nothing (bodyweight exercises)
+3. **Skip exercises** that don't exist in the target workout
+4. **Only process completed sets** from the session
+
+Request body:
+```json
+{
+  "workoutId": "workout_id_to_update"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Progressive overload applied successfully",
+  "updatedWorkout": {
+    "id": "workout_id",
+    "userId": "user_id",
+    "name": "Push Day",
+    "description": "Updated workout with progressive overload",
+    "exercises": [
+      {
+        "exerciseId": "exercise_id",
+        "exercise": {...},
+        "sets": [
+          {
+            "reps": 9,     // Was 8, increased by 1
+            "weight": 50.0,
+            "durationSeconds": 0,
+            "distance": 0,
+            "notes": ""
+          },
+          {
+            "reps": 8,     // Was 16, weight increased and reps reset
+            "weight": 22.5, // Was 20, increased by 2.5
+            "durationSeconds": 0,
+            "distance": 0,
+            "notes": ""
+          }
+        ],
+        "notes": "",
+        "restSeconds": 90
+      }
+    ],
+    "startedAt": null,
+    "finishedAt": null,
+    "durationSeconds": 0,
+    "notes": "",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:35:00Z"
+  }
+}
+```
+
+**Use Case:**
+After completing a workout session, call this API to automatically progress the workout difficulty for the next time the user performs this routine. This ensures continuous progression without manual intervention.
 
 ### Metrics
 - `GET /api/users/{userId}/metrics` - Get user metrics

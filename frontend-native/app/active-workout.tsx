@@ -348,6 +348,30 @@ export default function ActiveWorkoutScreen() {
         throw new Error('Failed to update workout session');
       }
 
+      // Apply progressive overload after successfully updating the session
+      if (activeWorkout.routineId) {
+        try {
+          const progressiveOverloadResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/progressive-overload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              workoutId: activeWorkout.routineId,
+            }),
+          });
+
+          if (!progressiveOverloadResponse.ok) {
+            console.warn('Progressive overload failed, but workout was saved successfully');
+          } else {
+            console.log('Progressive overload applied successfully');
+          }
+        } catch (progressiveOverloadError) {
+          console.warn('Progressive overload error:', progressiveOverloadError);
+          // Don't throw here - workout was saved successfully, progressive overload is optional
+        }
+      }
+
       router.replace('/(tabs)');
       
       setTimeout(() => {
