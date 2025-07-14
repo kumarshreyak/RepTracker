@@ -351,7 +351,7 @@ export default function ActiveWorkoutScreen() {
       // Apply progressive overload after successfully updating the session
       if (activeWorkout.routineId) {
         try {
-          const progressiveOverloadResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/progressive-overload`, {
+          const progressiveOverloadResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/progressive-overload/ai`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
