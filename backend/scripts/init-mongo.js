@@ -11,6 +11,7 @@ db.createCollection('exercises');
 db.createCollection('workouts');
 db.createCollection('workout_sessions');
 db.createCollection('workout_suggestions');
+db.createCollection('ai_progressive_overload_recommendations');
 
 // Create indexes for better performance
 print('Creating indexes...');
@@ -44,5 +45,13 @@ db.workout_sessions.createIndex({ "created_at": -1 });
 db.workout_suggestions.createIndex({ "userId": 1 });
 db.workout_suggestions.createIndex({ "createdAt": -1 });
 db.workout_suggestions.createIndex({ "userId": 1, "createdAt": -1 });
+
+// AI progressive overload recommendations collection indexes
+db.ai_progressive_overload_recommendations.createIndex({ "userId": 1 });
+db.ai_progressive_overload_recommendations.createIndex({ "workoutSessionId": 1 });
+db.ai_progressive_overload_recommendations.createIndex({ "workoutId": 1 });
+db.ai_progressive_overload_recommendations.createIndex({ "createdAt": -1 });
+db.ai_progressive_overload_recommendations.createIndex({ "userId": 1, "createdAt": -1 });
+db.ai_progressive_overload_recommendations.createIndex({ "success": 1 });
 
 print('GymLog database initialized successfully!'); 

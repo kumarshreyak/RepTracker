@@ -148,3 +148,32 @@ type StoredSuggestedWorkout struct {
 	CreatedAt         time.Time             `bson:"createdAt" json:"createdAt"`
 	UpdatedAt         time.Time             `bson:"updatedAt" json:"updatedAt"`
 }
+
+// AIProgressiveOverloadExercise represents an exercise update from AI progressive overload
+type AIProgressiveOverloadExercise struct {
+	ExerciseID         string       `bson:"exerciseId" json:"exerciseId"`
+	ExerciseName       string       `bson:"exerciseName" json:"exerciseName"`
+	ProgressionApplied bool         `bson:"progressionApplied" json:"progressionApplied"`
+	Reasoning          string       `bson:"reasoning" json:"reasoning"`
+	ChangesMade        string       `bson:"changesMade" json:"changesMade"`
+	Sets               []WorkoutSet `bson:"sets" json:"sets"`
+	Notes              string       `bson:"notes,omitempty" json:"notes,omitempty"`
+	RestSeconds        int32        `bson:"restSeconds,omitempty" json:"restSeconds,omitempty"`
+}
+
+// AIProgressiveOverloadResponse represents a stored AI progressive overload response
+type AIProgressiveOverloadResponse struct {
+	ID                  primitive.ObjectID              `bson:"_id,omitempty" json:"id"`
+	UserID              primitive.ObjectID              `bson:"userId" json:"userId"`
+	WorkoutSessionID    primitive.ObjectID              `bson:"workoutSessionId" json:"workoutSessionId"`
+	WorkoutID           primitive.ObjectID              `bson:"workoutId" json:"workoutId"`
+	AnalysisSummary     string                          `bson:"analysisSummary" json:"analysisSummary"`
+	UpdatedExercises    []AIProgressiveOverloadExercise `bson:"updatedExercises" json:"updatedExercises"`
+	Success             bool                            `bson:"success" json:"success"`
+	Message             string                          `bson:"message" json:"message"`
+	RecentSessionsCount int32                           `bson:"recentSessionsCount" json:"recentSessionsCount"`
+	AIModel             string                          `bson:"aiModel" json:"aiModel"`
+	ProcessingTimeMs    int64                           `bson:"processingTimeMs" json:"processingTimeMs"`
+	CreatedAt           time.Time                       `bson:"createdAt" json:"createdAt"`
+	UpdatedAt           time.Time                       `bson:"updatedAt" json:"updatedAt"`
+}

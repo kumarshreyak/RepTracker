@@ -2,13 +2,20 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/genai"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -22,22 +29,46 @@ import (
 // WorkoutSessionService implements the gRPC WorkoutSessionService
 type WorkoutSessionService struct {
 	pb.UnimplementedWorkoutSessionServiceServer
-	db              *database.MongoDB
-	sessionColl     *mongo.Collection
-	workoutService  *WorkoutService
-	exerciseService *ExerciseService
-	metricsService  *MetricsService
+	db                        *database.MongoDB
+	sessionColl               *mongo.Collection
+	aiProgressiveOverloadColl *mongo.Collection
+	workoutService            *WorkoutService
+	exerciseService           *ExerciseService
+	metricsService            *MetricsService
+	genAIClient               *genai.Client
+	userService               *UserService
+	tempAIExerciseDetails     map[string]models.AIProgressiveOverloadExercise // Added for storing AI exercise details
 }
 
 // NewWorkoutSessionService creates a new WorkoutSessionService instance
-func NewWorkoutSessionService(db *database.MongoDB, workoutService *WorkoutService, exerciseService *ExerciseService, metricsService *MetricsService) *WorkoutSessionService {
-	return &WorkoutSessionService{
-		db:              db,
-		sessionColl:     db.GetCollection("workout_sessions"),
-		workoutService:  workoutService,
-		exerciseService: exerciseService,
-		metricsService:  metricsService,
+func NewWorkoutSessionService(db *database.MongoDB, workoutService *WorkoutService, exerciseService *ExerciseService, metricsService *MetricsService, userService *UserService) (*WorkoutSessionService, error) {
+	ctx := context.Background()
+
+	// Get API key from environment
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY environment variable not set")
 	}
+
+	// Create Gemini client
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  apiKey,
+		Backend: genai.BackendGeminiAPI,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
+	}
+
+	return &WorkoutSessionService{
+		db:                        db,
+		sessionColl:               db.GetCollection("workout_sessions"),
+		aiProgressiveOverloadColl: db.GetCollection("ai_progressive_overload_recommendations"),
+		workoutService:            workoutService,
+		exerciseService:           exerciseService,
+		metricsService:            metricsService,
+		genAIClient:               client,
+		userService:               userService,
+	}, nil
 }
 
 // CreateWorkoutSession creates a new workout session from a routine/workout
@@ -634,6 +665,683 @@ func (s *WorkoutSessionService) ApplyProgressiveOverload(ctx context.Context, re
 		Message:        "Progressive overload applied successfully",
 		UpdatedWorkout: updatedWorkout,
 	}, nil
+}
+
+// ApplyAIProgressiveOverload applies progressive overload using AI analysis of the workout session
+func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, req *pb.ApplyProgressiveOverloadRequest) (*pb.ApplyProgressiveOverloadResponse, error) {
+	startTime := time.Now()
+
+	if req.SessionId == "" {
+		return nil, status.Error(codes.InvalidArgument, "session_id is required")
+	}
+	if req.WorkoutId == "" {
+		return nil, status.Error(codes.InvalidArgument, "workout_id is required")
+	}
+
+	log.Printf("ApplyAIProgressiveOverload: Starting for session %s, workout %s", req.SessionId, req.WorkoutId)
+
+	// Get the workout session
+	sessionReq := &pb.GetWorkoutSessionRequest{Id: req.SessionId}
+	session, err := s.GetWorkoutSession(ctx, sessionReq)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "workout session not found: %v", err)
+	}
+
+	// Get the workout/routine
+	workoutReq := &pb.GetWorkoutRequest{Id: req.WorkoutId}
+	workout, err := s.workoutService.GetWorkout(ctx, workoutReq)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "workout not found: %v", err)
+	}
+
+	// Get user profile
+	userReq := &pb.GetUserRequest{Id: session.UserId}
+	user, err := s.userService.GetUser(ctx, userReq)
+	if err != nil {
+		log.Printf("ApplyAIProgressiveOverload: Failed to fetch user profile: %v", err)
+		return nil, status.Errorf(codes.NotFound, "user not found: %v", err)
+	}
+
+	log.Printf("ApplyAIProgressiveOverload: User goal: %s", user.Goal)
+
+	// Generate AI recommendations
+	log.Printf("ApplyAIProgressiveOverload: Generating AI recommendations")
+	updatedExercises, analysisSummary, recentSessionsCount, err := s.generateAIProgressiveOverload(ctx, user, session, workout)
+	if err != nil {
+		log.Printf("ApplyAIProgressiveOverload: Failed to generate AI recommendations: %v", err)
+
+		// Store failed response
+		processingTime := time.Since(startTime).Milliseconds()
+		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, "", nil, false, fmt.Sprintf("Failed to generate AI recommendations: %v", err), 0, processingTime)
+
+		return nil, status.Errorf(codes.Internal, "failed to generate AI recommendations: %v", err)
+	}
+
+	log.Printf("ApplyAIProgressiveOverload: AI analysis: %s", analysisSummary)
+	log.Printf("ApplyAIProgressiveOverload: Generated %d updated exercises", len(updatedExercises))
+
+	successMessage := "AI progressive overload applied successfully - " + analysisSummary
+
+	if len(updatedExercises) == 0 {
+		successMessage = "No changes recommended by AI - " + analysisSummary
+
+		// Store no-changes response
+		processingTime := time.Since(startTime).Milliseconds()
+		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, analysisSummary, nil, true, successMessage, recentSessionsCount, processingTime)
+
+		return &pb.ApplyProgressiveOverloadResponse{
+			Success:        true,
+			Message:        successMessage,
+			UpdatedWorkout: workout,
+		}, nil
+	}
+
+	// Apply the AI recommendations to the workout
+	workout.Exercises = updatedExercises
+
+	// Update the workout with the new values
+	updateWorkoutReq := &pb.UpdateWorkoutRequest{
+		Id:          req.WorkoutId,
+		Name:        workout.Name,
+		Description: workout.Description,
+		Exercises:   workout.Exercises,
+		Notes:       workout.Notes,
+	}
+
+	updatedWorkout, err := s.workoutService.UpdateWorkout(ctx, updateWorkoutReq)
+	if err != nil {
+		// Store failed response
+		processingTime := time.Since(startTime).Milliseconds()
+		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, analysisSummary, updatedExercises, false, fmt.Sprintf("Failed to update workout: %v", err), recentSessionsCount, processingTime)
+
+		return nil, status.Errorf(codes.Internal, "failed to update workout: %v", err)
+	}
+
+	// Store successful response
+	processingTime := time.Since(startTime).Milliseconds()
+	err = s.storeAIProgressiveOverloadResponse(ctx, session, updatedWorkout, analysisSummary, updatedExercises, true, successMessage, recentSessionsCount, processingTime)
+	if err != nil {
+		log.Printf("ApplyAIProgressiveOverload: Failed to store AI response: %v", err)
+		// Don't fail the request if storage fails, just log the error
+	}
+
+	log.Printf("ApplyAIProgressiveOverload: Successfully applied AI recommendations")
+
+	return &pb.ApplyProgressiveOverloadResponse{
+		Success:        true,
+		Message:        successMessage,
+		UpdatedWorkout: updatedWorkout,
+	}, nil
+}
+
+// generateAIProgressiveOverload uses Gemini AI to generate progressive overload recommendations
+func (s *WorkoutSessionService) generateAIProgressiveOverload(ctx context.Context, user *pb.User, session *pb.WorkoutSession, workout *pb.Workout) ([]*pb.WorkoutExercise, string, int, error) {
+	log.Printf("generateAIProgressiveOverload: Starting AI generation")
+
+	// Fetch recent workout sessions (last 2 weeks) for better context
+	log.Printf("generateAIProgressiveOverload: Fetching recent workout sessions for user %s", session.UserId)
+	recentSessions, err := s.fetchRecentWorkoutSessions(ctx, session.UserId, 14) // Last 14 days
+	if err != nil {
+		log.Printf("generateAIProgressiveOverload: Failed to fetch recent sessions: %v", err)
+		// Continue with just the current session if recent sessions fail
+		recentSessions = []*pb.WorkoutSession{session}
+	} else {
+		log.Printf("generateAIProgressiveOverload: Found %d recent workout sessions", len(recentSessions))
+		// Ensure current session is included if not already in recent sessions
+		sessionFound := false
+		for _, rs := range recentSessions {
+			if rs.Id == session.Id {
+				sessionFound = true
+				break
+			}
+		}
+		if !sessionFound {
+			recentSessions = append([]*pb.WorkoutSession{session}, recentSessions...)
+		}
+	}
+
+	// Prepare data for AI with recent sessions context
+	prompt := s.prepareAIProgressiveOverloadPrompt(user, session, workout, recentSessions)
+	log.Printf("generateAIProgressiveOverload: Prompt length: %d characters", len(prompt))
+
+	// Log the full prompt for debugging
+	log.Printf("generateAIProgressiveOverload: GEMINI PROMPT:\n%s", prompt)
+
+	// Call Gemini API
+	log.Printf("generateAIProgressiveOverload: Calling Gemini API")
+	result, err := s.genAIClient.Models.GenerateContent(
+		ctx,
+		"gemini-2.5-flash",
+		genai.Text(prompt),
+		nil,
+	)
+	if err != nil {
+		log.Printf("generateAIProgressiveOverload: Gemini API error: %v", err)
+		return nil, "", 0, fmt.Errorf("failed to generate content: %w", err)
+	}
+
+	// Parse the AI response
+	log.Printf("generateAIProgressiveOverload: Parsing AI response")
+	responseText := result.Text()
+
+	// Log the full response for debugging
+	log.Printf("generateAIProgressiveOverload: GEMINI RESPONSE:\n%s", responseText)
+
+	updatedExercises, analysisSummary, aiExerciseDetails, err := s.parseAIProgressiveOverloadResponse(responseText, workout)
+	if err != nil {
+		log.Printf("generateAIProgressiveOverload: Failed to parse AI response: %v", err)
+		return nil, "", 0, fmt.Errorf("failed to parse AI response: %w", err)
+	}
+
+	log.Printf("generateAIProgressiveOverload: Successfully parsed %d updated exercises", len(updatedExercises))
+
+	// Store AI exercise details for later use in storage
+	s.tempAIExerciseDetails = aiExerciseDetails
+
+	return updatedExercises, analysisSummary, len(recentSessions), nil
+}
+
+// fetchRecentWorkoutSessions fetches workout sessions from the past N days for the given user
+func (s *WorkoutSessionService) fetchRecentWorkoutSessions(ctx context.Context, userID string, days int) ([]*pb.WorkoutSession, error) {
+	log.Printf("fetchRecentWorkoutSessions: Starting for user %s, last %d days", userID, days)
+
+	// Convert user ID to ObjectID
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Calculate date range
+	endTime := time.Now()
+	startTime := endTime.AddDate(0, 0, -days)
+
+	log.Printf("fetchRecentWorkoutSessions: Fetching sessions from %s to %s", startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
+
+	// Build MongoDB filter
+	filter := bson.M{
+		"userId": userObjectID,
+		"finishedAt": bson.M{
+			"$gte": startTime,
+			"$lte": endTime,
+		},
+		"isActive": false, // Only completed sessions
+	}
+
+	// Query options - sort by finished time descending, limit to reasonable number
+	opts := options.Find().
+		SetSort(bson.D{{Key: "finishedAt", Value: -1}}).
+		SetLimit(50) // Reasonable limit to prevent excessive data
+
+	cursor, err := s.sessionColl.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query workout sessions: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var sessionModels []models.WorkoutSession
+	if err = cursor.All(ctx, &sessionModels); err != nil {
+		return nil, fmt.Errorf("failed to decode workout sessions: %w", err)
+	}
+
+	log.Printf("fetchRecentWorkoutSessions: Found %d sessions", len(sessionModels))
+
+	// Convert to protobuf
+	var sessions []*pb.WorkoutSession
+	for _, sessionModel := range sessionModels {
+		pbSession := s.modelToProto(&sessionModel)
+		sessions = append(sessions, pbSession)
+	}
+
+	log.Printf("fetchRecentWorkoutSessions: Successfully converted %d sessions to protobuf", len(sessions))
+	return sessions, nil
+}
+
+// loadProgressiveOverloadPromptTemplate loads the AI progressive overload prompt template from file
+func (s *WorkoutSessionService) loadProgressiveOverloadPromptTemplate() (string, error) {
+	// Get the path relative to the project root
+	promptPath := filepath.Join("prompts", "progressive_overload_prompt.txt")
+
+	file, err := os.Open(promptPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open prompt template file: %w", err)
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to read prompt template file: %w", err)
+	}
+
+	return string(content), nil
+}
+
+// prepareAIProgressiveOverloadPrompt prepares the prompt for AI progressive overload analysis
+func (s *WorkoutSessionService) prepareAIProgressiveOverloadPrompt(user *pb.User, session *pb.WorkoutSession, workout *pb.Workout, recentSessions []*pb.WorkoutSession) string {
+	// Load the prompt template
+	template, err := s.loadProgressiveOverloadPromptTemplate()
+	if err != nil {
+		log.Printf("Failed to load progressive overload prompt template, using fallback: %v", err)
+		template = s.getFallbackProgressiveOverloadPromptTemplate()
+	}
+
+	// Build session exercises data
+	sessionExercisesData := s.buildSessionExercisesData(session)
+
+	// Calculate workout duration
+	workoutDuration := float64(0)
+	if session.FinishedAt != nil && session.StartedAt != nil {
+		workoutDuration = session.FinishedAt.AsTime().Sub(session.StartedAt.AsTime()).Minutes()
+	}
+
+	// Replace template variables
+	prompt := strings.ReplaceAll(template, "{{USER_GOAL}}", user.Goal)
+	prompt = strings.ReplaceAll(prompt, "{{USER_HEIGHT}}", fmt.Sprintf("%.1f", user.Height))
+	prompt = strings.ReplaceAll(prompt, "{{USER_WEIGHT}}", fmt.Sprintf("%.1f", user.Weight))
+	prompt = strings.ReplaceAll(prompt, "{{USER_AGE}}", fmt.Sprintf("%d", user.Age))
+	prompt = strings.ReplaceAll(prompt, "{{SESSION_ID}}", session.Id)
+	prompt = strings.ReplaceAll(prompt, "{{WORKOUT_NAME}}", session.Name)
+	prompt = strings.ReplaceAll(prompt, "{{WORKOUT_DURATION}}", fmt.Sprintf("%.1f", workoutDuration))
+	prompt = strings.ReplaceAll(prompt, "{{SESSION_DATE}}", session.StartedAt.AsTime().Format("2006-01-02"))
+	prompt = strings.ReplaceAll(prompt, "{{SESSION_EXERCISES_DATA}}", sessionExercisesData)
+
+	// Add context about recent workout sessions
+	recentSessionsData := s.buildRecentSessionsData(recentSessions)
+	prompt += "\n\n" + recentSessionsData
+
+	return prompt
+}
+
+// buildSessionExercisesData builds the session exercises data section
+func (s *WorkoutSessionService) buildSessionExercisesData(session *pb.WorkoutSession) string {
+	var sb strings.Builder
+
+	sb.WriteString("EXERCISES PERFORMED:\n\n")
+
+	for _, exercise := range session.Exercises {
+		exerciseName := "Unknown Exercise"
+		if exercise.Exercise != nil {
+			exerciseName = exercise.Exercise.Name
+		}
+
+		sb.WriteString(fmt.Sprintf("Exercise: %s (ID: %s)\n", exerciseName, exercise.ExerciseId))
+		sb.WriteString(fmt.Sprintf("Completed: %t\n", exercise.Completed))
+
+		if exercise.Notes != "" {
+			sb.WriteString(fmt.Sprintf("Notes: %s\n", exercise.Notes))
+		}
+
+		sb.WriteString("Sets:\n")
+		for i, set := range exercise.Sets {
+			completedStatus := "✗"
+			if set.Completed {
+				completedStatus = "✓"
+			}
+
+			sb.WriteString(fmt.Sprintf("  Set %d: %s ", i+1, completedStatus))
+
+			if set.TargetReps > 0 && set.TargetWeight > 0 {
+				sb.WriteString(fmt.Sprintf("Target: %d reps @ %.1fkg", set.TargetReps, set.TargetWeight))
+			} else if set.TargetReps > 0 {
+				sb.WriteString(fmt.Sprintf("Target: %d reps", set.TargetReps))
+			}
+
+			if set.Completed {
+				if set.ActualReps > 0 && set.ActualWeight > 0 {
+					sb.WriteString(fmt.Sprintf(" | Actual: %d reps @ %.1fkg", set.ActualReps, set.ActualWeight))
+				} else if set.ActualReps > 0 {
+					sb.WriteString(fmt.Sprintf(" | Actual: %d reps", set.ActualReps))
+				}
+			}
+
+			if set.DurationSeconds > 0 {
+				sb.WriteString(fmt.Sprintf(" | Duration: %.0fs", set.DurationSeconds))
+			}
+
+			if set.Notes != "" {
+				sb.WriteString(fmt.Sprintf(" | Notes: %s", set.Notes))
+			}
+
+			sb.WriteString("\n")
+		}
+
+		// Add RPE if available (note: RPE is per session, not per exercise in current model)
+		if session.RpeRating > 0 {
+			sb.WriteString(fmt.Sprintf("Session RPE: %d/10\n", session.RpeRating))
+		}
+
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+// buildRecentSessionsData builds the recent workout sessions data section
+func (s *WorkoutSessionService) buildRecentSessionsData(recentSessions []*pb.WorkoutSession) string {
+	var sb strings.Builder
+
+	sb.WriteString("RECENT WORKOUT SESSIONS (for context):\n\n")
+
+	for i, session := range recentSessions {
+		sb.WriteString(fmt.Sprintf("Session %d (ID: %s)\n", i+1, session.Id))
+		sb.WriteString(fmt.Sprintf("Date: %s, Duration: %.1f minutes\n", session.StartedAt.AsTime().Format("2006-01-02"), float64(session.DurationSeconds)/60))
+		sb.WriteString(fmt.Sprintf("RPE: %d/10\n", session.RpeRating))
+		if session.Notes != "" {
+			sb.WriteString(fmt.Sprintf("Notes: %s\n", session.Notes))
+		}
+		sb.WriteString("Exercises:\n")
+		for _, exercise := range session.Exercises {
+			exerciseName := "Unknown Exercise"
+			if exercise.Exercise != nil {
+				exerciseName = exercise.Exercise.Name
+			}
+			sb.WriteString(fmt.Sprintf("  - %s (ID: %s)\n", exerciseName, exercise.ExerciseId))
+			sb.WriteString(fmt.Sprintf("    Completed: %t", exercise.Completed))
+			if exercise.Notes != "" {
+				sb.WriteString(fmt.Sprintf(", Notes: %s", exercise.Notes))
+			}
+			sb.WriteString("\n    Sets:\n")
+			for _, set := range exercise.Sets {
+				if set.Completed {
+					sb.WriteString(fmt.Sprintf("      - Target: %d reps @ %.1fkg, Actual: %d reps @ %.1fkg (✓)\n",
+						set.TargetReps, set.TargetWeight, set.ActualReps, set.ActualWeight))
+				} else {
+					sb.WriteString(fmt.Sprintf("      - Target: %d reps @ %.1fkg (✗ incomplete)\n",
+						set.TargetReps, set.TargetWeight))
+				}
+			}
+		}
+		sb.WriteString("----------------------------------------\n")
+	}
+
+	return sb.String()
+}
+
+// parseAIProgressiveOverloadResponse parses the AI response and extracts updated exercises
+func (s *WorkoutSessionService) parseAIProgressiveOverloadResponse(responseText string, originalWorkout *pb.Workout) ([]*pb.WorkoutExercise, string, map[string]models.AIProgressiveOverloadExercise, error) {
+	// Extract JSON from response
+	startIdx := strings.Index(responseText, "{")
+	endIdx := strings.LastIndex(responseText, "}")
+	if startIdx == -1 || endIdx == -1 || startIdx >= endIdx {
+		return nil, "", nil, fmt.Errorf("no valid JSON found in response")
+	}
+
+	jsonStr := responseText[startIdx : endIdx+1]
+
+	// Parse JSON
+	var aiResponse struct {
+		AnalysisSummary  string `json:"analysis_summary"`
+		UpdatedExercises []struct {
+			ExerciseID         string `json:"exercise_id"`
+			ExerciseName       string `json:"exercise_name"`
+			ProgressionApplied bool   `json:"progression_applied"`
+			Reasoning          string `json:"reasoning"`
+			ChangesMade        string `json:"changes_made"`
+			Sets               []struct {
+				Reps            int32   `json:"reps"`
+				Weight          float32 `json:"weight"`
+				DurationSeconds float32 `json:"duration_seconds"`
+				Distance        float32 `json:"distance"`
+				Notes           string  `json:"notes"`
+			} `json:"sets"`
+			Notes       string `json:"notes"`
+			RestSeconds int32  `json:"rest_seconds"`
+		} `json:"updated_exercises"`
+	}
+
+	if err := json.Unmarshal([]byte(jsonStr), &aiResponse); err != nil {
+		return nil, "", nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	// Create a map of exercise IDs to original exercises for validation
+	originalExerciseMap := make(map[string]*pb.WorkoutExercise)
+	for _, exercise := range originalWorkout.Exercises {
+		originalExerciseMap[exercise.ExerciseId] = exercise
+	}
+
+	// Start with original exercises and update only those recommended by AI
+	var updatedExercises []*pb.WorkoutExercise
+
+	// Copy all original exercises first
+	for _, originalExercise := range originalWorkout.Exercises {
+		// Copy the original exercise
+		updatedExercise := &pb.WorkoutExercise{
+			ExerciseId:  originalExercise.ExerciseId,
+			Sets:        make([]*pb.WorkoutSet, len(originalExercise.Sets)),
+			Notes:       originalExercise.Notes,
+			RestSeconds: originalExercise.RestSeconds,
+		}
+
+		// Copy original sets
+		for i, originalSet := range originalExercise.Sets {
+			updatedExercise.Sets[i] = &pb.WorkoutSet{
+				Reps:            originalSet.Reps,
+				Weight:          originalSet.Weight,
+				DurationSeconds: originalSet.DurationSeconds,
+				Distance:        originalSet.Distance,
+				Notes:           originalSet.Notes,
+			}
+		}
+
+		updatedExercises = append(updatedExercises, updatedExercise)
+	}
+
+	// Create map for AI exercise details to store separately
+	aiExerciseDetails := make(map[string]models.AIProgressiveOverloadExercise)
+
+	// Apply AI recommendations
+	for _, aiExercise := range aiResponse.UpdatedExercises {
+		// Validate exercise ID exists in original workout
+		if _, exists := originalExerciseMap[aiExercise.ExerciseID]; !exists {
+			log.Printf("parseAIProgressiveOverloadResponse: Skipping invalid exercise ID '%s'", aiExercise.ExerciseID)
+			continue
+		}
+
+		// Store AI exercise details for later storage
+		var aiSets []models.WorkoutSet
+		for _, aiSet := range aiExercise.Sets {
+			aiSets = append(aiSets, models.WorkoutSet{
+				Reps:            aiSet.Reps,
+				Weight:          aiSet.Weight,
+				DurationSeconds: int32(aiSet.DurationSeconds),
+				Distance:        aiSet.Distance,
+				Notes:           aiSet.Notes,
+			})
+		}
+
+		aiExerciseDetails[aiExercise.ExerciseID] = models.AIProgressiveOverloadExercise{
+			ExerciseID:         aiExercise.ExerciseID,
+			ExerciseName:       aiExercise.ExerciseName,
+			ProgressionApplied: aiExercise.ProgressionApplied,
+			Reasoning:          aiExercise.Reasoning,
+			ChangesMade:        aiExercise.ChangesMade,
+			Sets:               aiSets,
+			Notes:              aiExercise.Notes,
+			RestSeconds:        aiExercise.RestSeconds,
+		}
+
+		// Find and update the corresponding exercise
+		for i, exercise := range updatedExercises {
+			if exercise.ExerciseId == aiExercise.ExerciseID {
+				// Apply AI recommendations
+				if aiExercise.ProgressionApplied {
+					// Convert AI sets to protobuf sets
+					var newSets []*pb.WorkoutSet
+					for _, aiSet := range aiExercise.Sets {
+						newSets = append(newSets, &pb.WorkoutSet{
+							Reps:            aiSet.Reps,
+							Weight:          aiSet.Weight,
+							DurationSeconds: aiSet.DurationSeconds,
+							Distance:        aiSet.Distance,
+							Notes:           aiSet.Notes,
+						})
+					}
+
+					updatedExercises[i].Sets = newSets
+					if aiExercise.Notes != "" {
+						updatedExercises[i].Notes = aiExercise.Notes
+					}
+					if aiExercise.RestSeconds > 0 {
+						updatedExercises[i].RestSeconds = aiExercise.RestSeconds
+					}
+
+					log.Printf("parseAIProgressiveOverloadResponse: Applied progression to exercise %s: %s",
+						aiExercise.ExerciseName, aiExercise.ChangesMade)
+				}
+				break
+			}
+		}
+	}
+
+	return updatedExercises, aiResponse.AnalysisSummary, aiExerciseDetails, nil
+}
+
+// storeAIProgressiveOverloadResponse stores the AI progressive overload response in MongoDB
+func (s *WorkoutSessionService) storeAIProgressiveOverloadResponse(ctx context.Context, session *pb.WorkoutSession, workout *pb.Workout, analysisSummary string, updatedExercises []*pb.WorkoutExercise, success bool, message string, recentSessionsCount int, processingTimeMs int64) error {
+	log.Printf("storeAIProgressiveOverloadResponse: Starting storage for session %s", session.Id)
+
+	// Convert user, session, and workout IDs
+	userObjectID, err := primitive.ObjectIDFromHex(session.UserId)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	sessionObjectID, err := primitive.ObjectIDFromHex(session.Id)
+	if err != nil {
+		return fmt.Errorf("invalid session ID: %w", err)
+	}
+
+	workoutObjectID, err := primitive.ObjectIDFromHex(workout.Id)
+	if err != nil {
+		return fmt.Errorf("invalid workout ID: %w", err)
+	}
+
+	// Convert updated exercises to storage format
+	var aiExercises []models.AIProgressiveOverloadExercise
+	if updatedExercises != nil {
+		for _, exercise := range updatedExercises {
+			// Check if we have AI details for this exercise
+			if aiDetail, exists := s.tempAIExerciseDetails[exercise.ExerciseId]; exists {
+				// Use the detailed AI information
+				aiExercises = append(aiExercises, aiDetail)
+			} else {
+				// Fallback to basic information
+				var sets []models.WorkoutSet
+				for _, set := range exercise.Sets {
+					sets = append(sets, models.WorkoutSet{
+						Reps:            set.Reps,
+						Weight:          set.Weight,
+						DurationSeconds: int32(set.DurationSeconds),
+						Distance:        set.Distance,
+						Notes:           set.Notes,
+					})
+				}
+
+				// Try to find the exercise name from the workout
+				exerciseName := "Unknown Exercise"
+				for _, originalExercise := range workout.Exercises {
+					if originalExercise.ExerciseId == exercise.ExerciseId {
+						// Get exercise details if available
+						if originalExercise.Exercise != nil {
+							exerciseName = originalExercise.Exercise.Name
+						}
+						break
+					}
+				}
+
+				aiExercises = append(aiExercises, models.AIProgressiveOverloadExercise{
+					ExerciseID:         exercise.ExerciseId,
+					ExerciseName:       exerciseName,
+					ProgressionApplied: true,
+					Reasoning:          "AI-generated progression based on recent performance analysis",
+					ChangesMade:        "Updated based on AI analysis",
+					Sets:               sets,
+					Notes:              exercise.Notes,
+					RestSeconds:        exercise.RestSeconds,
+				})
+			}
+		}
+	}
+
+	// Clear temporary storage
+	s.tempAIExerciseDetails = nil
+
+	// Create the AI response document
+	now := time.Now()
+	aiResponse := models.AIProgressiveOverloadResponse{
+		UserID:              userObjectID,
+		WorkoutSessionID:    sessionObjectID,
+		WorkoutID:           workoutObjectID,
+		AnalysisSummary:     analysisSummary,
+		UpdatedExercises:    aiExercises,
+		Success:             success,
+		Message:             message,
+		RecentSessionsCount: int32(recentSessionsCount),
+		AIModel:             "gemini-2.5-flash",
+		ProcessingTimeMs:    processingTimeMs,
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}
+
+	// Insert into MongoDB
+	result, err := s.aiProgressiveOverloadColl.InsertOne(ctx, aiResponse)
+	if err != nil {
+		return fmt.Errorf("failed to insert AI response: %w", err)
+	}
+
+	log.Printf("storeAIProgressiveOverloadResponse: Successfully stored AI response with ID: %v", result.InsertedID)
+	return nil
+}
+
+// getFallbackProgressiveOverloadPromptTemplate returns a fallback prompt template
+func (s *WorkoutSessionService) getFallbackProgressiveOverloadPromptTemplate() string {
+	return `You are an expert strength training coach specializing in progressive overload optimization.
+
+USER PROFILE:
+- Goal: {{USER_GOAL}}
+- Height: {{USER_HEIGHT}} cm, Weight: {{USER_WEIGHT}} kg, Age: {{USER_AGE}}
+
+LAST WORKOUT SESSION DATA:
+Session ID: {{SESSION_ID}}
+Workout: {{WORKOUT_NAME}}
+Duration: {{WORKOUT_DURATION}} minutes
+Completed on: {{SESSION_DATE}}
+
+{{SESSION_EXERCISES_DATA}}
+
+TASK:
+Analyze the completed workout session above and recent workout sessions data below to generate optimized progressive overload recommendations for the corresponding routine.
+
+Apply intelligent progressive overload based on actual performance trends from recent sessions, RPE ratings, and completion patterns.
+Be conservative with weight increases for safety and focus on sustainable long-term progression.
+Use recent sessions to identify patterns - is the user consistently completing sets? Are they ready for progression or need consolidation?
+
+OUTPUT FORMAT (JSON):
+{
+  "analysis_summary": "2-3 sentence summary of overall session performance, recent trends, and readiness for progression",
+  "updated_exercises": [
+    {
+      "exercise_id": "ACTUAL_EXERCISE_ID_FROM_SESSION",
+      "exercise_name": "Exercise Name",
+      "progression_applied": true,
+      "reasoning": "Specific reason for the progression/maintenance decision based on recent performance trends",
+      "changes_made": "Description of what changed (e.g., 'Increased weight from 50kg to 52.5kg based on consistent completion')",
+      "sets": [
+        {
+          "reps": 8,
+          "weight": 52.5,
+          "duration_seconds": 0,
+          "distance": 0,
+          "notes": ""
+        }
+      ],
+      "notes": "Any additional notes about the progression based on recent trends",
+      "rest_seconds": 90
+    }
+  ]
+}
+
+Only modify exercises that were actually performed in the session and use exact exercise IDs from the session data.
+Consider recent performance patterns, RPE trends, and consistency when making progression decisions.`
 }
 
 // modelToProto converts a workout session model to protobuf workout session
