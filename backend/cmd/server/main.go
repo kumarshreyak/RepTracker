@@ -40,7 +40,10 @@ func main() {
 	exerciseService := services.NewExerciseService(db)
 	workoutService := services.NewWorkoutService(db)
 	metricsService := services.NewMetricsService(db, exerciseService)
-	workoutSessionService := services.NewWorkoutSessionService(db, workoutService, exerciseService, metricsService)
+	workoutSessionService, err := services.NewWorkoutSessionService(db, workoutService, exerciseService, metricsService, userService)
+	if err != nil {
+		log.Fatalf("Failed to create workout session service: %v", err)
+	}
 
 	// Create insights service
 	insightsService, err := services.NewInsightsService(db.Database)
