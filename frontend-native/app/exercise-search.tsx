@@ -18,7 +18,7 @@ import { Typography, Button } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { User } from '../src/auth/AuthService';
-import { Exercise, RoutineExercise, WorkoutSet, WorkoutSetInput } from '@/types/exercise';
+import { Exercise, RoutineExercise, RoutineSet, RoutineSetInput } from '@/types/exercise';
 
 export default function ExerciseSearchRoute() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function ExerciseSearchRoute() {
   const [loading, setLoading] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [numberOfSets, setNumberOfSets] = useState("3");
-  const [sets, setSets] = useState<WorkoutSetInput[]>([
+  const [sets, setSets] = useState<RoutineSetInput[]>([
     { reps: "10", weight: "" },
     { reps: "10", weight: "" },
     { reps: "10", weight: "" },
@@ -99,7 +99,7 @@ export default function ExerciseSearchRoute() {
     if (!selectedExercise || !isFormValid()) return;
     
     // Convert string inputs to numbers for storage
-    const convertedSets: WorkoutSet[] = sets.map(set => ({
+    const convertedSets: RoutineSet[] = sets.map(set => ({
       reps: parseFloat(set.reps) || 0,
       weight: parseFloat(set.weight) || 0,
     }));

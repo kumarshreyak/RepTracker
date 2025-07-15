@@ -160,8 +160,10 @@ export default function ActiveWorkoutScreen() {
           ...ex,
           completed: false,
           sets: ex.sets.map((set: any) => ({
-            reps: set.targetReps || set.reps,
-            weight: set.targetWeight || set.weight,
+            targetReps: set.targetReps || set.reps,
+            targetWeight: set.targetWeight || set.weight,
+            actualReps: set.actualReps || set.targetReps || set.reps,
+            actualWeight: set.actualWeight || set.targetWeight || set.weight,
             durationSeconds: set.durationSeconds,
             distance: set.distance,
             notes: set.notes,
@@ -229,8 +231,8 @@ export default function ActiveWorkoutScreen() {
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
       
       const updateData = {
-        actualReps: currentSet.reps,
-        actualWeight: currentSet.weight,
+        actualReps: currentSet.actualReps,
+        actualWeight: currentSet.actualWeight,
         durationSeconds: currentSet.durationSeconds || 0,
         distance: currentSet.distance || 0,
         notes: currentSet.notes || '',
@@ -256,7 +258,7 @@ export default function ActiveWorkoutScreen() {
     }
   };
 
-  const handleValueEdit = (exerciseIndex: number, setIndex: number, field: 'reps' | 'weight', value: string) => {
+  const handleValueEdit = (exerciseIndex: number, setIndex: number, field: 'actualReps' | 'actualWeight', value: string) => {
     const numValue = parseInt(value) || 0;
     
     setActiveWorkout(prev => {
@@ -312,10 +314,10 @@ export default function ActiveWorkoutScreen() {
         exercises: activeWorkout.exercises.map(ex => ({
           exerciseId: ex.exerciseId,
           sets: ex.sets.map(set => ({
-            targetReps: set.reps,
-            targetWeight: set.weight,
-            actualReps: set.reps,
-            actualWeight: set.weight,
+            targetReps: set.targetReps,
+            targetWeight: set.targetWeight,
+            actualReps: set.actualReps,
+            actualWeight: set.actualWeight,
             durationSeconds: set.durationSeconds || 0,
             distance: set.distance || 0,
             notes: set.notes || '',
@@ -530,8 +532,8 @@ export default function ActiveWorkoutScreen() {
               {/* Editable Values - Large, Tappable */}
               <View style={styles.setValues}>
                 <NumberInput
-                  value={set.reps}
-                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'reps', value.toString())}
+                  value={set.actualReps}
+                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'actualReps', value.toString())}
                   unit="reps"
                   displayVariant="display-xsmall"
                   unitVariant="label-small"
@@ -545,8 +547,8 @@ export default function ActiveWorkoutScreen() {
                 <View style={styles.valueSeparator} />
 
                 <NumberInput
-                  value={set.weight}
-                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'weight', value.toString())}
+                  value={set.actualWeight}
+                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'actualWeight', value.toString())}
                   unit="kg"
                   displayVariant="display-xsmall"
                   unitVariant="label-small"
