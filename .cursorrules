@@ -118,7 +118,38 @@ Before writing any code that involves colors, styling, or UI components:
 - ✅ **API responses**: Convert snake_case from backend to camelCase in frontend
 - ✅ **Local variables**: All variables, functions, and object properties use camelCase
 
-#### **Examples:**
+#### **MongoDB Field Naming Rules:**
+**CRITICAL: MongoDB queries MUST use snake_case field names, even though Go structs use camelCase**
+
+- ✅ **MongoDB queries**: Use `snake_case` field names (`finished_at`, `user_id`, `exercise_id`)
+- ✅ **Go struct tags**: Define both BSON and JSON tags: `bson:"finished_at" json:"finishedAt"`
+- ✅ **Frontend API**: Receives camelCase (`finishedAt`, `userId`, `exerciseId`)
+- ❌ **NEVER mix naming**: Don't use camelCase in MongoDB queries (`finishedAt` ❌) or snake_case in frontend (`finished_at` ❌)
+
+#### **MongoDB Query Examples:**
+```go
+// ✅ CORRECT - MongoDB query with snake_case
+filter := bson.M{
+    "user_id": userObjectID,
+    "finished_at": bson.M{
+        "$gte": startTime,
+        "$lte": endTime,
+    },
+    "is_active": false,
+}
+
+// ❌ INCORRECT - MongoDB query with camelCase
+filter := bson.M{
+    "userId": userObjectID,        // Wrong! Should be "user_id"
+    "finishedAt": bson.M{          // Wrong! Should be "finished_at"
+        "$gte": startTime,
+        "$lte": endTime,
+    },
+    "isActive": false,             // Wrong! Should be "is_active"
+}
+```
+
+#### **Frontend Examples:**
 ```typescript
 // ✅ CORRECT - camelCase naming
 interface Exercise {

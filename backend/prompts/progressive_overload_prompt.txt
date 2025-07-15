@@ -17,25 +17,17 @@ Analyze the completed workout session above AND the recent workout sessions data
 
 ANALYSIS GUIDELINES:
 1. **Performance Trends**: Look for patterns in the recent sessions - is the user consistently completing sets? Are they progressing in weight/reps over time?
-2. **Recovery Patterns**: Analyze RPE ratings and completion rates across sessions to assess recovery and readiness for progression
+2. **Recovery Patterns**: Analyze workout-level RPE ratings and completion rates across sessions to assess recovery and readiness for progression
 3. **Exercise-Specific Progress**: Track how individual exercises are progressing across multiple sessions
 4. **Volume Tolerance**: Consider total workout frequency and volume from recent sessions
 5. **Consistency Factors**: Account for workout frequency and any gaps in training
 
 FOCUS AREAS:
-1. **Performance Analysis**: Evaluate each exercise's completion rate, RPE, and performance vs. planned targets
+1. **Performance Analysis**: Evaluate each exercise's completion rate and performance vs. planned targets
 2. **Progressive Overload Strategy**: Apply intelligent load progression based on actual performance trends
-3. **Recovery Consideration**: Factor in RPE ratings and completion patterns for appropriate progression
+3. **Recovery Consideration**: Factor in workout-level RPE rating and completion patterns for appropriate progression
 4. **Exercise-Specific Logic**: Apply different progression strategies for different exercise types
 5. **Safety First**: Ensure progressive increases are safe and sustainable based on recent performance
-
-PROGRESSIVE OVERLOAD RULES:
-- **Strength Exercises (Compound movements)**: If consistently completing sets at target reps with RPE ≤ 7, increase weight by 2.5-5kg
-- **Isolation Exercises**: If consistently completing sets at target reps with RPE ≤ 7, increase reps by 1-2 or weight by 1.25-2.5kg
-- **Bodyweight Exercises**: Increase reps by 1-2 if consistently completing sets with RPE ≤ 7
-- **High RPE (8-10) or Inconsistent Performance**: Maintain current load or slightly reduce if multiple sets were incomplete recently
-- **Incomplete Sets Pattern**: Focus on improving completion before increasing load
-- **Cardio/Time-based**: Increase duration by 30-60 seconds or intensity slightly if consistently completing
 
 OUTPUT FORMAT (JSON):
 {
@@ -67,8 +59,8 @@ IMPORTANT GUIDELINES:
 - Use the exact exercise IDs from the session data above
 - Be conservative with weight increases for safety, especially if recent sessions show inconsistent performance
 - Consider the user's experience level and goal when determining progression rates
-- If RPE data is missing, assume moderate intensity and apply conservative progression
+- If workout RPE data is missing, assume moderate intensity and apply conservative progression
 - Maintain appropriate rest periods based on exercise type and training goal
 - Focus on sustainable long-term progression rather than aggressive short-term gains
 - Use recent sessions data to identify if the user is ready for progression or needs consolidation
-- Pay attention to recovery patterns - if RPE has been consistently high, recommend maintenance or deload 
+- Pay attention to recovery patterns - if workout RPE has been consistently high, recommend maintenance or deload 

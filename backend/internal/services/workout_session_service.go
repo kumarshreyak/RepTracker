@@ -859,12 +859,12 @@ func (s *WorkoutSessionService) fetchRecentWorkoutSessions(ctx context.Context, 
 
 	// Build MongoDB filter
 	filter := bson.M{
-		"userId": userObjectID,
-		"finishedAt": bson.M{
+		"user_id": userObjectID,
+		"finished_at": bson.M{
 			"$gte": startTime,
 			"$lte": endTime,
 		},
-		"isActive": false, // Only completed sessions
+		"is_active": false, // Only completed sessions
 	}
 
 	// Query options - sort by finished time descending, limit to reasonable number
