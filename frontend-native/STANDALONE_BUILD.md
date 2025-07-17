@@ -1,6 +1,6 @@
-# GymLog Standalone Build Guide
+# RepTracker Standalone Build Guide
 
-This guide explains how to build and deploy the GymLog mobile app as a standalone application that doesn't require a local development server.
+This guide explains how to build and deploy the RepTracker mobile app as a standalone application that doesn't require a local development server.
 
 ## Overview
 
@@ -31,7 +31,7 @@ npm run build:standalone:ios
 1. Open Xcode
 2. Go to **Window > Devices and Simulators**
 3. Select your connected iPhone
-4. Drag `ios/build/export/frontendnative.ipa` onto your device
+4. Drag `ios/build/export/RepTracker.ipa` onto your device
 
 **Method B: Using Finder**
 1. Connect iPhone to Mac
@@ -76,11 +76,11 @@ If you prefer to build manually or understand the process:
 
 ```bash
 # Create the archive (.xcarchive)
-xcodebuild -workspace ios/frontendnative.xcworkspace \
-           -scheme frontendnative \
+xcodebuild -workspace ios/RepTracker.xcworkspace \
+           -scheme RepTracker \
            -configuration Release \
            -destination generic/platform=iOS \
-           -archivePath ios/build/frontendnative.xcarchive \
+           -archivePath ios/build/RepTracker.xcarchive \
            archive
 ```
 
@@ -89,12 +89,12 @@ xcodebuild -workspace ios/frontendnative.xcworkspace \
 ```bash
 # Export the archive as an installable IPA file
 xcodebuild -exportArchive \
-           -archivePath ios/build/frontendnative.xcarchive \
+           -archivePath ios/build/RepTracker.xcarchive \
            -exportPath ios/build/export \
-           -exportOptionsPlist ios/frontendnative/ExportOptions.plist
+           -exportOptionsPlist ios/RepTracker/ExportOptions.plist
 ```
 
-The `ExportOptions.plist` file is already configured for development distribution and is stored in the `ios/frontendnative/` directory to prevent it from being cleared by clean commands.
+The `ExportOptions.plist` file is already configured for development distribution and is stored in the `ios/RepTracker/` directory to prevent it from being cleared by clean commands.
 
 ## Build Configurations
 
@@ -102,7 +102,7 @@ The `ExportOptions.plist` file is already configured for development distributio
 - **Purpose**: Testing on physical devices
 - **Distribution**: Development team only
 - **Signing**: Development certificate
-- **File**: `frontendnative.ipa` in `ios/build/export/`
+- **File**: `RepTracker.ipa` in `ios/build/export/`
 
 ### Production Build (Future)
 For App Store distribution, you'll need:
@@ -151,12 +151,12 @@ After building, you'll have:
 frontend-native/
 ├── ios/
 │   ├── build/
-│   │   ├── frontendnative.xcarchive     # Archive file
+│   │   ├── RepTracker.xcarchive     # Archive file
 │   │   └── export/
-│   │       ├── frontendnative.ipa       # ← Install this on your device
+│   │       ├── RepTracker.ipa       # ← Install this on your device
 │   │       ├── DistributionSummary.plist
 │   │       └── Packaging.log
-│   └── frontendnative/
+│   └── RepTracker/
 │       └── ExportOptions.plist          # Export configuration (safe location)
 ```
 
@@ -191,26 +191,26 @@ For convenience, you can create a build script:
 #!/bin/bash
 # build-standalone.sh
 
-echo "Building GymLog standalone app..."
+echo "Building RepTracker standalone app..."
 
 # Clean previous builds
 rm -rf ios/build/
 
 # Create archive
-xcodebuild -workspace ios/frontendnative.xcworkspace \
-           -scheme frontendnative \
+xcodebuild -workspace ios/RepTracker.xcworkspace \
+           -scheme RepTracker \
            -configuration Release \
            -destination generic/platform=iOS \
-           -archivePath ios/build/frontendnative.xcarchive \
+           -archivePath ios/build/RepTracker.xcarchive \
            archive
 
 # Export IPA
 xcodebuild -exportArchive \
-           -archivePath ios/build/frontendnative.xcarchive \
+           -archivePath ios/build/RepTracker.xcarchive \
            -exportPath ios/build/export \
-           -exportOptionsPlist ios/frontendnative/ExportOptions.plist
+           -exportOptionsPlist ios/RepTracker/ExportOptions.plist
 
-echo "✅ Build complete! Install ios/build/export/frontendnative.ipa on your device"
+echo "✅ Build complete! Install ios/build/export/RepTracker.ipa on your device"
 ```
 
 Make it executable:
