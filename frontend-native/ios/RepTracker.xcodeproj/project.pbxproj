@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		147D0441DD24625777AD871E /* libPods-RepTracker.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E163246CEBC0461408C12CF3 /* libPods-RepTracker.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		F09ED25F4C0DBA13DBD05B51 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4988A735FE379A093AA3E2CF /* PrivacyInfo.xcprivacy */; };
+		E381F5E622236BF1C69FF267 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE475A0DCDEACFE4699BEDF /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F70295A11E70A9E5889C30E6 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DD7AA1A83A64E180C9CDCB /* ExpoModulesProvider.swift */; };
-		FBC6C4C2C485E9587FE7E84A /* libPods-frontendnative.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 14A103EC91AB9A13D9B96403 /* libPods-frontendnative.a */; };
+		F8593A7551C78C010C6932F0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 053ECCF88DCC78EE22D0C1A8 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* frontendnative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = frontendnative.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = frontendnative/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = frontendnative/Info.plist; sourceTree = "<group>"; };
-		14A103EC91AB9A13D9B96403 /* libPods-frontendnative.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-frontendnative.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4988A735FE379A093AA3E2CF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = frontendnative/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = frontendnative/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B5EB08EFC91D295D0D30EAB0 /* Pods-frontendnative.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-frontendnative.debug.xcconfig"; path = "Target Support Files/Pods-frontendnative/Pods-frontendnative.debug.xcconfig"; sourceTree = "<group>"; };
+		053ECCF88DCC78EE22D0C1A8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = RepTracker/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* RepTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RepTracker/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = RepTracker/Info.plist; sourceTree = "<group>"; };
+		7DE475A0DCDEACFE4699BEDF /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-RepTracker/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		9FB08C3AF792D381AD8E0157 /* Pods-RepTracker.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RepTracker.release.xcconfig"; path = "Target Support Files/Pods-RepTracker/Pods-RepTracker.release.xcconfig"; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = RepTracker/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		DE4FD6FF16A02F7A04619D09 /* Pods-frontendnative.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-frontendnative.release.xcconfig"; path = "Target Support Files/Pods-frontendnative/Pods-frontendnative.release.xcconfig"; sourceTree = "<group>"; };
+		C41ECCC441403A19F3511701 /* Pods-RepTracker.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RepTracker.debug.xcconfig"; path = "Target Support Files/Pods-RepTracker/Pods-RepTracker.debug.xcconfig"; sourceTree = "<group>"; };
+		E163246CEBC0461408C12CF3 /* libPods-RepTracker.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-RepTracker.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = frontendnative/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* frontendnative-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "frontendnative-Bridging-Header.h"; path = "frontendnative/frontendnative-Bridging-Header.h"; sourceTree = "<group>"; };
-		F3DD7AA1A83A64E180C9CDCB /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-frontendnative/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = RepTracker/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* RepTracker-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "RepTracker-Bridging-Header.h"; path = "RepTracker/RepTracker-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,49 +37,32 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FBC6C4C2C485E9587FE7E84A /* libPods-frontendnative.a in Frameworks */,
+				147D0441DD24625777AD871E /* libPods-RepTracker.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0B70D02EB523262EE5BDAC32 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				B5EB08EFC91D295D0D30EAB0 /* Pods-frontendnative.debug.xcconfig */,
-				DE4FD6FF16A02F7A04619D09 /* Pods-frontendnative.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		13B07FAE1A68108700A75B9A /* frontendnative */ = {
+		13B07FAE1A68108700A75B9A /* RepTracker */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* frontendnative-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* RepTracker-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				4988A735FE379A093AA3E2CF /* PrivacyInfo.xcprivacy */,
+				053ECCF88DCC78EE22D0C1A8 /* PrivacyInfo.xcprivacy */,
 			);
-			name = frontendnative;
-			sourceTree = "<group>";
-		};
-		1B9CF75183D89AEC90904706 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				EEEF9CA200DF0B5EBDB93AAD /* frontendnative */,
-			);
-			name = ExpoModulesProviders;
+			name = RepTracker;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				14A103EC91AB9A13D9B96403 /* libPods-frontendnative.a */,
+				E163246CEBC0461408C12CF3 /* libPods-RepTracker.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -94,12 +77,12 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* frontendnative */,
+				13B07FAE1A68108700A75B9A /* RepTracker */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				0B70D02EB523262EE5BDAC32 /* Pods */,
-				1B9CF75183D89AEC90904706 /* ExpoModulesProviders */,
+				AC431B6F4DF0D57EEC70CFBB /* Pods */,
+				AE196FF17CFB6F55D0272C40 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -109,9 +92,27 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* frontendnative.app */,
+				13B07F961A680F5B00A75B9A /* RepTracker.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AC431B6F4DF0D57EEC70CFBB /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				C41ECCC441403A19F3511701 /* Pods-RepTracker.debug.xcconfig */,
+				9FB08C3AF792D381AD8E0157 /* Pods-RepTracker.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		AE196FF17CFB6F55D0272C40 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				F23C0104EE5075FC08F48297 /* RepTracker */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -120,40 +121,40 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = frontendnative/Supporting;
+			path = RepTracker/Supporting;
 			sourceTree = "<group>";
 		};
-		EEEF9CA200DF0B5EBDB93AAD /* frontendnative */ = {
+		F23C0104EE5075FC08F48297 /* RepTracker */ = {
 			isa = PBXGroup;
 			children = (
-				F3DD7AA1A83A64E180C9CDCB /* ExpoModulesProvider.swift */,
+				7DE475A0DCDEACFE4699BEDF /* ExpoModulesProvider.swift */,
 			);
-			name = frontendnative;
+			name = RepTracker;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* frontendnative */ = {
+		13B07F861A680F5B00A75B9A /* RepTracker */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "frontendnative" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "RepTracker" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				B2ABC97DB8B510D1A40E3C2A /* [Expo] Configure project */,
+				7DA5797DE6A13E7EE54A200E /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				5A7712980C96E65C057A5A7C /* [CP] Embed Pods Frameworks */,
+				AECE3924DD233568F847C2C0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = frontendnative;
-			productName = frontendnative;
-			productReference = 13B07F961A680F5B00A75B9A /* frontendnative.app */;
+			name = RepTracker;
+			productName = RepTracker;
+			productReference = 13B07F961A680F5B00A75B9A /* RepTracker.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -169,7 +170,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "frontendnative" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "RepTracker" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -182,7 +183,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* frontendnative */,
+				13B07F861A680F5B00A75B9A /* RepTracker */,
 			);
 		};
 /* End PBXProject section */
@@ -195,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				F09ED25F4C0DBA13DBD05B51 /* PrivacyInfo.xcprivacy in Resources */,
+				F8593A7551C78C010C6932F0 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,30 +233,31 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-frontendnative-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-RepTracker-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		5A7712980C96E65C057A5A7C /* [CP] Embed Pods Frameworks */ = {
+		7DA5797DE6A13E7EE54A200E /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-frontendnative/Pods-frontendnative-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			inputFileListPaths = (
 			);
-			name = "[CP] Embed Pods Frameworks";
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-frontendnative/Pods-frontendnative-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-RepTracker/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -263,7 +265,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-frontendnative/Pods-frontendnative-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-RepTracker/Pods-RepTracker-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/AppAuth/AppAuthCore_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
@@ -298,27 +300,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-frontendnative/Pods-frontendnative-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RepTracker/Pods-RepTracker-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B2ABC97DB8B510D1A40E3C2A /* [Expo] Configure project */ = {
+		AECE3924DD233568F847C2C0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RepTracker/Pods-RepTracker-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
 			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
+			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-frontendnative/expo-configure-project.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RepTracker/Pods-RepTracker-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -328,7 +329,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				F70295A11E70A9E5889C30E6 /* ExpoModulesProvider.swift in Sources */,
+				E381F5E622236BF1C69FF267 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -337,19 +338,18 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B5EB08EFC91D295D0D30EAB0 /* Pods-frontendnative.debug.xcconfig */;
+			baseConfigurationReference = C41ECCC441403A19F3511701 /* Pods-RepTracker.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = frontendnative/frontendnative.entitlements;
+				CODE_SIGN_ENTITLEMENTS = RepTracker/RepTracker.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = B78G4B978H;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = frontendnative/Info.plist;
+				INFOPLIST_FILE = RepTracker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -363,8 +363,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.anonymous.gymlog;
-				PRODUCT_NAME = frontendnative;
-				SWIFT_OBJC_BRIDGING_HEADER = "frontendnative/frontendnative-Bridging-Header.h";
+				PRODUCT_NAME = RepTracker;
+				SWIFT_OBJC_BRIDGING_HEADER = "RepTracker/RepTracker-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -374,14 +374,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DE4FD6FF16A02F7A04619D09 /* Pods-frontendnative.release.xcconfig */;
+			baseConfigurationReference = 9FB08C3AF792D381AD8E0157 /* Pods-RepTracker.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = frontendnative/frontendnative.entitlements;
+				CODE_SIGN_ENTITLEMENTS = RepTracker/RepTracker.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = B78G4B978H;
-				INFOPLIST_FILE = frontendnative/Info.plist;
+				INFOPLIST_FILE = RepTracker/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -395,8 +394,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.anonymous.gymlog;
-				PRODUCT_NAME = frontendnative;
-				SWIFT_OBJC_BRIDGING_HEADER = "frontendnative/frontendnative-Bridging-Header.h";
+				PRODUCT_NAME = RepTracker;
+				SWIFT_OBJC_BRIDGING_HEADER = "RepTracker/RepTracker-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -458,7 +457,10 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -513,7 +515,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
@@ -524,7 +529,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "frontendnative" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "RepTracker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -533,7 +538,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "frontendnative" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "RepTracker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

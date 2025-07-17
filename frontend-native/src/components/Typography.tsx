@@ -32,13 +32,17 @@ interface TypographyProps {
   variant?: TypographyVariant;
   color?: SemanticColor;
   style?: TextStyle;
+  numberOfLines?: number;
+  ellipsizeMode?: 'head' | 'middle' | 'tail' | 'clip';
 }
 
 export const Typography: React.FC<TypographyProps> = ({ 
   children, 
   variant = 'paragraph-medium', 
   color = 'contentPrimary',
-  style = {}
+  style = {},
+  numberOfLines,
+  ellipsizeMode
 }) => {
   const variantStyles: Record<TypographyVariant, TextStyle> = {
     // Paragraph variants - Uber Move Text Regular (400)
@@ -165,7 +169,11 @@ export const Typography: React.FC<TypographyProps> = ({
   };
 
   return (
-    <Text style={combinedStyle}>
+    <Text 
+      style={combinedStyle}
+      numberOfLines={numberOfLines}
+      ellipsizeMode={ellipsizeMode}
+    >
       {children}
     </Text>
   );

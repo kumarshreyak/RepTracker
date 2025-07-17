@@ -90,6 +90,8 @@ The server will start both:
 - `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/finish` - Finish exercise
 - `PUT /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}` - Update set
 - `POST /api/workout-sessions/{id}/progressive-overload` - Apply progressive overload to workout
+- `POST /api/workout-sessions/{id}/progressive-overload/ai` - Apply AI-powered progressive overload
+- `GET /api/users/{userId}/ai-progressive-overload-responses` - List stored AI progressive overload responses
 
 #### Progressive Overload API Details
 
@@ -161,6 +163,64 @@ Response:
 
 **Use Case:**
 After completing a workout session, call this API to automatically progress the workout difficulty for the next time the user performs this routine. This ensures continuous progression without manual intervention.
+
+#### AI Progressive Overload API Details
+
+**List AI Progressive Overload Responses**
+```
+GET /api/users/{userId}/ai-progressive-overload-responses
+```
+Retrieves stored AI progressive overload responses for a user in descending order by creation time. This endpoint allows you to view the history of AI recommendations and their effectiveness.
+
+**Query Parameters:**
+- `pageSize` (optional): Number of responses per page (default: 20, max: 100)
+- `pageToken` (optional): Token for pagination to get next page of results
+
+**Response:**
+```json
+{
+  "responses": [
+    {
+      "id": "response_id",
+      "userId": "user_id",
+      "workoutSessionId": "session_id",
+      "workoutId": "workout_id",
+      "analysisSummary": "Strong progression shown across all exercises. User consistently completing target reps with room for advancement.",
+      "updatedExercises": [
+        {
+          "exerciseId": "exercise_id",
+          "exerciseName": "Bench Press",
+          "progressionApplied": true,
+          "reasoning": "User completed all sets with 2+ RIR, ready for weight increase",
+          "changesMade": "Increased weight from 80kg to 82.5kg based on consistent completion",
+          "sets": [
+            {
+              "reps": 8,
+              "weight": 82.5,
+              "durationSeconds": 0,
+              "distance": 0,
+              "notes": ""
+            }
+          ],
+          "notes": "Strong performance, continue progression",
+          "restSeconds": 180
+        }
+      ],
+      "success": true,
+      "message": "AI progressive overload applied successfully - Strong progression trends identified",
+      "recentSessionsCount": 7,
+      "aiModel": "gemini-2.5-flash",
+      "processingTimeMs": 1245,
+      "createdAt": "2024-01-15T10:35:00Z",
+      "updatedAt": "2024-01-15T10:35:00Z"
+    }
+  ],
+  "nextPageToken": "next_page_token_if_more_results"
+}
+```
+
+**Use Case:**
+Track the history of AI recommendations to understand progression patterns, analyze AI decision-making, and monitor the effectiveness of different progression strategies over time.
 
 ### Metrics
 - `GET /api/users/{userId}/metrics` - Get user metrics

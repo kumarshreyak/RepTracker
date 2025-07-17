@@ -326,6 +326,45 @@ message ApplyProgressiveOverloadResponse {
   Workout updated_workout = 3; // The updated workout with new rep/weight values
 }
 
+// AI Progressive Overload related messages
+message AIProgressiveOverloadExercise {
+  string exercise_id = 1;
+  string exercise_name = 2;
+  bool progression_applied = 3;
+  string reasoning = 4;
+  string changes_made = 5;
+  repeated WorkoutSet sets = 6;
+  string notes = 7;
+  int32 rest_seconds = 8;
+}
+
+message AIProgressiveOverloadResponse {
+  string id = 1;
+  string user_id = 2;
+  string workout_session_id = 3;
+  string workout_id = 4;
+  string analysis_summary = 5;
+  repeated AIProgressiveOverloadExercise updated_exercises = 6;
+  bool success = 7;
+  string message = 8;
+  int32 recent_sessions_count = 9;
+  string ai_model = 10;
+  int64 processing_time_ms = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message ListAIProgressiveOverloadResponsesRequest {
+  string user_id = 1;
+  int32 page_size = 2; // default 20
+  string page_token = 3;
+}
+
+message ListAIProgressiveOverloadResponsesResponse {
+  repeated AIProgressiveOverloadResponse responses = 1;
+  string next_page_token = 2;
+}
+
 // Metrics related messages
 message VolumeMetrics {
   double total_volume_load = 1;
@@ -572,6 +611,7 @@ service WorkoutSessionService {
   rpc FinishExercise(FinishExerciseRequest) returns (WorkoutSession);
   rpc UpdateSet(UpdateSetRequest) returns (WorkoutSession);
   rpc ApplyProgressiveOverload(ApplyProgressiveOverloadRequest) returns (ApplyProgressiveOverloadResponse);
+  rpc ListAIProgressiveOverloadResponses(ListAIProgressiveOverloadResponsesRequest) returns (ListAIProgressiveOverloadResponsesResponse);
 }
 
 service MetricsService {
