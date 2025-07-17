@@ -16,24 +16,34 @@ export interface Exercise {
   updatedAt: string;
 }
 
+export interface RoutineSet {
+  reps: number;
+  weight: number;
+  durationSeconds?: number;
+  distance?: number;
+  notes?: string;
+}
+
 export interface RoutineExercise {
   id: string;
   name: string;
   primaryMuscles: string[];            // Updated from muscleGroup
   secondaryMuscles?: string[];         // New optional field
-  sets: WorkoutSet[];
+  sets: RoutineSet[];
 }
 
 export interface WorkoutSet {
-  reps: number;
-  weight: number;
+  targetReps: number;
+  targetWeight: number;
+  actualReps: number;
+  actualWeight: number;
   durationSeconds?: number;
   distance?: number;
   notes?: string;
   completed?: boolean;
 }
 
-export interface WorkoutSetInput {
+export interface RoutineSetInput {
   reps: string;
   weight: string;
 }

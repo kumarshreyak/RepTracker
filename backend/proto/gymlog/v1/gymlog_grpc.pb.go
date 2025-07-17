@@ -786,15 +786,16 @@ var WorkoutService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	WorkoutSessionService_CreateWorkoutSession_FullMethodName     = "/gymlog.v1.WorkoutSessionService/CreateWorkoutSession"
-	WorkoutSessionService_GetWorkoutSession_FullMethodName        = "/gymlog.v1.WorkoutSessionService/GetWorkoutSession"
-	WorkoutSessionService_UpdateWorkoutSession_FullMethodName     = "/gymlog.v1.WorkoutSessionService/UpdateWorkoutSession"
-	WorkoutSessionService_DeleteWorkoutSession_FullMethodName     = "/gymlog.v1.WorkoutSessionService/DeleteWorkoutSession"
-	WorkoutSessionService_ListWorkoutSessions_FullMethodName      = "/gymlog.v1.WorkoutSessionService/ListWorkoutSessions"
-	WorkoutSessionService_StartExercise_FullMethodName            = "/gymlog.v1.WorkoutSessionService/StartExercise"
-	WorkoutSessionService_FinishExercise_FullMethodName           = "/gymlog.v1.WorkoutSessionService/FinishExercise"
-	WorkoutSessionService_UpdateSet_FullMethodName                = "/gymlog.v1.WorkoutSessionService/UpdateSet"
-	WorkoutSessionService_ApplyProgressiveOverload_FullMethodName = "/gymlog.v1.WorkoutSessionService/ApplyProgressiveOverload"
+	WorkoutSessionService_CreateWorkoutSession_FullMethodName               = "/gymlog.v1.WorkoutSessionService/CreateWorkoutSession"
+	WorkoutSessionService_GetWorkoutSession_FullMethodName                  = "/gymlog.v1.WorkoutSessionService/GetWorkoutSession"
+	WorkoutSessionService_UpdateWorkoutSession_FullMethodName               = "/gymlog.v1.WorkoutSessionService/UpdateWorkoutSession"
+	WorkoutSessionService_DeleteWorkoutSession_FullMethodName               = "/gymlog.v1.WorkoutSessionService/DeleteWorkoutSession"
+	WorkoutSessionService_ListWorkoutSessions_FullMethodName                = "/gymlog.v1.WorkoutSessionService/ListWorkoutSessions"
+	WorkoutSessionService_StartExercise_FullMethodName                      = "/gymlog.v1.WorkoutSessionService/StartExercise"
+	WorkoutSessionService_FinishExercise_FullMethodName                     = "/gymlog.v1.WorkoutSessionService/FinishExercise"
+	WorkoutSessionService_UpdateSet_FullMethodName                          = "/gymlog.v1.WorkoutSessionService/UpdateSet"
+	WorkoutSessionService_ApplyProgressiveOverload_FullMethodName           = "/gymlog.v1.WorkoutSessionService/ApplyProgressiveOverload"
+	WorkoutSessionService_ListAIProgressiveOverloadResponses_FullMethodName = "/gymlog.v1.WorkoutSessionService/ListAIProgressiveOverloadResponses"
 )
 
 // WorkoutSessionServiceClient is the client API for WorkoutSessionService service.
@@ -810,6 +811,7 @@ type WorkoutSessionServiceClient interface {
 	FinishExercise(ctx context.Context, in *FinishExerciseRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
 	UpdateSet(ctx context.Context, in *UpdateSetRequest, opts ...grpc.CallOption) (*WorkoutSession, error)
 	ApplyProgressiveOverload(ctx context.Context, in *ApplyProgressiveOverloadRequest, opts ...grpc.CallOption) (*ApplyProgressiveOverloadResponse, error)
+	ListAIProgressiveOverloadResponses(ctx context.Context, in *ListAIProgressiveOverloadResponsesRequest, opts ...grpc.CallOption) (*ListAIProgressiveOverloadResponsesResponse, error)
 }
 
 type workoutSessionServiceClient struct {
@@ -910,6 +912,16 @@ func (c *workoutSessionServiceClient) ApplyProgressiveOverload(ctx context.Conte
 	return out, nil
 }
 
+func (c *workoutSessionServiceClient) ListAIProgressiveOverloadResponses(ctx context.Context, in *ListAIProgressiveOverloadResponsesRequest, opts ...grpc.CallOption) (*ListAIProgressiveOverloadResponsesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAIProgressiveOverloadResponsesResponse)
+	err := c.cc.Invoke(ctx, WorkoutSessionService_ListAIProgressiveOverloadResponses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkoutSessionServiceServer is the server API for WorkoutSessionService service.
 // All implementations must embed UnimplementedWorkoutSessionServiceServer
 // for forward compatibility.
@@ -923,6 +935,7 @@ type WorkoutSessionServiceServer interface {
 	FinishExercise(context.Context, *FinishExerciseRequest) (*WorkoutSession, error)
 	UpdateSet(context.Context, *UpdateSetRequest) (*WorkoutSession, error)
 	ApplyProgressiveOverload(context.Context, *ApplyProgressiveOverloadRequest) (*ApplyProgressiveOverloadResponse, error)
+	ListAIProgressiveOverloadResponses(context.Context, *ListAIProgressiveOverloadResponsesRequest) (*ListAIProgressiveOverloadResponsesResponse, error)
 	mustEmbedUnimplementedWorkoutSessionServiceServer()
 }
 
@@ -959,6 +972,9 @@ func (UnimplementedWorkoutSessionServiceServer) UpdateSet(context.Context, *Upda
 }
 func (UnimplementedWorkoutSessionServiceServer) ApplyProgressiveOverload(context.Context, *ApplyProgressiveOverloadRequest) (*ApplyProgressiveOverloadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApplyProgressiveOverload not implemented")
+}
+func (UnimplementedWorkoutSessionServiceServer) ListAIProgressiveOverloadResponses(context.Context, *ListAIProgressiveOverloadResponsesRequest) (*ListAIProgressiveOverloadResponsesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListAIProgressiveOverloadResponses not implemented")
 }
 func (UnimplementedWorkoutSessionServiceServer) mustEmbedUnimplementedWorkoutSessionServiceServer() {}
 func (UnimplementedWorkoutSessionServiceServer) testEmbeddedByValue()                               {}
@@ -1143,6 +1159,24 @@ func _WorkoutSessionService_ApplyProgressiveOverload_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkoutSessionService_ListAIProgressiveOverloadResponses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAIProgressiveOverloadResponsesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkoutSessionServiceServer).ListAIProgressiveOverloadResponses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkoutSessionService_ListAIProgressiveOverloadResponses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkoutSessionServiceServer).ListAIProgressiveOverloadResponses(ctx, req.(*ListAIProgressiveOverloadResponsesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkoutSessionService_ServiceDesc is the grpc.ServiceDesc for WorkoutSessionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1185,6 +1219,10 @@ var WorkoutSessionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ApplyProgressiveOverload",
 			Handler:    _WorkoutSessionService_ApplyProgressiveOverload_Handler,
+		},
+		{
+			MethodName: "ListAIProgressiveOverloadResponses",
+			Handler:    _WorkoutSessionService_ListAIProgressiveOverloadResponses_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

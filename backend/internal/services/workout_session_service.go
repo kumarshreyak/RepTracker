@@ -859,12 +859,12 @@ func (s *WorkoutSessionService) fetchRecentWorkoutSessions(ctx context.Context, 
 
 	// Build MongoDB filter
 	filter := bson.M{
-		"userId": userObjectID,
-		"finishedAt": bson.M{
+		"user_id": userObjectID,
+		"finished_at": bson.M{
 			"$gte": startTime,
 			"$lte": endTime,
 		},
-		"isActive": false, // Only completed sessions
+		"is_active": false, // Only completed sessions
 	}
 
 	// Query options - sort by finished time descending, limit to reasonable number
@@ -1290,6 +1290,123 @@ func (s *WorkoutSessionService) storeAIProgressiveOverloadResponse(ctx context.C
 
 	log.Printf("storeAIProgressiveOverloadResponse: Successfully stored AI response with ID: %v", result.InsertedID)
 	return nil
+}
+
+// ListAIProgressiveOverloadResponses lists stored AI progressive overload responses for a user
+func (s *WorkoutSessionService) ListAIProgressiveOverloadResponses(ctx context.Context, req *pb.ListAIProgressiveOverloadResponsesRequest) (*pb.ListAIProgressiveOverloadResponsesResponse, error) {
+	if req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	// Convert user ID to ObjectID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	log.Printf("ListAIProgressiveOverloadResponses: Fetching responses for user %s", req.UserId)
+
+	// Build MongoDB filter
+	filter := bson.M{
+		"userId": userObjectID,
+	}
+
+	// Apply pagination
+	pageSize := int64(req.PageSize)
+	if pageSize <= 0 {
+		pageSize = 20 // Default page size
+	}
+
+	skip := int64(0)
+	if req.PageToken != "" {
+		// In a real app, decode the page token to get the skip value
+		// For simplicity, we're not implementing complex pagination here
+	}
+
+	// Query options - sort by createdAt descending
+	opts := options.Find().
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
+		SetLimit(pageSize).
+		SetSkip(skip)
+
+	cursor, err := s.aiProgressiveOverloadColl.Find(ctx, filter, opts)
+	if err != nil {
+		log.Printf("ListAIProgressiveOverloadResponses: Failed to query AI responses: %v", err)
+		return nil, status.Error(codes.Internal, "failed to query AI progressive overload responses")
+	}
+	defer cursor.Close(ctx)
+
+	var responseModels []models.AIProgressiveOverloadResponse
+	if err = cursor.All(ctx, &responseModels); err != nil {
+		log.Printf("ListAIProgressiveOverloadResponses: Failed to decode AI responses: %v", err)
+		return nil, status.Error(codes.Internal, "failed to decode AI progressive overload responses")
+	}
+
+	log.Printf("ListAIProgressiveOverloadResponses: Found %d responses", len(responseModels))
+
+	// Convert to protobuf
+	var protoResponses []*pb.AIProgressiveOverloadResponse
+	for _, responseModel := range responseModels {
+		protoResponse := s.aiModelToProto(&responseModel)
+		protoResponses = append(protoResponses, protoResponse)
+	}
+
+	response := &pb.ListAIProgressiveOverloadResponsesResponse{
+		Responses: protoResponses,
+	}
+
+	// Set next page token if there are more results
+	if int64(len(responseModels)) == pageSize {
+		response.NextPageToken = "next_page" // In real app, encode the next skip position
+	}
+
+	log.Printf("ListAIProgressiveOverloadResponses: Successfully returned %d responses", len(protoResponses))
+	return response, nil
+}
+
+// aiModelToProto converts an AI progressive overload response model to protobuf
+func (s *WorkoutSessionService) aiModelToProto(response *models.AIProgressiveOverloadResponse) *pb.AIProgressiveOverloadResponse {
+	// Convert updated exercises
+	var protoExercises []*pb.AIProgressiveOverloadExercise
+	for _, exercise := range response.UpdatedExercises {
+		var protoSets []*pb.WorkoutSet
+		for _, set := range exercise.Sets {
+			protoSets = append(protoSets, &pb.WorkoutSet{
+				Reps:            set.Reps,
+				Weight:          set.Weight,
+				DurationSeconds: float32(set.DurationSeconds),
+				Distance:        set.Distance,
+				Notes:           set.Notes,
+			})
+		}
+
+		protoExercises = append(protoExercises, &pb.AIProgressiveOverloadExercise{
+			ExerciseId:         exercise.ExerciseID,
+			ExerciseName:       exercise.ExerciseName,
+			ProgressionApplied: exercise.ProgressionApplied,
+			Reasoning:          exercise.Reasoning,
+			ChangesMade:        exercise.ChangesMade,
+			Sets:               protoSets,
+			Notes:              exercise.Notes,
+			RestSeconds:        exercise.RestSeconds,
+		})
+	}
+
+	return &pb.AIProgressiveOverloadResponse{
+		Id:                  response.ID.Hex(),
+		UserId:              response.UserID.Hex(),
+		WorkoutSessionId:    response.WorkoutSessionID.Hex(),
+		WorkoutId:           response.WorkoutID.Hex(),
+		AnalysisSummary:     response.AnalysisSummary,
+		UpdatedExercises:    protoExercises,
+		Success:             response.Success,
+		Message:             response.Message,
+		RecentSessionsCount: response.RecentSessionsCount,
+		AiModel:             response.AIModel,
+		ProcessingTimeMs:    response.ProcessingTimeMs,
+		CreatedAt:           timestamppb.New(response.CreatedAt),
+		UpdatedAt:           timestamppb.New(response.UpdatedAt),
+	}
 }
 
 // getFallbackProgressiveOverloadPromptTemplate returns a fallback prompt template

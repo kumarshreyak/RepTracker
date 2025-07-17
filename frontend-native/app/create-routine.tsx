@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Typography, Button, Input } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
-import { RoutineExercise, WorkoutSet } from '@/types/exercise';
+import { RoutineExercise, RoutineSet } from '@/types/exercise';
 
 // Workout interface for API responses
 interface Workout {

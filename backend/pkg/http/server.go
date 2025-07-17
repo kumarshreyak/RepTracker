@@ -347,6 +347,39 @@ type ConfirmSuggestionResponse struct {
 	Message string `json:"message"`
 }
 
+// AI Progressive Overload HTTP types
+type AIProgressiveOverloadExerciseResponse struct {
+	ExerciseID         string               `json:"exerciseId"`
+	ExerciseName       string               `json:"exerciseName"`
+	ProgressionApplied bool                 `json:"progressionApplied"`
+	Reasoning          string               `json:"reasoning"`
+	ChangesMade        string               `json:"changesMade"`
+	Sets               []WorkoutSetResponse `json:"sets"`
+	Notes              string               `json:"notes"`
+	RestSeconds        int32                `json:"restSeconds"`
+}
+
+type AIProgressiveOverloadResponseHTTP struct {
+	ID                  string                                  `json:"id"`
+	UserID              string                                  `json:"userId"`
+	WorkoutSessionID    string                                  `json:"workoutSessionId"`
+	WorkoutID           string                                  `json:"workoutId"`
+	AnalysisSummary     string                                  `json:"analysisSummary"`
+	UpdatedExercises    []AIProgressiveOverloadExerciseResponse `json:"updatedExercises"`
+	Success             bool                                    `json:"success"`
+	Message             string                                  `json:"message"`
+	RecentSessionsCount int32                                   `json:"recentSessionsCount"`
+	AIModel             string                                  `json:"aiModel"`
+	ProcessingTimeMs    int64                                   `json:"processingTimeMs"`
+	CreatedAt           time.Time                               `json:"createdAt"`
+	UpdatedAt           time.Time                               `json:"updatedAt"`
+}
+
+type ListAIProgressiveOverloadResponsesResponse struct {
+	Responses     []AIProgressiveOverloadResponseHTTP `json:"responses"`
+	NextPageToken string                              `json:"nextPageToken,omitempty"`
+}
+
 func NewServer(userService *services.UserService, exerciseService *services.ExerciseService, workoutService *services.WorkoutService, workoutSessionService *services.WorkoutSessionService, metricsService *services.MetricsService, insightsService *services.InsightsService, suggestionsService *services.SuggestionsService, db *database.MongoDB) *Server {
 	return &Server{
 		userService:           userService,
@@ -405,6 +438,7 @@ func (s *Server) Start(port string) error {
 	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}", s.handleUpdateSet).Methods("PUT")
 	api.HandleFunc("/workout-sessions/{id}/progressive-overload", s.handleApplyProgressiveOverload).Methods("POST")
 	api.HandleFunc("/workout-sessions/{id}/progressive-overload/ai", s.handleApplyAIProgressiveOverload).Methods("POST")
+	api.HandleFunc("/users/{userId}/ai-progressive-overload-responses", s.handleListAIProgressiveOverloadResponses).Methods("GET")
 
 	// Metrics routes
 	api.HandleFunc("/users/{userId}/metrics", s.handleGetUserMetrics).Methods("GET")
@@ -1332,6 +1366,94 @@ func (s *Server) handleApplyAIProgressiveOverload(w http.ResponseWriter, r *http
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleListAIProgressiveOverloadResponses(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userId"]
+
+	// Parse query parameters
+	pageSize := int32(20) // default
+	if ps := r.URL.Query().Get("pageSize"); ps != "" {
+		if parsed, err := strconv.ParseInt(ps, 10, 32); err == nil && parsed > 0 {
+			pageSize = int32(parsed)
+		}
+	}
+
+	pageToken := r.URL.Query().Get("pageToken")
+
+	ctx := context.Background()
+	pbReq := &pb.ListAIProgressiveOverloadResponsesRequest{
+		UserId:    userID,
+		PageSize:  pageSize,
+		PageToken: pageToken,
+	}
+
+	log.Printf("🤖 Getting AI progressive overload responses for user %s", userID)
+
+	resp, err := s.workoutSessionService.ListAIProgressiveOverloadResponses(ctx, pbReq)
+	if err != nil {
+		log.Printf("❌ Failed to get AI progressive overload responses: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to get AI progressive overload responses: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert protobuf response to HTTP response
+	responses := make([]AIProgressiveOverloadResponseHTTP, len(resp.Responses))
+	for i, aiResp := range resp.Responses {
+		// Convert updated exercises
+		exercises := make([]AIProgressiveOverloadExerciseResponse, len(aiResp.UpdatedExercises))
+		for j, ex := range aiResp.UpdatedExercises {
+			sets := make([]WorkoutSetResponse, len(ex.Sets))
+			for k, set := range ex.Sets {
+				sets[k] = WorkoutSetResponse{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: set.DurationSeconds,
+					Distance:        set.Distance,
+					Notes:           set.Notes,
+				}
+			}
+
+			exercises[j] = AIProgressiveOverloadExerciseResponse{
+				ExerciseID:         ex.ExerciseId,
+				ExerciseName:       ex.ExerciseName,
+				ProgressionApplied: ex.ProgressionApplied,
+				Reasoning:          ex.Reasoning,
+				ChangesMade:        ex.ChangesMade,
+				Sets:               sets,
+				Notes:              ex.Notes,
+				RestSeconds:        ex.RestSeconds,
+			}
+		}
+
+		responses[i] = AIProgressiveOverloadResponseHTTP{
+			ID:                  aiResp.Id,
+			UserID:              aiResp.UserId,
+			WorkoutSessionID:    aiResp.WorkoutSessionId,
+			WorkoutID:           aiResp.WorkoutId,
+			AnalysisSummary:     aiResp.AnalysisSummary,
+			UpdatedExercises:    exercises,
+			Success:             aiResp.Success,
+			Message:             aiResp.Message,
+			RecentSessionsCount: aiResp.RecentSessionsCount,
+			AIModel:             aiResp.AiModel,
+			ProcessingTimeMs:    aiResp.ProcessingTimeMs,
+			CreatedAt:           aiResp.CreatedAt.AsTime(),
+			UpdatedAt:           aiResp.UpdatedAt.AsTime(),
+		}
+	}
+
+	response := ListAIProgressiveOverloadResponsesResponse{
+		Responses:     responses,
+		NextPageToken: resp.NextPageToken,
+	}
+
+	log.Printf("✅ Successfully retrieved %d AI progressive overload responses for user %s", len(responses), userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
