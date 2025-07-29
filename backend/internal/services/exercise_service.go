@@ -638,6 +638,201 @@ func (s *ExerciseService) getDefaultQuickAddExercises(ctx context.Context, limit
 	return exercises
 }
 
+// GetExerciseHistory retrieves the workout session history for a specific exercise
+func (s *ExerciseService) GetExerciseHistory(ctx context.Context, req *pb.GetExerciseHistoryRequest) (*pb.GetExerciseHistoryResponse, error) {
+	if req.ExerciseId == "" {
+		return nil, status.Error(codes.InvalidArgument, "exercise_id is required")
+	}
+	if req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	// Convert exercise ID to ObjectID for MongoDB queries
+	exerciseObjectID, err := primitive.ObjectIDFromHex(req.ExerciseId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid exercise_id")
+	}
+
+	log.Printf("🏋️ GetExerciseHistory: Starting for exercise %s", req.ExerciseId)
+
+	// First get the exercise name for the response
+	var exercise models.Exercise
+	err = s.exerciseColl.FindOne(ctx, bson.M{"_id": exerciseObjectID}).Decode(&exercise)
+	if err == mongo.ErrNoDocuments {
+		return nil, status.Error(codes.NotFound, "exercise not found")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get exercise")
+	}
+
+	// Get workout sessions collection
+	workoutSessionColl := s.db.GetCollection("workout_sessions")
+	aiProgressiveOverloadColl := s.db.GetCollection("ai_progressive_overload_recommendations")
+
+	// Convert user ID to ObjectID
+	userObjectID, err := primitive.ObjectIDFromHex(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	// Build filter for workout sessions
+	filter := bson.M{
+		"exercises.exercise_id": exerciseObjectID,
+		"finished_at":           bson.M{"$exists": true, "$ne": nil}, // Only completed sessions
+		"user_id":               userObjectID,                        // Filter by user (required)
+	}
+
+	// Query options - sort by finished_at descending, limit to last 3 sessions
+	opts := options.Find().
+		SetSort(bson.D{{Key: "finished_at", Value: -1}}).
+		SetLimit(3)
+
+	cursor, err := workoutSessionColl.Find(ctx, filter, opts)
+	if err != nil {
+		log.Printf("GetExerciseHistory: Failed to query workout sessions: %v", err)
+		return nil, status.Error(codes.Internal, "failed to query workout sessions")
+	}
+	defer cursor.Close(ctx)
+
+	var sessions []models.WorkoutSession
+	if err = cursor.All(ctx, &sessions); err != nil {
+		log.Printf("GetExerciseHistory: Failed to decode workout sessions: %v", err)
+		return nil, status.Error(codes.Internal, "failed to decode workout sessions")
+	}
+
+	log.Printf("🏋️ GetExerciseHistory: Found %d sessions with exercise %s", len(sessions), req.ExerciseId)
+
+	var historyEntries []*pb.ExerciseHistoryEntry
+
+	for _, session := range sessions {
+		// Find the specific exercise in this session
+		var sessionExercise *models.WorkoutSessionExercise
+		for _, ex := range session.Exercises {
+			if ex.ExerciseID == exerciseObjectID {
+				sessionExercise = &ex
+				break
+			}
+		}
+
+		if sessionExercise == nil {
+			continue // This shouldn't happen given our query, but be safe
+		}
+
+		// Convert session exercise to protobuf
+		protoSessionExercise := s.workoutSessionExerciseToProto(sessionExercise, &exercise)
+
+		// Create minimal session info for context
+		protoSessionInfo := &pb.WorkoutSession{
+			Id:         session.ID.Hex(),
+			Name:       session.Name,
+			FinishedAt: timestamppb.New(*session.FinishedAt),
+		}
+
+		// Create history entry
+		historyEntry := &pb.ExerciseHistoryEntry{
+			SessionExercise: protoSessionExercise,
+			SessionInfo:     protoSessionInfo,
+		}
+
+		// Try to find corresponding AI progressive overload data
+		aiFilter := bson.M{
+			"workoutSessionId":            session.ID,
+			"updatedExercises.exerciseId": req.ExerciseId, // Use string ID for AI data
+		}
+
+		var aiResponse models.AIProgressiveOverloadResponse
+		err = aiProgressiveOverloadColl.FindOne(ctx, aiFilter).Decode(&aiResponse)
+		if err == nil {
+			// Found AI data, find the specific exercise
+			for _, aiExercise := range aiResponse.UpdatedExercises {
+				if aiExercise.ExerciseID == req.ExerciseId {
+					protoAIExercise := s.aiExerciseToProto(&aiExercise)
+					historyEntry.AiExercise = protoAIExercise
+					break
+				}
+			}
+		} else if err != mongo.ErrNoDocuments {
+			log.Printf("GetExerciseHistory: Warning - failed to query AI data for session %s: %v", session.ID.Hex(), err)
+		}
+
+		historyEntries = append(historyEntries, historyEntry)
+	}
+
+	log.Printf("🏋️ GetExerciseHistory: Returning %d history entries", len(historyEntries))
+
+	return &pb.GetExerciseHistoryResponse{
+		History:      historyEntries,
+		ExerciseName: exercise.Name,
+	}, nil
+}
+
+// Helper function to convert workout session exercise to protobuf
+func (s *ExerciseService) workoutSessionExerciseToProto(sessionExercise *models.WorkoutSessionExercise, exercise *models.Exercise) *pb.WorkoutSessionExercise {
+	var protoSets []*pb.WorkoutSessionSet
+	for _, set := range sessionExercise.Sets {
+		protoSet := &pb.WorkoutSessionSet{
+			TargetReps:      set.TargetReps,
+			TargetWeight:    set.TargetWeight,
+			ActualReps:      set.ActualReps,
+			ActualWeight:    set.ActualWeight,
+			DurationSeconds: float32(set.DurationSeconds),
+			Distance:        set.Distance,
+			Notes:           set.Notes,
+			Completed:       set.Completed,
+		}
+		if set.StartedAt != nil {
+			protoSet.StartedAt = timestamppb.New(*set.StartedAt)
+		}
+		if set.FinishedAt != nil {
+			protoSet.FinishedAt = timestamppb.New(*set.FinishedAt)
+		}
+		protoSets = append(protoSets, protoSet)
+	}
+
+	protoExercise := &pb.WorkoutSessionExercise{
+		ExerciseId:  sessionExercise.ExerciseID.Hex(),
+		Exercise:    s.modelToProto(exercise),
+		Sets:        protoSets,
+		Notes:       sessionExercise.Notes,
+		RestSeconds: sessionExercise.RestSeconds,
+		Completed:   sessionExercise.Completed,
+	}
+
+	if sessionExercise.StartedAt != nil {
+		protoExercise.StartedAt = timestamppb.New(*sessionExercise.StartedAt)
+	}
+	if sessionExercise.FinishedAt != nil {
+		protoExercise.FinishedAt = timestamppb.New(*sessionExercise.FinishedAt)
+	}
+
+	return protoExercise
+}
+
+// Helper function to convert AI exercise to protobuf
+func (s *ExerciseService) aiExerciseToProto(aiExercise *models.AIProgressiveOverloadExercise) *pb.AIProgressiveOverloadExercise {
+	var protoSets []*pb.WorkoutSet
+	for _, set := range aiExercise.Sets {
+		protoSet := &pb.WorkoutSet{
+			Reps:            set.Reps,
+			Weight:          set.Weight,
+			DurationSeconds: float32(set.DurationSeconds),
+			Distance:        set.Distance,
+			Notes:           set.Notes,
+		}
+		protoSets = append(protoSets, protoSet)
+	}
+
+	return &pb.AIProgressiveOverloadExercise{
+		ExerciseId:         aiExercise.ExerciseID,
+		ExerciseName:       aiExercise.ExerciseName,
+		ProgressionApplied: aiExercise.ProgressionApplied,
+		Reasoning:          aiExercise.Reasoning,
+		ChangesMade:        aiExercise.ChangesMade,
+		Sets:               protoSets,
+		Notes:              aiExercise.Notes,
+		RestSeconds:        aiExercise.RestSeconds,
+	}
+}
+
 // modelToProto converts an exercise model to protobuf exercise
 func (s *ExerciseService) modelToProto(exercise *models.Exercise) *pb.Exercise {
 	return &pb.Exercise{

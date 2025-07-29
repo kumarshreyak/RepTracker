@@ -246,6 +246,7 @@ const (
 	ExerciseService_DeleteExercise_FullMethodName       = "/gymlog.v1.ExerciseService/DeleteExercise"
 	ExerciseService_ListExercises_FullMethodName        = "/gymlog.v1.ExerciseService/ListExercises"
 	ExerciseService_GetQuickAddExercises_FullMethodName = "/gymlog.v1.ExerciseService/GetQuickAddExercises"
+	ExerciseService_GetExerciseHistory_FullMethodName   = "/gymlog.v1.ExerciseService/GetExerciseHistory"
 )
 
 // ExerciseServiceClient is the client API for ExerciseService service.
@@ -258,6 +259,7 @@ type ExerciseServiceClient interface {
 	DeleteExercise(ctx context.Context, in *DeleteExerciseRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListExercises(ctx context.Context, in *ListExercisesRequest, opts ...grpc.CallOption) (*ListExercisesResponse, error)
 	GetQuickAddExercises(ctx context.Context, in *GetQuickAddExercisesRequest, opts ...grpc.CallOption) (*GetQuickAddExercisesResponse, error)
+	GetExerciseHistory(ctx context.Context, in *GetExerciseHistoryRequest, opts ...grpc.CallOption) (*GetExerciseHistoryResponse, error)
 }
 
 type exerciseServiceClient struct {
@@ -328,6 +330,16 @@ func (c *exerciseServiceClient) GetQuickAddExercises(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *exerciseServiceClient) GetExerciseHistory(ctx context.Context, in *GetExerciseHistoryRequest, opts ...grpc.CallOption) (*GetExerciseHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetExerciseHistoryResponse)
+	err := c.cc.Invoke(ctx, ExerciseService_GetExerciseHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ExerciseServiceServer is the server API for ExerciseService service.
 // All implementations must embed UnimplementedExerciseServiceServer
 // for forward compatibility.
@@ -338,6 +350,7 @@ type ExerciseServiceServer interface {
 	DeleteExercise(context.Context, *DeleteExerciseRequest) (*emptypb.Empty, error)
 	ListExercises(context.Context, *ListExercisesRequest) (*ListExercisesResponse, error)
 	GetQuickAddExercises(context.Context, *GetQuickAddExercisesRequest) (*GetQuickAddExercisesResponse, error)
+	GetExerciseHistory(context.Context, *GetExerciseHistoryRequest) (*GetExerciseHistoryResponse, error)
 	mustEmbedUnimplementedExerciseServiceServer()
 }
 
@@ -365,6 +378,9 @@ func (UnimplementedExerciseServiceServer) ListExercises(context.Context, *ListEx
 }
 func (UnimplementedExerciseServiceServer) GetQuickAddExercises(context.Context, *GetQuickAddExercisesRequest) (*GetQuickAddExercisesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetQuickAddExercises not implemented")
+}
+func (UnimplementedExerciseServiceServer) GetExerciseHistory(context.Context, *GetExerciseHistoryRequest) (*GetExerciseHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetExerciseHistory not implemented")
 }
 func (UnimplementedExerciseServiceServer) mustEmbedUnimplementedExerciseServiceServer() {}
 func (UnimplementedExerciseServiceServer) testEmbeddedByValue()                         {}
@@ -495,6 +511,24 @@ func _ExerciseService_GetQuickAddExercises_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExerciseService_GetExerciseHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExerciseHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExerciseServiceServer).GetExerciseHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExerciseService_GetExerciseHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExerciseServiceServer).GetExerciseHistory(ctx, req.(*GetExerciseHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ExerciseService_ServiceDesc is the grpc.ServiceDesc for ExerciseService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -525,6 +559,10 @@ var ExerciseService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetQuickAddExercises",
 			Handler:    _ExerciseService_GetQuickAddExercises_Handler,
+		},
+		{
+			MethodName: "GetExerciseHistory",
+			Handler:    _ExerciseService_GetExerciseHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

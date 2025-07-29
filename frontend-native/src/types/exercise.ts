@@ -102,4 +102,56 @@ export const EquipmentTypes = {
   PULL_UP_BAR: "pull-up bar",
 } as const;
 
-export type EquipmentType = typeof EquipmentTypes[keyof typeof EquipmentTypes]; 
+export type EquipmentType = typeof EquipmentTypes[keyof typeof EquipmentTypes];
+
+// Exercise History Types (for history component)
+export interface HistorySet {
+  targetReps: number;
+  targetWeight: number;
+  actualReps: number;
+  actualWeight: number;
+  completed: boolean;
+  startedAt: string;
+  finishedAt?: string;
+}
+
+export interface HistorySessionExercise {
+  exerciseId: string;
+  exercise: Exercise;
+  sets: HistorySet[];
+  notes?: string;
+  restSeconds?: number;
+  completed: boolean;
+  startedAt: string;
+  finishedAt?: string;
+}
+
+export interface HistorySessionInfo {
+  id: string;
+  name: string;
+  finishedAt: Date | string;
+}
+
+export interface HistoryAIExercise {
+  exerciseId: string;
+  exerciseName: string;
+  progressionApplied: boolean;
+  reasoning: string;
+  changesMade: string;
+  sets: Array<{
+    reps: number;
+    weight: number;
+  }>;
+  restSeconds?: number;
+}
+
+export interface ExerciseHistoryEntry {
+  sessionExercise: HistorySessionExercise;
+  sessionInfo: HistorySessionInfo;
+  aiExercise?: HistoryAIExercise;
+}
+
+export interface ExerciseHistoryResponse {
+  history: ExerciseHistoryEntry[];
+  exerciseName: string;
+} 

@@ -120,6 +120,23 @@ type QuickAddExercisesResponse struct {
 	Exercises []ExerciseResponse `json:"exercises"`
 }
 
+type ExerciseHistoryEntry struct {
+	SessionExercise WorkoutSessionExerciseResponse         `json:"sessionExercise"`
+	AIExercise      *AIProgressiveOverloadExerciseResponse `json:"aiExercise,omitempty"`
+	SessionInfo     ExerciseHistorySessionInfo             `json:"sessionInfo"`
+}
+
+type ExerciseHistorySessionInfo struct {
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	FinishedAt time.Time `json:"finishedAt"`
+}
+
+type GetExerciseHistoryResponse struct {
+	History      []ExerciseHistoryEntry `json:"history"`
+	ExerciseName string                 `json:"exerciseName"`
+}
+
 // Workout HTTP types
 type WorkoutSetResponse struct {
 	Reps            int32   `json:"reps"`
@@ -413,6 +430,7 @@ func (s *Server) Start(port string) error {
 
 	// Exercise routes - specific routes must come before parameterized routes
 	api.HandleFunc("/exercises/quick-add", s.handleGetQuickAddExercises).Methods("GET")
+	api.HandleFunc("/exercises/{id}/history", s.handleGetExerciseHistory).Methods("GET")
 	api.HandleFunc("/exercises", s.handleListExercises).Methods("GET")
 	api.HandleFunc("/exercises", s.handleCreateExercise).Methods("POST")
 	api.HandleFunc("/exercises/{id}", s.handleGetExercise).Methods("GET")
@@ -875,6 +893,164 @@ func (s *Server) handleGetQuickAddExercises(w http.ResponseWriter, r *http.Reque
 	log.Printf("🏋️ handleGetQuickAddExercises: Sending response with %d exercises", len(exercises))
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleGetExerciseHistory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	exerciseID := vars["id"]
+
+	if exerciseID == "" {
+		http.Error(w, "Exercise ID is required", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("🏋️ handleGetExerciseHistory: Starting for exercise %s", exerciseID)
+
+	// Get required user_id parameter
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		http.Error(w, "user_id parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	req := &pb.GetExerciseHistoryRequest{
+		ExerciseId: exerciseID,
+		UserId:     userID,
+	}
+
+	log.Printf("🏋️ handleGetExerciseHistory: Calling gRPC service")
+	resp, err := s.exerciseService.GetExerciseHistory(ctx, req)
+	if err != nil {
+		log.Printf("❌ handleGetExerciseHistory: gRPC service error: %v", err)
+		if strings.Contains(err.Error(), "exercise not found") {
+			http.Error(w, "Exercise not found", http.StatusNotFound)
+		} else if strings.Contains(err.Error(), "invalid") {
+			http.Error(w, "Invalid request parameters", http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprintf("Failed to get exercise history: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	log.Printf("🏋️ handleGetExerciseHistory: gRPC service returned %d history entries", len(resp.History))
+
+	// Convert protobuf response to HTTP response
+	historyEntries := make([]ExerciseHistoryEntry, len(resp.History))
+	for i, entry := range resp.History {
+		// Convert session exercise
+		sessionExercise := s.workoutSessionExerciseToHTTPResponse(entry.SessionExercise)
+
+		// Convert session info
+		sessionInfo := ExerciseHistorySessionInfo{
+			ID:         entry.SessionInfo.Id,
+			Name:       entry.SessionInfo.Name,
+			FinishedAt: entry.SessionInfo.FinishedAt.AsTime(),
+		}
+
+		historyEntry := ExerciseHistoryEntry{
+			SessionExercise: sessionExercise,
+			SessionInfo:     sessionInfo,
+		}
+
+		// Convert AI exercise data if present
+		if entry.AiExercise != nil {
+			aiExercise := s.aiExerciseToHTTPResponse(entry.AiExercise)
+			historyEntry.AIExercise = &aiExercise
+		}
+
+		historyEntries[i] = historyEntry
+	}
+
+	response := GetExerciseHistoryResponse{
+		History:      historyEntries,
+		ExerciseName: resp.ExerciseName,
+	}
+
+	log.Printf("🏋️ handleGetExerciseHistory: Sending response with %d entries for exercise %s", len(historyEntries), resp.ExerciseName)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// Helper function to convert protobuf WorkoutSessionExercise to HTTP response
+func (s *Server) workoutSessionExerciseToHTTPResponse(pb *pb.WorkoutSessionExercise) WorkoutSessionExerciseResponse {
+	sets := make([]WorkoutSessionSetResponse, len(pb.Sets))
+	for i, set := range pb.Sets {
+		var startedAt, finishedAt *time.Time
+		if set.StartedAt != nil {
+			t := set.StartedAt.AsTime()
+			startedAt = &t
+		}
+		if set.FinishedAt != nil {
+			t := set.FinishedAt.AsTime()
+			finishedAt = &t
+		}
+
+		sets[i] = WorkoutSessionSetResponse{
+			TargetReps:      set.TargetReps,
+			TargetWeight:    set.TargetWeight,
+			ActualReps:      set.ActualReps,
+			ActualWeight:    set.ActualWeight,
+			DurationSeconds: set.DurationSeconds,
+			Distance:        set.Distance,
+			Notes:           set.Notes,
+			Completed:       set.Completed,
+			StartedAt:       startedAt,
+			FinishedAt:      finishedAt,
+		}
+	}
+
+	var exercise *ExerciseResponse
+	if pb.Exercise != nil {
+		ex := exerciseToResponse(pb.Exercise)
+		exercise = &ex
+	}
+
+	var startedAt, finishedAt *time.Time
+	if pb.StartedAt != nil {
+		t := pb.StartedAt.AsTime()
+		startedAt = &t
+	}
+	if pb.FinishedAt != nil {
+		t := pb.FinishedAt.AsTime()
+		finishedAt = &t
+	}
+
+	return WorkoutSessionExerciseResponse{
+		ExerciseID:  pb.ExerciseId,
+		Exercise:    exercise,
+		Sets:        sets,
+		Notes:       pb.Notes,
+		RestSeconds: pb.RestSeconds,
+		Completed:   pb.Completed,
+		StartedAt:   startedAt,
+		FinishedAt:  finishedAt,
+	}
+}
+
+// Helper function to convert protobuf AIProgressiveOverloadExercise to HTTP response
+func (s *Server) aiExerciseToHTTPResponse(pb *pb.AIProgressiveOverloadExercise) AIProgressiveOverloadExerciseResponse {
+	sets := make([]WorkoutSetResponse, len(pb.Sets))
+	for i, set := range pb.Sets {
+		sets[i] = WorkoutSetResponse{
+			Reps:            set.Reps,
+			Weight:          set.Weight,
+			DurationSeconds: set.DurationSeconds,
+			Distance:        set.Distance,
+			Notes:           set.Notes,
+		}
+	}
+
+	return AIProgressiveOverloadExerciseResponse{
+		ExerciseID:         pb.ExerciseId,
+		ExerciseName:       pb.ExerciseName,
+		ProgressionApplied: pb.ProgressionApplied,
+		Reasoning:          pb.Reasoning,
+		ChangesMade:        pb.ChangesMade,
+		Sets:               sets,
+		Notes:              pb.Notes,
+		RestSeconds:        pb.RestSeconds,
+	}
 }
 
 // Helper function for workout session protobuf conversion

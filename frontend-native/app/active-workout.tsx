@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Typography, Button, NumberInput } from '../src/components';
+import { Typography, Button, NumberInput, ExerciseHistory } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -631,6 +631,15 @@ export default function ActiveWorkoutScreen() {
           ))}
         </ScrollView>
       </View>
+
+      {/* Exercise History - For Current Exercise */}
+      {currentExercise.exerciseId && user?.id && (
+        <ExerciseHistory 
+          exerciseId={currentExercise.exerciseId}
+          userId={user.id}
+          exerciseName={currentExercise.exercise?.name}
+        />
+      )}
 
       {/* Floating Action Button - End Workout */}
       <TouchableOpacity 

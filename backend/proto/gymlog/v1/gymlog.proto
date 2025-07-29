@@ -136,6 +136,22 @@ message GetQuickAddExercisesResponse {
   repeated Exercise exercises = 1;
 }
 
+message GetExerciseHistoryRequest {
+  string exercise_id = 1;
+  string user_id = 2; // required, for user-specific history
+}
+
+message ExerciseHistoryEntry {
+  WorkoutSessionExercise session_exercise = 1;
+  AIProgressiveOverloadExercise ai_exercise = 2; // optional, if AI data exists for this session
+  WorkoutSession session_info = 3; // partial session info (id, name, finished_at)
+}
+
+message GetExerciseHistoryResponse {
+  repeated ExerciseHistoryEntry history = 1;
+  string exercise_name = 2; // name of the exercise for convenience
+}
+
 // Workout related messages
 message WorkoutSet {
   int32 reps = 1;
@@ -591,6 +607,7 @@ service ExerciseService {
   rpc DeleteExercise(DeleteExerciseRequest) returns (google.protobuf.Empty);
   rpc ListExercises(ListExercisesRequest) returns (ListExercisesResponse);
   rpc GetQuickAddExercises(GetQuickAddExercisesRequest) returns (GetQuickAddExercisesResponse);
+  rpc GetExerciseHistory(GetExerciseHistoryRequest) returns (GetExerciseHistoryResponse);
 }
 
 service WorkoutService {
