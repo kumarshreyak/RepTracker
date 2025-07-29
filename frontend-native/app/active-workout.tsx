@@ -470,176 +470,183 @@ export default function ActiveWorkoutScreen() {
         <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
       </View>
 
-      {/* Current Exercise Focus Area */}
-      <View style={styles.currentExerciseContainer}>
-        {/* Exercise Header - Minimal */}
-        <View style={styles.exerciseHeader}>
-          <View>
-            <Typography variant="label-medium" color="contentPrimary">
-              {currentExercise.exercise?.name || `Exercise ${currentExerciseIndex + 1}`}
-            </Typography>
-            <Typography variant="paragraph-xsmall" color="contentTertiary">
-              {currentExercise.exercise?.primaryMuscles?.join(", ") || ''}
-            </Typography>
-          </View>
-          
-          {/* Visual Set Counter */}
-          <View style={styles.setCounter}>
-            {currentExercise.sets.map((set, index) => (
-              <View key={index} style={styles.setIndicator}>
-                {set.completed ? (
-                  <MaterialIcons 
-                    name="check-circle" 
-                    size={16} 
-                    color={getColor('positive')} 
-                  />
-                ) : (
-                  <MaterialIcons 
-                    name="radio-button-unchecked" 
-                    size={16} 
-                    color={getColor('backgroundTertiary')} 
-                  />
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Active Sets - Carousel Based, Editable */}
-        <ScrollView 
-          ref={setsScrollRef}
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.setsScroller}
-          contentContainerStyle={[
-            styles.setsScrollContent,
-            { paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2 }
-          ]}
-          snapToInterval={CARD_TOTAL_WIDTH}
-          decelerationRate="fast"
-          snapToAlignment="start"
-          pagingEnabled={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        >
-          {currentExercise.sets.map((set, setIndex) => (
-            <View key={setIndex} style={styles.setCard}>
-              {/* Set Number - Small Label */}
-              <Typography variant="label-xsmall" color="contentTertiary" style={styles.setLabel}>
-                SET {setIndex + 1}
+      {/* Main Content - Vertically Scrollable */}
+      <ScrollView 
+        style={styles.mainScrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.mainScrollContent}
+      >
+        {/* Current Exercise Focus Area */}
+        <View style={styles.currentExerciseContainer}>
+          {/* Exercise Header - Minimal */}
+          <View style={styles.exerciseHeader}>
+            <View>
+              <Typography variant="label-medium" color="contentPrimary">
+                {currentExercise.exercise?.name || `Exercise ${currentExerciseIndex + 1}`}
               </Typography>
-              
-              {/* Editable Values - Large, Tappable */}
-              <View style={styles.setValues}>
-                <NumberInput
-                  value={set.actualReps}
-                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'actualReps', value.toString())}
-                  unit="reps"
-                  displayVariant="display-xsmall"
-                  unitVariant="label-small"
-                  valueColor="contentPrimary"
-                  unitColor="contentTertiary"
-                  containerStyle={styles.valueGroup}
-                  minValue={0}
-                  maxValue={999}
-                />
-
-                <View style={styles.valueSeparator} />
-
-                <NumberInput
-                  value={set.actualWeight}
-                  onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'actualWeight', value.toString())}
-                  unit="kg"
-                  displayVariant="display-xsmall"
-                  unitVariant="label-small"
-                  valueColor="contentPrimary"
-                  unitColor="contentTertiary"
-                  containerStyle={styles.valueGroup}
-                  minValue={0}
-                  maxValue={9999}
-                  allowDecimal={true}
-                />
-              </View>
-
-              {/* Complete Set Button - Large, Primary Action */}
-              <TouchableOpacity
-                style={[
-                  styles.completeSetButton,
-                  set.completed && styles.completeSetButtonDone
-                ]}
-                onPress={() => handleSetComplete(currentExerciseIndex, setIndex)}
-              >
-                {set.completed ? (
-                  <MaterialIcons 
-                    name="check" 
-                    size={20} 
-                    color={getColor("contentPositive")} 
-                  />
-                ) : (
-                  <Typography 
-                    variant="label-medium" 
-                    color="contentPrimary"
-                  >
-                    DONE
-                  </Typography>
-                )}
-              </TouchableOpacity>
+              <Typography variant="paragraph-xsmall" color="contentTertiary">
+                {currentExercise.exercise?.primaryMuscles?.join(", ") || ''}
+              </Typography>
             </View>
-          ))}
-        </ScrollView>
-
-      </View>
-
-      {/* Exercise Chips - All Exercises */}
-      <View style={styles.exerciseChipsSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exerciseChipsContainer}>
-          {activeWorkout.exercises.map((exercise, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.exerciseChip,
-                index === currentExerciseIndex && styles.exerciseChipSelected
-              ]}
-              onPress={() => setCurrentExerciseIndex(index)}
-            >
-              <View style={styles.exerciseChipContent}>
-                <Typography 
-                  variant="label-small" 
-                  color={index === currentExerciseIndex ? "contentOnColor" : "contentPrimary"}
-                  style={styles.exerciseChipName}
-                >
-                  {exercise.exercise?.name || `Exercise ${index + 1}`}
-                </Typography>
-                <View style={styles.exerciseChipMeta}>
-                  <Typography 
-                    variant="paragraph-xsmall" 
-                    color={index === currentExerciseIndex ? "contentOnColor" : "contentSecondary"}
-                  >
-                    {exercise.sets.length} sets
-                  </Typography>
-                  {exercise.completed && (
+            
+            {/* Visual Set Counter */}
+            <View style={styles.setCounter}>
+              {currentExercise.sets.map((set, index) => (
+                <View key={index} style={styles.setIndicator}>
+                  {set.completed ? (
                     <MaterialIcons 
                       name="check-circle" 
-                      size={12} 
-                      color={getColor(index === currentExerciseIndex ? "contentOnColor" : "positive")} 
-                      style={styles.exerciseChipCheck}
+                      size={16} 
+                      color={getColor('positive')} 
+                    />
+                  ) : (
+                    <MaterialIcons 
+                      name="radio-button-unchecked" 
+                      size={16} 
+                      color={getColor('backgroundTertiary')} 
                     />
                   )}
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+              ))}
+            </View>
+          </View>
 
-      {/* Exercise History - For Current Exercise */}
-      {currentExercise.exerciseId && user?.id && (
-        <ExerciseHistory 
-          exerciseId={currentExercise.exerciseId}
-          userId={user.id}
-          exerciseName={currentExercise.exercise?.name}
-        />
-      )}
+          {/* Active Sets - Carousel Based, Editable */}
+          <ScrollView 
+            ref={setsScrollRef}
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.setsScroller}
+            contentContainerStyle={[
+              styles.setsScrollContent,
+              { paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2 }
+            ]}
+            snapToInterval={CARD_TOTAL_WIDTH}
+            decelerationRate="fast"
+            snapToAlignment="start"
+            pagingEnabled={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {currentExercise.sets.map((set, setIndex) => (
+              <View key={setIndex} style={styles.setCard}>
+                {/* Set Number - Small Label */}
+                <Typography variant="label-xsmall" color="contentTertiary" style={styles.setLabel}>
+                  SET {setIndex + 1}
+                </Typography>
+                
+                {/* Editable Values - Large, Tappable */}
+                <View style={styles.setValues}>
+                  <NumberInput
+                    value={set.actualReps}
+                    onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'actualReps', value.toString())}
+                    unit="reps"
+                    displayVariant="display-xsmall"
+                    unitVariant="label-small"
+                    valueColor="contentPrimary"
+                    unitColor="contentTertiary"
+                    containerStyle={styles.valueGroup}
+                    minValue={0}
+                    maxValue={999}
+                  />
+
+                  <View style={styles.valueSeparator} />
+
+                  <NumberInput
+                    value={set.actualWeight}
+                    onValueChange={(value) => handleValueEdit(currentExerciseIndex, setIndex, 'actualWeight', value.toString())}
+                    unit="kg"
+                    displayVariant="display-xsmall"
+                    unitVariant="label-small"
+                    valueColor="contentPrimary"
+                    unitColor="contentTertiary"
+                    containerStyle={styles.valueGroup}
+                    minValue={0}
+                    maxValue={9999}
+                    allowDecimal={true}
+                  />
+                </View>
+
+                {/* Complete Set Button - Large, Primary Action */}
+                <TouchableOpacity
+                  style={[
+                    styles.completeSetButton,
+                    set.completed && styles.completeSetButtonDone
+                  ]}
+                  onPress={() => handleSetComplete(currentExerciseIndex, setIndex)}
+                >
+                  {set.completed ? (
+                    <MaterialIcons 
+                      name="check" 
+                      size={20} 
+                      color={getColor("contentPositive")} 
+                    />
+                  ) : (
+                    <Typography 
+                      variant="label-medium" 
+                      color="contentPrimary"
+                    >
+                      DONE
+                    </Typography>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+
+        </View>
+
+        {/* Exercise Chips - All Exercises */}
+        <View style={styles.exerciseChipsSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exerciseChipsContainer}>
+            {activeWorkout.exercises.map((exercise, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.exerciseChip,
+                  index === currentExerciseIndex && styles.exerciseChipSelected
+                ]}
+                onPress={() => setCurrentExerciseIndex(index)}
+              >
+                <View style={styles.exerciseChipContent}>
+                  <Typography 
+                    variant="label-small" 
+                    color={index === currentExerciseIndex ? "contentOnColor" : "contentPrimary"}
+                    style={styles.exerciseChipName}
+                  >
+                    {exercise.exercise?.name || `Exercise ${index + 1}`}
+                  </Typography>
+                  <View style={styles.exerciseChipMeta}>
+                    <Typography 
+                      variant="paragraph-xsmall" 
+                      color={index === currentExerciseIndex ? "contentOnColor" : "contentSecondary"}
+                    >
+                      {exercise.sets.length} sets
+                    </Typography>
+                    {exercise.completed && (
+                      <MaterialIcons 
+                        name="check-circle" 
+                        size={12} 
+                        color={getColor(index === currentExerciseIndex ? "contentOnColor" : "positive")} 
+                        style={styles.exerciseChipCheck}
+                      />
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Exercise History - For Current Exercise */}
+        {currentExercise.exerciseId && user?.id && (
+          <ExerciseHistory 
+            exerciseId={currentExercise.exerciseId}
+            userId={user.id}
+            exerciseName={currentExercise.exercise?.name}
+          />
+        )}
+      </ScrollView>
 
       {/* Floating Action Button - End Workout */}
       <TouchableOpacity 
@@ -775,6 +782,14 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: getColor('accent'),
+  },
+  
+  // Main Scroll View
+  mainScrollView: {
+    flex: 1,
+  },
+  mainScrollContent: {
+    paddingBottom: 100, // Space for floating action button
   },
   
   // Current Exercise Area

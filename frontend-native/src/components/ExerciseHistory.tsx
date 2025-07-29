@@ -25,6 +25,7 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
   const [historyData, setHistoryData] = useState<ExerciseHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchExerciseHistory();
@@ -50,6 +51,16 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleCardExpansion = (index: number) => {
+    const newExpandedCards = new Set(expandedCards);
+    if (newExpandedCards.has(index)) {
+      newExpandedCards.delete(index);
+    } else {
+      newExpandedCards.add(index);
+    }
+    setExpandedCards(newExpandedCards);
   };
 
   const formatDate = (date: Date | string): string => {
@@ -85,111 +96,146 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
     const totalSets = entry.sessionExercise.sets.length;
     const completedSets = entry.sessionExercise.sets.filter(set => set.completed).length;
     const hasAIChanges = entry.aiExercise?.progressionApplied || false;
+    const isExpanded = expandedCards.has(index);
+    const hasAIAnalysis = entry.aiExercise && (entry.aiExercise.reasoning || entry.aiExercise.changesMade);
 
     return (
-      <View key={index} style={styles.historyCard}>
+      <TouchableOpacity 
+        key={index} 
+        style={[styles.historyCard, isExpanded && styles.historyCardExpanded]}
+        onPress={() => toggleCardExpansion(index)}
+        activeOpacity={0.7}
+      >
         {/* Card Header - Date and AI Indicator */}
         <View style={styles.cardHeader}>
-          <Typography variant="label-small" color="contentTertiary">
-            {formatDate(entry.sessionInfo.finishedAt)}
-          </Typography>
-          {hasAIChanges && (
-            <View style={styles.aiIndicator}>
+          <View style={styles.cardHeaderLeft}>
+            <Typography variant="label-medium" color="contentPrimary">
+              {formatDate(entry.sessionInfo.finishedAt)}
+            </Typography>
+            {hasAIChanges && (
+              <View style={styles.aiIndicator}>
+                <MaterialIcons 
+                  name="auto-awesome" 
+                  size={12} 
+                  color={getColor('contentAccent')} 
+                />
+              </View>
+            )}
+          </View>
+          <View style={styles.cardHeaderRight}>
+            {hasAIAnalysis && (
               <MaterialIcons 
-                name="auto-awesome" 
-                size={12} 
-                color={getColor('contentAccent')} 
+                name="psychology" 
+                size={16} 
+                color={getColor('contentTertiary')} 
               />
-            </View>
-          )}
+            )}
+            {hasAIAnalysis && (
+              <MaterialIcons 
+                name={isExpanded ? "expand-less" : "expand-more"} 
+                size={20} 
+                color={getColor('contentTertiary')} 
+              />
+            )}
+          </View>
         </View>
 
         {/* Performance Summary */}
         <View style={styles.performanceSection}>
-          {bestSet && (
-            <View style={styles.bestSetRow}>
-              <View style={styles.metricGroup}>
-                <Typography variant="label-medium" color="contentPrimary">
-                  {bestSet.actualWeight}
-                </Typography>
-                <Typography variant="paragraph-xsmall" color="contentTertiary">
-                  kg
-                </Typography>
+          <View style={styles.performanceRow}>
+            {bestSet && (
+              <View style={styles.bestSetContainer}>
+                <View style={styles.metricGroup}>
+                  <Typography variant="heading-small" color="contentPrimary">
+                    {bestSet.actualWeight}
+                  </Typography>
+                  <Typography variant="paragraph-xsmall" color="contentTertiary">
+                    kg
+                  </Typography>
+                </View>
+                <View style={styles.metricSeparator} />
+                <View style={styles.metricGroup}>
+                  <Typography variant="heading-small" color="contentPrimary">
+                    {bestSet.actualReps}
+                  </Typography>
+                  <Typography variant="paragraph-xsmall" color="contentTertiary">
+                    reps
+                  </Typography>
+                </View>
               </View>
-              <View style={styles.metricSeparator} />
-              <View style={styles.metricGroup}>
-                <Typography variant="label-medium" color="contentPrimary">
-                  {bestSet.actualReps}
-                </Typography>
-                <Typography variant="paragraph-xsmall" color="contentTertiary">
-                  reps
-                </Typography>
+            )}
+            
+            {/* Sets Completion */}
+            <View style={styles.setsCompletion}>
+              <Typography variant="paragraph-small" color="contentSecondary">
+                {completedSets}/{totalSets} sets
+              </Typography>
+              <View style={styles.completionDots}>
+                {Array.from({ length: totalSets }).map((_, i) => (
+                  <View 
+                    key={i}
+                    style={[
+                      styles.completionDot,
+                      i < completedSets ? styles.completionDotCompleted : styles.completionDotPending
+                    ]}
+                  />
+                ))}
               </View>
-            </View>
-          )}
-          
-          {/* Sets Completion */}
-          <View style={styles.setsCompletion}>
-            <Typography variant="paragraph-xsmall" color="contentSecondary">
-              {completedSets}/{totalSets} sets
-            </Typography>
-            <View style={styles.completionDots}>
-              {Array.from({ length: totalSets }).map((_, i) => (
-                <View 
-                  key={i}
-                  style={[
-                    styles.completionDot,
-                    i < completedSets ? styles.completionDotCompleted : styles.completionDotPending
-                  ]}
-                />
-              ))}
             </View>
           </View>
         </View>
 
-        {/* AI Analysis Summary */}
-        {entry.aiExercise && (
+        {/* Expanded AI Analysis Summary */}
+        {isExpanded && hasAIAnalysis && (
           <View style={styles.aiSection}>
             <View style={styles.aiHeader}>
               <MaterialIcons 
-                name={entry.aiExercise.progressionApplied ? "trending-up" : "analytics"} 
-                size={14} 
-                color={getColor(entry.aiExercise.progressionApplied ? 'contentPositive' : 'contentAccent')} 
+                name={entry.aiExercise?.progressionApplied ? "trending-up" : "analytics"} 
+                size={16} 
+                color={getColor(entry.aiExercise?.progressionApplied ? 'contentPositive' : 'contentAccent')} 
               />
               <Typography 
-                variant="paragraph-xsmall" 
-                color={entry.aiExercise.progressionApplied ? 'contentPositive' : 'contentAccent'}
+                variant="label-small" 
+                color={entry.aiExercise?.progressionApplied ? 'contentPositive' : 'contentAccent'}
               >
-                {entry.aiExercise.progressionApplied ? 'AI Updated' : 'AI Analysis'}
+                {entry.aiExercise?.progressionApplied ? 'AI Updated' : 'AI Analysis'}
               </Typography>
             </View>
             
             {/* Show reasoning first */}
-            {entry.aiExercise.reasoning && (
-              <Typography 
-                variant="paragraph-xsmall" 
-                color="contentSecondary"
-                style={styles.aiText}
-                numberOfLines={2}
-              >
-                {entry.aiExercise.reasoning}
-              </Typography>
+            {entry.aiExercise?.reasoning && (
+              <View style={styles.aiTextContainer}>
+                <Typography variant="paragraph-xsmall" color="contentTertiary">
+                  Analysis
+                </Typography>
+                <Typography 
+                  variant="paragraph-small" 
+                  color="contentSecondary"
+                  style={styles.aiText}
+                >
+                  {entry.aiExercise.reasoning}
+                </Typography>
+              </View>
             )}
             
             {/* Show changes made if any */}
-            {entry.aiExercise.changesMade && (
-              <Typography 
-                variant="paragraph-xsmall" 
-                color={entry.aiExercise.progressionApplied ? 'contentPositive' : 'contentSecondary'}
-                style={styles.aiText}
-                numberOfLines={2}
-              >
-                {entry.aiExercise.changesMade}
-              </Typography>
+            {entry.aiExercise?.changesMade && (
+              <View style={styles.aiTextContainer}>
+                <Typography variant="paragraph-xsmall" color="contentTertiary">
+                  Changes Made
+                </Typography>
+                <Typography 
+                  variant="paragraph-small" 
+                  color={entry.aiExercise.progressionApplied ? 'contentPositive' : 'contentSecondary'}
+                  style={styles.aiText}
+                >
+                  {entry.aiExercise.changesMade}
+                </Typography>
+              </View>
             )}
           </View>
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -197,7 +243,7 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Typography variant="label-small" color="contentPrimary">
+          <Typography variant="heading-small" color="contentPrimary">
             Recent History
           </Typography>
         </View>
@@ -212,7 +258,7 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Typography variant="label-small" color="contentPrimary">
+          <Typography variant="heading-small" color="contentPrimary">
             Recent History
           </Typography>
         </View>
@@ -222,7 +268,7 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
             size={32} 
             color={getColor('contentTertiary')} 
           />
-          <Typography variant="paragraph-small" color="contentTertiary" style={styles.emptyText}>
+          <Typography variant="paragraph-medium" color="contentTertiary" style={styles.emptyText}>
             {error ? 'Failed to load' : 'No recent sessions'}
           </Typography>
         </View>
@@ -243,21 +289,16 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
       </View>
 
       {/* History Cards */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        style={styles.scrollView}
-      >
+      <View style={styles.cardsContainer}>
         {historyData.history.map((entry, index) => renderHistoryCard(entry, index))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    flex: 1,
     backgroundColor: getColor('backgroundSecondary'),
   },
   
@@ -267,43 +308,51 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderOpaque'),
   },
 
   // Loading and Empty States
   loadingContainer: {
-    height: 120,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 200,
   },
   emptyContainer: {
-    height: 120,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    minHeight: 200,
   },
   emptyText: {
     textAlign: 'center',
   },
 
-  // Scroll View
-  scrollView: {
-    height: 140,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
+  // Cards Container
+  cardsContainer: {
+    padding: 16,
     gap: 12,
   },
 
   // History Cards
   historyCard: {
-    width: 160,
     backgroundColor: getColor('backgroundPrimary'),
     borderWidth: 1,
     borderColor: getColor('borderOpaque'),
-    borderRadius: 8,
-    padding: 12,
-    gap: 10,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  historyCardExpanded: {
+    borderColor: getColor('borderSelected'),
+    shadowColor: getColor('contentPrimary'),
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   // Card Header
@@ -312,29 +361,43 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   aiIndicator: {
     backgroundColor: getColor('backgroundLightAccent'),
     borderRadius: 8,
-    padding: 2,
+    padding: 3,
   },
 
   // Performance Section
   performanceSection: {
-    gap: 8,
+    gap: 12,
   },
-  bestSetRow: {
+  performanceRow: {
+    gap: 12,
+  },
+  bestSetContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 16,
+    paddingVertical: 8,
   },
   metricGroup: {
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
   metricSeparator: {
     width: 1,
-    height: 20,
+    height: 30,
     backgroundColor: getColor('borderOpaque'),
   },
   
@@ -343,15 +406,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: getColor('borderOpaque'),
   },
   completionDots: {
     flexDirection: 'row',
-    gap: 3,
+    gap: 4,
   },
   completionDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   completionDotCompleted: {
     backgroundColor: getColor('positive'),
@@ -363,16 +429,20 @@ const styles = StyleSheet.create({
   // AI Section
   aiSection: {
     backgroundColor: getColor('backgroundLightPositive'),
-    borderRadius: 6,
-    padding: 8,
-    gap: 4,
+    borderRadius: 8,
+    padding: 12,
+    gap: 12,
+    marginTop: 4,
   },
   aiHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  aiTextContainer: {
     gap: 4,
   },
   aiText: {
-    lineHeight: 14,
+    lineHeight: 18,
   },
 }); 
