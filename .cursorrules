@@ -126,9 +126,27 @@ Before writing any code that involves colors, styling, or UI components:
 - ✅ **Frontend API**: Receives camelCase (`finishedAt`, `userId`, `exerciseId`)
 - ❌ **NEVER mix naming**: Don't use camelCase in MongoDB queries (`finishedAt` ❌) or snake_case in frontend (`finished_at` ❌)
 
+#### **MongoDB Collection Naming Rules:**
+**CRITICAL: MongoDB collection names MUST match those defined in `@backend/scripts/init-mongo.js`**
+
+- ✅ **ALWAYS reference `@backend/scripts/init-mongo.js`** - Check the canonical collection list before using any collection name
+- ✅ **Use exact collection names**: `users`, `sessions`, `exercises`, `workouts`, `workout_sessions`, `workout_suggestions`, `ai_progressive_overload_recommendations`
+- ❌ **NEVER create new collections** without first adding them to `init-mongo.js`
+- ❌ **NEVER use non-standard collection names**: No `user`, `session`, `exercise`, `workout`, etc.
+- 🛑 **STOP IMMEDIATELY** if you need a collection that doesn't exist in `init-mongo.js` and inform the user
+
+#### **Official GymLog Collections (from init-mongo.js):**
+- `users` - User accounts and profiles
+- `sessions` - Authentication sessions
+- `exercises` - Exercise definitions and metadata
+- `workouts` - Workout routines/templates
+- `workout_sessions` - Active and completed workout sessions
+- `workout_suggestions` - AI-generated workout suggestions
+- `ai_progressive_overload_recommendations` - AI progressive overload analysis and recommendations
+
 #### **MongoDB Query Examples:**
 ```go
-// ✅ CORRECT - MongoDB query with snake_case
+// ✅ CORRECT - MongoDB query with snake_case field names
 filter := bson.M{
     "user_id": userObjectID,
     "finished_at": bson.M{
@@ -138,7 +156,7 @@ filter := bson.M{
     "is_active": false,
 }
 
-// ❌ INCORRECT - MongoDB query with camelCase
+// ❌ INCORRECT - MongoDB query with camelCase field names
 filter := bson.M{
     "userId": userObjectID,        // Wrong! Should be "user_id"
     "finishedAt": bson.M{          // Wrong! Should be "finished_at"

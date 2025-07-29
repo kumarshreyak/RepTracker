@@ -71,6 +71,7 @@ The server will start both:
 - `PUT /api/exercises/{id}` - Update exercise
 - `DELETE /api/exercises/{id}` - Delete exercise
 - `GET /api/exercises/quick-add` - Get exercises for quick add
+- `GET /api/exercises/{id}/history?user_id={userId}` - Get exercise history from last 3 workout sessions
 
 ### Workouts (Routines)
 - `GET /api/workouts` - List workouts
@@ -379,6 +380,82 @@ When a suggestion is rejected:
   "created_at": "Date"
 }
 ```
+
+#### Exercise History API Details
+
+**Get Exercise History**
+```
+GET /api/exercises/{id}/history?user_id={userId}
+```
+Retrieves the workout session history for a specific exercise from the last 3 completed workout sessions where the exercise was performed. Includes both the actual performance data and AI progressive overload recommendations if available.
+
+**Query Parameters:**
+- `user_id` (required): Filter history for a specific user.
+
+**Response:**
+```json
+{
+  "history": [
+    {
+      "sessionExercise": {
+        "exerciseId": "exercise_id",
+        "exercise": {
+          "id": "exercise_id",
+          "name": "Bench Press",
+          "description": "...",
+          "category": "strength",
+          "primaryMuscles": ["chest"],
+          "secondaryMuscles": ["triceps", "shoulders"]
+        },
+        "sets": [
+          {
+            "targetReps": 10,
+            "targetWeight": 135.0,
+            "actualReps": 10,
+            "actualWeight": 135.0,
+            "completed": true,
+            "startedAt": "2024-01-15T10:00:00Z",
+            "finishedAt": "2024-01-15T10:02:00Z"
+          }
+        ],
+        "notes": "Felt strong today",
+        "restSeconds": 180,
+        "completed": true,
+        "startedAt": "2024-01-15T10:00:00Z",
+        "finishedAt": "2024-01-15T10:05:00Z"
+      },
+      "aiExercise": {
+        "exerciseId": "exercise_id",
+        "exerciseName": "Bench Press",
+        "progressionApplied": true,
+        "reasoning": "Strong consistent performance, ready for weight increase",
+        "changesMade": "Increased weight from 135 to 137.5 lbs",
+        "sets": [
+          {
+            "reps": 10,
+            "weight": 137.5
+          }
+        ],
+        "restSeconds": 180
+      },
+      "sessionInfo": {
+        "id": "session_id",
+        "name": "Push Day Workout",
+        "finishedAt": "2024-01-15T11:00:00Z"
+      }
+    }
+  ],
+  "exerciseName": "Bench Press"
+}
+```
+
+**Features:**
+- Returns last 3 workout sessions where the exercise was performed by the specified user
+- Includes complete exercise performance data (target vs actual reps/weights)
+- Includes AI progressive overload recommendations when available
+- Provides session context (workout name, completion time)
+- Requires user-specific filtering for data privacy and performance
+- Automatically excludes incomplete/active sessions
 
 ## Documentation
 

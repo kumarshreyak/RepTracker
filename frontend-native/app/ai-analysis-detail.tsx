@@ -86,12 +86,40 @@ export default function AIAnalysisDetailScreen() {
           </Typography>
         </View>
         
-        {/* Sets preview */}
-        {exercise.sets.length > 0 && (
-          <View style={styles.setsPreview}>
+        {/* Exercise notes */}
+        {exercise.notes && (
+          <View style={styles.notesSection}>
             <Typography variant="label-xsmall" color="contentTertiary">
+              Notes:
+            </Typography>
+            <Typography variant="paragraph-xsmall" color="contentSecondary">
+              {exercise.notes}
+            </Typography>
+          </View>
+        )}
+        
+        {/* Sets preview with notes */}
+        {exercise.sets.length > 0 && (
+          <View style={styles.setsSection}>
+            <Typography variant="label-xsmall" color="contentTertiary" style={styles.setsHeader}>
               {exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}
             </Typography>
+            {exercise.sets.some(set => set.notes) && (
+              <View style={styles.setNotes}>
+                {exercise.sets.map((set, setIndex) => 
+                  set.notes ? (
+                    <View key={setIndex} style={styles.setNote}>
+                      <Typography variant="label-xsmall" color="contentTertiary">
+                        Set {setIndex + 1}:
+                      </Typography>
+                      <Typography variant="paragraph-xsmall" color="contentSecondary">
+                        {set.notes}
+                      </Typography>
+                    </View>
+                  ) : null
+                )}
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -340,8 +368,26 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   
-  setsPreview: {
-    alignSelf: 'flex-start',
+  notesSection: {
+    marginBottom: 8,
+  },
+  
+  setsSection: {
+    marginTop: 4,
+  },
+  
+  setsHeader: {
+    marginBottom: 8,
+  },
+  
+  setNotes: {
+    gap: 6,
+  },
+  
+  setNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   
   aiModelCard: {
@@ -357,4 +403,4 @@ const styles = StyleSheet.create({
   aiModelText: {
     textAlign: 'center',
   },
-}); 
+});

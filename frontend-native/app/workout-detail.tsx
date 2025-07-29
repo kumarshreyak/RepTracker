@@ -6,9 +6,12 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
+  TouchableOpacity,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Typography, Button, getColor, type SemanticColor } from '../src/components';
+import { Typography, Button, getColor, ExerciseHistory, type SemanticColor } from '../src/components';
+import { useAuth } from '../src/hooks/useAuth';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface WorkoutSessionSet {
   targetReps: number;
@@ -58,10 +61,12 @@ interface WorkoutSession {
 }
 
 export default function WorkoutDetailScreen() {
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [workout, setWorkout] = useState<WorkoutSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedExercises, setExpandedExercises] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchWorkoutDetails();
@@ -161,6 +166,16 @@ export default function WorkoutDetailScreen() {
     if (rating <= 5) return getColor('backgroundPositive');
     if (rating <= 7) return getColor('backgroundWarning');
     return getColor('backgroundNegative');
+  };
+
+  const toggleExerciseHistory = (exerciseIndex: number) => {
+    const newExpandedExercises = new Set(expandedExercises);
+    if (newExpandedExercises.has(exerciseIndex)) {
+      newExpandedExercises.delete(exerciseIndex);
+    } else {
+      newExpandedExercises.add(exerciseIndex);
+    }
+    setExpandedExercises(newExpandedExercises);
   };
 
   if (loading) {
@@ -299,27 +314,48 @@ export default function WorkoutDetailScreen() {
             Exercises
           </Typography>
           
-          {workout.exercises.map((exercise, index) => (
-            <View key={index} style={styles.exerciseCard}>
-              <View style={styles.exerciseHeader}>
-                <View style={styles.exerciseInfo}>
-                  <Typography variant="heading-xsmall" color="contentPrimary">
-                    {exercise.exercise?.name || `Exercise ${index + 1}`}
-                  </Typography>
-                  {exercise.exercise?.muscleGroup && (
-                    <Typography variant="paragraph-xsmall" color="contentSecondary">
-                      {exercise.exercise.muscleGroup}
+          {workout.exercises.map((exercise, index) => {
+            const isHistoryExpanded = expandedExercises.has(index);
+            return (
+              <View key={index} style={styles.exerciseCard}>
+                <View style={styles.exerciseHeader}>
+                  <View style={styles.exerciseInfo}>
+                    <Typography variant="heading-xsmall" color="contentPrimary">
+                      {exercise.exercise?.name || `Exercise ${index + 1}`}
                     </Typography>
-                  )}
-                </View>
-                {exercise.completed && (
-                  <View style={styles.completedBadge}>
-                    <Typography variant="label-xsmall" color="contentPositive">
-                      ✓
-                    </Typography>
+                    {exercise.exercise?.muscleGroup && (
+                      <Typography variant="paragraph-xsmall" color="contentSecondary">
+                        {exercise.exercise.muscleGroup}
+                      </Typography>
+                    )}
                   </View>
-                )}
-              </View>
+                  <View style={styles.exerciseHeaderRight}>
+                    {exercise.completed && (
+                      <View style={styles.completedBadge}>
+                        <Typography variant="label-xsmall" color="contentPositive">
+                          ✓
+                        </Typography>
+                      </View>
+                    )}
+                    {exercise.exerciseId && user?.id && (
+                      <TouchableOpacity
+                        style={styles.historyToggle}
+                        onPress={() => toggleExerciseHistory(index)}
+                      >
+                        <MaterialIcons
+                          name="history"
+                          size={20}
+                          color={getColor('contentTertiary')}
+                        />
+                        <MaterialIcons
+                          name={isHistoryExpanded ? "expand-less" : "expand-more"}
+                          size={16}
+                          color={getColor('contentTertiary')}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               
               {/* Sets */}
               <View style={styles.setsContainer}>
@@ -368,8 +404,20 @@ export default function WorkoutDetailScreen() {
                   </Typography>
                 </View>
               )}
+
+              {/* Exercise History */}
+              {isHistoryExpanded && exercise.exerciseId && user?.id && (
+                <View style={styles.exerciseHistoryContainer}>
+                  <ExerciseHistory
+                    exerciseId={exercise.exerciseId}
+                    userId={user.id}
+                    exerciseName={exercise.exercise?.name}
+                  />
+                </View>
+              )}
             </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Workout Notes */}
@@ -528,6 +576,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  exerciseHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: getColor('backgroundSecondary'),
+    gap: 4,
+  },
   
   // Sets
   setsContainer: {
@@ -561,6 +622,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: getColor('borderTransparent'),
+  },
+  exerciseHistoryContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: getColor('borderOpaque'),
   },
   
   // Notes Section
