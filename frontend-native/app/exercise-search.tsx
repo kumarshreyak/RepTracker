@@ -14,7 +14,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Typography, Button } from '../src/components';
+import { Typography, Button, ExerciseHistory } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { User } from '../src/auth/AuthService';
@@ -350,6 +350,18 @@ export default function ExerciseSearchRoute() {
               ))}
             </View>
 
+            {/* Exercise History */}
+            <View style={styles.historySection}>
+              <Typography variant="label-small" color="contentPrimary" style={styles.historyTitle}>
+                Previous Sessions
+              </Typography>
+              <ExerciseHistory 
+                exerciseId={selectedExercise.id}
+                userId={user.id}
+                exerciseName={selectedExercise.name}
+              />
+            </View>
+
             {/* Action Button */}
             <Button
               variant="primary"
@@ -522,6 +534,12 @@ const styles = StyleSheet.create({
   },
   inputError: {
     color: getColor('contentNegative'),
+  },
+  historySection: {
+    marginTop: 24,
+  },
+  historyTitle: {
+    marginBottom: 12,
   },
   addButton: {
     marginTop: 32,

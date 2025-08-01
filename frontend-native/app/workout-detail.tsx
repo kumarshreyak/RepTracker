@@ -257,7 +257,7 @@ export default function WorkoutDetailScreen() {
               {totalVolume.toLocaleString()}
             </Typography>
             <Typography variant="paragraph-xsmall" color="contentSecondary">
-              Volume (lbs)
+                                Volume (kg)
             </Typography>
           </View>
           
@@ -371,17 +371,17 @@ export default function WorkoutDetailScreen() {
                       {set.completed ? (
                         <>
                           <Typography variant="paragraph-small" color="contentPrimary">
-                            {set.actualWeight} lbs × {set.actualReps} reps
+                            {set.actualWeight} kg × {set.actualReps} reps
                           </Typography>
                           {(set.targetWeight !== set.actualWeight || set.targetReps !== set.actualReps) && (
                             <Typography variant="paragraph-xsmall" color="contentTertiary">
-                              Target: {set.targetWeight} lbs × {set.targetReps} reps
+                              Target: {set.targetWeight} kg × {set.targetReps} reps
                             </Typography>
                           )}
                         </>
                       ) : (
                         <Typography variant="paragraph-small" color="contentTertiary">
-                          {set.targetWeight} lbs × {set.targetReps} reps (skipped)
+                          {set.targetWeight} kg × {set.targetReps} reps (skipped)
                         </Typography>
                       )}
                     </View>

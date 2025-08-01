@@ -15,7 +15,7 @@ export interface NumberInputProps {
   value: number | undefined;
   /** Callback fired when the value changes */
   onValueChange: (value: number) => void;
-  /** Optional unit label displayed below the value (e.g., "kg", "reps", "lbs") */
+  /** Optional unit label displayed below the value (e.g., "kg", "reps") */
   unit?: string;
   /** Typography variant for the number display */
   displayVariant?: 'display-large' | 'display-medium' | 'display-small' | 'display-xsmall' | 'heading-xxlarge' | 'heading-xlarge' | 'heading-large' | 'heading-medium' | 'heading-small' | 'heading-xsmall' | 'label-large' | 'label-medium' | 'label-small' | 'label-xsmall' | 'paragraph-large' | 'paragraph-medium' | 'paragraph-small' | 'paragraph-xsmall';
@@ -70,13 +70,13 @@ export interface NumberInputProps {
  * 
  * // Weight input with decimals
  * <NumberInput
- *   value={135.5}
+ *   value={61.5}
  *   onValueChange={(value) => setWeight(value)}
- *   unit="lbs"
+ *   unit="kg"
  *   displayVariant="display-xsmall"
  *   allowDecimal={true}
  *   minValue={0}
- *   maxValue={9999}
+ *   maxValue={500}
  * />
  * 
  * // Time duration in seconds
