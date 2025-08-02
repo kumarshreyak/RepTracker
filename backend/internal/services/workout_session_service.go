@@ -400,7 +400,7 @@ func (s *WorkoutSessionService) ListWorkoutSessions(ctx context.Context, req *pb
 		// For simplicity, we're not implementing pagination here
 	}
 
-	opts := options.Find().SetLimit(pageSize).SetSkip(skip).SetSort(bson.D{{"created_at", -1}})
+	opts := options.Find().SetLimit(pageSize).SetSkip(skip).SetSort(bson.D{{Key: "created_at", Value: -1}})
 	cursor, err := s.sessionColl.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to list workout sessions")
@@ -667,6 +667,111 @@ func (s *WorkoutSessionService) ApplyProgressiveOverload(ctx context.Context, re
 	}, nil
 }
 
+// UpdateExerciseInAllUserWorkouts updates a specific exercise with new values in all workouts the user has that contain the exercise
+func (s *WorkoutSessionService) UpdateExerciseInAllUserWorkouts(ctx context.Context, userID string, exerciseID string, newSets []*pb.WorkoutSet, newNotes string, newRestSeconds int32) error {
+	if userID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+	if exerciseID == "" {
+		return fmt.Errorf("exercise_id is required")
+	}
+
+	log.Printf("UpdateExerciseInAllUserWorkouts: Starting update for user %s, exercise %s", userID, exerciseID)
+
+	// Convert IDs to ObjectIDs
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user_id: %w", err)
+	}
+
+	exerciseObjectID, err := primitive.ObjectIDFromHex(exerciseID)
+	if err != nil {
+		return fmt.Errorf("invalid exercise_id: %w", err)
+	}
+
+	// Find all workouts for the user that contain this exercise
+	filter := bson.M{
+		"user_id":               userObjectID,
+		"exercises.exercise_id": exerciseObjectID,
+	}
+
+	log.Printf("UpdateExerciseInAllUserWorkouts: Searching for workouts with filter: %+v", filter)
+
+	// Get workouts collection directly
+	workoutColl := s.db.GetCollection("workouts")
+	cursor, err := workoutColl.Find(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to find workouts: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var workouts []models.Workout
+	if err = cursor.All(ctx, &workouts); err != nil {
+		return fmt.Errorf("failed to decode workouts: %w", err)
+	}
+
+	log.Printf("UpdateExerciseInAllUserWorkouts: Found %d workouts containing exercise %s", len(workouts), exerciseID)
+
+	// Update each workout
+	updateCount := 0
+	for _, workout := range workouts {
+		// Find and update the exercise in this workout
+		updated := false
+		for i, exercise := range workout.Exercises {
+			if exercise.ExerciseID == exerciseObjectID {
+				// Convert protobuf sets to model sets
+				var modelSets []models.WorkoutSet
+				for _, pbSet := range newSets {
+					modelSets = append(modelSets, models.WorkoutSet{
+						Reps:            pbSet.Reps,
+						Weight:          pbSet.Weight,
+						DurationSeconds: int32(pbSet.DurationSeconds),
+						Distance:        pbSet.Distance,
+						Notes:           pbSet.Notes,
+					})
+				}
+
+				// Update the exercise
+				workout.Exercises[i].Sets = modelSets
+				if newNotes != "" {
+					workout.Exercises[i].Notes = newNotes
+				}
+				if newRestSeconds > 0 {
+					workout.Exercises[i].RestSeconds = newRestSeconds
+				}
+				updated = true
+
+				log.Printf("UpdateExerciseInAllUserWorkouts: Updated exercise in workout %s with %d sets", workout.ID.Hex(), len(modelSets))
+				break
+			}
+		}
+
+		if updated {
+			// Update the workout in database
+			updateDoc := bson.M{
+				"$set": bson.M{
+					"exercises":  workout.Exercises,
+					"updated_at": time.Now(),
+				},
+			}
+
+			result, err := workoutColl.UpdateOne(ctx, bson.M{"_id": workout.ID}, updateDoc)
+			if err != nil {
+				log.Printf("UpdateExerciseInAllUserWorkouts: Failed to update workout %s: %v", workout.ID.Hex(), err)
+				continue
+			}
+
+			if result.ModifiedCount > 0 {
+				updateCount++
+				log.Printf("UpdateExerciseInAllUserWorkouts: Successfully updated workout %s", workout.ID.Hex())
+			}
+		}
+	}
+
+	log.Printf("UpdateExerciseInAllUserWorkouts: Successfully updated %d out of %d workouts", updateCount, len(workouts))
+	return nil
+}
+
 // ApplyAIProgressiveOverload applies progressive overload using AI analysis of the workout session
 func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, req *pb.ApplyProgressiveOverloadRequest) (*pb.ApplyProgressiveOverloadResponse, error) {
 	startTime := time.Now()
@@ -720,7 +825,7 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 	log.Printf("ApplyAIProgressiveOverload: AI analysis: %s", analysisSummary)
 	log.Printf("ApplyAIProgressiveOverload: Generated %d updated exercises", len(updatedExercises))
 
-	successMessage := "AI progressive overload applied successfully - " + analysisSummary
+	successMessage := "AI progressive overload applied successfully to all user workouts - " + analysisSummary
 
 	if len(updatedExercises) == 0 {
 		successMessage = "No changes recommended by AI - " + analysisSummary
@@ -736,25 +841,45 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 		}, nil
 	}
 
-	// Apply the AI recommendations to the workout
-	workout.Exercises = updatedExercises
+	// Apply the AI recommendations to all user workouts containing these exercises
+	log.Printf("ApplyAIProgressiveOverload: Applying AI recommendations to all user workouts")
 
-	// Update the workout with the new values
-	updateWorkoutReq := &pb.UpdateWorkoutRequest{
-		Id:          req.WorkoutId,
-		Name:        workout.Name,
-		Description: workout.Description,
-		Exercises:   workout.Exercises,
-		Notes:       workout.Notes,
+	// Group updated exercises by exercise ID for batch updates
+	exerciseUpdates := make(map[string]*pb.WorkoutExercise)
+	for _, exercise := range updatedExercises {
+		exerciseUpdates[exercise.ExerciseId] = exercise
 	}
 
-	updatedWorkout, err := s.workoutService.UpdateWorkout(ctx, updateWorkoutReq)
-	if err != nil {
-		// Store failed response
-		processingTime := time.Since(startTime).Milliseconds()
-		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, analysisSummary, updatedExercises, false, fmt.Sprintf("Failed to update workout: %v", err), recentSessionsCount, processingTime)
+	// Apply updates to all user workouts for each modified exercise
+	updateErrors := []string{}
+	for exerciseID, updatedExercise := range exerciseUpdates {
+		err := s.UpdateExerciseInAllUserWorkouts(ctx, session.UserId, exerciseID, updatedExercise.Sets, updatedExercise.Notes, updatedExercise.RestSeconds)
+		if err != nil {
+			log.Printf("ApplyAIProgressiveOverload: Failed to update exercise %s across all workouts: %v", exerciseID, err)
+			updateErrors = append(updateErrors, fmt.Sprintf("Exercise %s: %v", exerciseID, err))
+		} else {
+			log.Printf("ApplyAIProgressiveOverload: Successfully updated exercise %s across all user workouts", exerciseID)
+		}
+	}
 
-		return nil, status.Errorf(codes.Internal, "failed to update workout: %v", err)
+	// Check if any updates failed
+	if len(updateErrors) > 0 {
+		errorMessage := fmt.Sprintf("Some exercise updates failed: %s", strings.Join(updateErrors, "; "))
+
+		// Store partial failure response
+		processingTime := time.Since(startTime).Milliseconds()
+		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, analysisSummary, updatedExercises, false, errorMessage, recentSessionsCount, processingTime)
+
+		return nil, status.Errorf(codes.Internal, "failed to update some exercises: %s", errorMessage)
+	}
+
+	// Get the updated workout to return (the original workout should now be updated)
+	updatedWorkout, err := s.workoutService.GetWorkout(ctx, &pb.GetWorkoutRequest{Id: req.WorkoutId})
+	if err != nil {
+		log.Printf("ApplyAIProgressiveOverload: Failed to fetch updated workout: %v", err)
+		// Still consider this a success since the updates were applied
+		updatedWorkout = workout
+		updatedWorkout.Exercises = updatedExercises
 	}
 
 	// Store successful response
@@ -1217,48 +1342,46 @@ func (s *WorkoutSessionService) storeAIProgressiveOverloadResponse(ctx context.C
 
 	// Convert updated exercises to storage format
 	var aiExercises []models.AIProgressiveOverloadExercise
-	if updatedExercises != nil {
-		for _, exercise := range updatedExercises {
-			// Check if we have AI details for this exercise
-			if aiDetail, exists := s.tempAIExerciseDetails[exercise.ExerciseId]; exists {
-				// Use the detailed AI information
-				aiExercises = append(aiExercises, aiDetail)
-			} else {
-				// Fallback to basic information
-				var sets []models.WorkoutSet
-				for _, set := range exercise.Sets {
-					sets = append(sets, models.WorkoutSet{
-						Reps:            set.Reps,
-						Weight:          set.Weight,
-						DurationSeconds: int32(set.DurationSeconds),
-						Distance:        set.Distance,
-						Notes:           set.Notes,
-					})
-				}
-
-				// Try to find the exercise name from the workout
-				exerciseName := "Unknown Exercise"
-				for _, originalExercise := range workout.Exercises {
-					if originalExercise.ExerciseId == exercise.ExerciseId {
-						// Get exercise details if available
-						if originalExercise.Exercise != nil {
-							exerciseName = originalExercise.Exercise.Name
-						}
-						break
-					}
-				}
-
-				aiExercises = append(aiExercises, models.AIProgressiveOverloadExercise{
-					ExerciseID:         exercise.ExerciseId,
-					ExerciseName:       exerciseName,
-					ProgressionApplied: true,
-					Reasoning:          "AI-generated progression based on recent performance analysis",
-					ChangesMade:        "Updated based on AI analysis",
-					Sets:               sets,
-					Notes:              exercise.Notes,
-					RestSeconds:        exercise.RestSeconds,
+	for _, exercise := range updatedExercises {
+		// Check if we have AI details for this exercise
+		if aiDetail, exists := s.tempAIExerciseDetails[exercise.ExerciseId]; exists {
+			// Use the detailed AI information
+			aiExercises = append(aiExercises, aiDetail)
+		} else {
+			// Fallback to basic information
+			var sets []models.WorkoutSet
+			for _, set := range exercise.Sets {
+				sets = append(sets, models.WorkoutSet{
+					Reps:            set.Reps,
+					Weight:          set.Weight,
+					DurationSeconds: int32(set.DurationSeconds),
+					Distance:        set.Distance,
+					Notes:           set.Notes,
 				})
 			}
+
+			// Try to find the exercise name from the workout
+			exerciseName := "Unknown Exercise"
+			for _, originalExercise := range workout.Exercises {
+				if originalExercise.ExerciseId == exercise.ExerciseId {
+					// Get exercise details if available
+					if originalExercise.Exercise != nil {
+						exerciseName = originalExercise.Exercise.Name
+					}
+					break
+				}
+			}
+
+			aiExercises = append(aiExercises, models.AIProgressiveOverloadExercise{
+				ExerciseID:         exercise.ExerciseId,
+				ExerciseName:       exerciseName,
+				ProgressionApplied: true,
+				Reasoning:          "AI-generated progression based on recent performance analysis",
+				ChangesMade:        "Updated based on AI analysis",
+				Sets:               sets,
+				Notes:              exercise.Notes,
+				RestSeconds:        exercise.RestSeconds,
+			})
 		}
 	}
 
