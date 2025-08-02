@@ -21,17 +21,15 @@ import (
 // UserService implements the gRPC UserService
 type UserService struct {
 	pb.UnimplementedUserServiceServer
-	db           *database.MongoDB
-	usersColl    *mongo.Collection
-	sessionsColl *mongo.Collection
+	db        *database.MongoDB
+	usersColl *mongo.Collection
 }
 
 // NewUserService creates a new UserService instance
 func NewUserService(db *database.MongoDB) *UserService {
 	return &UserService{
-		db:           db,
-		usersColl:    db.GetCollection("users"),
-		sessionsColl: db.GetCollection("sessions"),
+		db:        db,
+		usersColl: db.GetCollection("users"),
 	}
 }
 
@@ -253,52 +251,17 @@ func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, em
 	return &user, nil
 }
 
-// CreateSession creates a new user session
-func (s *UserService) CreateSession(ctx context.Context, userID primitive.ObjectID, accessToken, refreshToken string, expiresAt time.Time) (*models.Session, error) {
-	session := models.Session{
-		UserID:       userID,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresAt:    expiresAt,
-		CreatedAt:    time.Now(),
-	}
-
-	result, err := s.sessionsColl.InsertOne(ctx, session)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %w", err)
-	}
-
-	session.ID = result.InsertedID.(primitive.ObjectID)
-	return &session, nil
-}
-
-// ValidateSession validates a session token and returns the user
-func (s *UserService) ValidateSession(ctx context.Context, accessToken string) (*models.User, error) {
-	var session models.Session
-	err := s.sessionsColl.FindOne(ctx, bson.M{
-		"access_token": accessToken,
-		"expires_at":   bson.M{"$gt": time.Now()},
-	}).Decode(&session)
-
-	if err == mongo.ErrNoDocuments {
-		return nil, fmt.Errorf("invalid or expired session")
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to validate session: %w", err)
-	}
-
+// GetUserByID retrieves a user by their ObjectID
+func (s *UserService) GetUserByID(ctx context.Context, userID primitive.ObjectID) (*models.User, error) {
 	var user models.User
-	err = s.usersColl.FindOne(ctx, bson.M{"_id": session.UserID}).Decode(&user)
+	err := s.usersColl.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("user not found")
+		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-
 	return &user, nil
-}
-
-// DeleteSession deletes a session
-func (s *UserService) DeleteSession(ctx context.Context, accessToken string) error {
-	_, err := s.sessionsColl.DeleteOne(ctx, bson.M{"access_token": accessToken})
-	return err
 }
 
 // modelToProto converts a user model to protobuf user
