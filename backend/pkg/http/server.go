@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 
@@ -66,6 +68,13 @@ type UpdateUserRequest struct {
 	Weight    float64 `json:"weight,omitempty"` // Weight in kg
 	Age       int32   `json:"age,omitempty"`    // Age in years
 	Goal      string  `json:"goal,omitempty"`   // Goal: lose_fat, gain_muscle, maintain
+}
+
+// JWT Claims struct
+type Claims struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	jwt.RegisteredClaims
 }
 
 // Exercise HTTP types
@@ -410,6 +419,54 @@ func NewServer(userService *services.UserService, exerciseService *services.Exer
 	}
 }
 
+// JWT helper functions
+func (s *Server) generateJWT(userID, email string) (string, error) {
+	expirationTime := time.Now().Add(24 * time.Hour)
+
+	claims := &Claims{
+		UserID: userID,
+		Email:  email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "gymlog-backend",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT_SECRET environment variable not set")
+	}
+
+	return token.SignedString([]byte(jwtSecret))
+}
+
+func (s *Server) validateJWT(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		jwtSecret := os.Getenv("JWT_SECRET")
+		if jwtSecret == "" {
+			return nil, fmt.Errorf("JWT_SECRET environment variable not set")
+		}
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
+}
+
 func (s *Server) Start(port string) error {
 	r := mux.NewRouter()
 
@@ -513,41 +570,22 @@ func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("✅ User created/updated: ID=%s, Email=%s", user.ID.Hex(), user.Email)
 
-	// Create session
-	expiresAt := time.Now().Add(24 * time.Hour) // 24 hours from now
-	if req.ExpiresAt != "" {
-		if parsedTime, err := time.Parse(time.RFC3339, req.ExpiresAt); err == nil {
-			expiresAt = parsedTime
-		}
-	}
-
-	// Generate access token if not provided (for React Native clients)
-	accessToken := req.AccessToken
-	if accessToken == "" {
-		// Generate a unique session token for React Native clients
-		accessToken = fmt.Sprintf("session_%s_%d", user.ID.Hex(), time.Now().UnixNano())
-		log.Printf("🔑 Generated session token for React Native client: %s", accessToken)
-	} else {
-		log.Printf("🔑 Using provided access token: %s", accessToken)
-	}
-
-	log.Printf("📅 Session expires at: %v", expiresAt)
-
-	session, err := s.userService.CreateSession(ctx, user.ID, accessToken, req.RefreshToken, expiresAt)
+	// Generate JWT token
+	jwtToken, err := s.generateJWT(user.ID.Hex(), user.Email)
 	if err != nil {
-		log.Printf("❌ Failed to create session: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to create session: %v", err), http.StatusInternalServerError)
+		log.Printf("❌ Failed to generate JWT token: %v", err)
+		http.Error(w, "Failed to generate authentication token", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Session created successfully: ID=%s, Token=%s", session.ID.Hex(), session.AccessToken)
+	log.Printf("✅ JWT token generated successfully for user: %s", user.ID.Hex())
 
 	// Return user response
 	response := s.userToResponse(user)
 
-	// Set session token in response header
-	w.Header().Set("X-Session-Token", session.AccessToken)
-	log.Printf("📤 Setting X-Session-Token header: %s", session.AccessToken)
+	// Set JWT token in response header
+	w.Header().Set("X-Session-Token", jwtToken)
+	log.Printf("📤 Setting X-Session-Token header with JWT")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -590,10 +628,24 @@ func (s *Server) handleValidateSession(w http.ResponseWriter, r *http.Request) {
 		token = token[7:]
 	}
 
-	ctx := context.Background()
-	user, err := s.userService.ValidateSession(ctx, token)
+	// Validate JWT token
+	claims, err := s.validateJWT(token)
 	if err != nil {
-		http.Error(w, "Invalid or expired session", http.StatusUnauthorized)
+		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user by ID from JWT claims (no session lookup needed)
+	ctx := context.Background()
+	userObjectID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		http.Error(w, "Invalid user ID in token", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := s.userService.GetUserByID(ctx, userObjectID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
 		return
 	}
 
@@ -604,23 +656,8 @@ func (s *Server) handleValidateSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		http.Error(w, "Missing authorization header", http.StatusUnauthorized)
-		return
-	}
-
-	// Remove "Bearer " prefix if present
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	ctx := context.Background()
-	if err := s.userService.DeleteSession(ctx, token); err != nil {
-		http.Error(w, "Failed to logout", http.StatusInternalServerError)
-		return
-	}
-
+	// With JWT tokens, logout is handled client-side by deleting the token
+	// No server-side state to clean up since JWT is stateless
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
 }

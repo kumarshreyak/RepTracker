@@ -10,7 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Typography, Button } from '../../src/components';
+import { Typography, Button, RoutineCard } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
 import { authService, User } from '../../src/auth/AuthService';
@@ -79,41 +79,25 @@ export default function HomeTab() {
   const [workoutsPageSize, setWorkoutsPageSize] = useState(5);
 
   const fetchRoutines = async () => {
-    console.log('[fetchRoutines] Starting fetch routine...');
-    console.log('[fetchRoutines] User ID:', user?.id);
-    
     if (!user?.id) {
-      console.log('[fetchRoutines] No user ID found, exiting early');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('[fetchRoutines] Setting loading state to true');
       setLoading(true);
       setError(null);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
       const url = `${API_BASE_URL}/api/workouts?userId=${user.id}`;
-      console.log('[fetchRoutines] API Base URL:', API_BASE_URL);
-      console.log('[fetchRoutines] Full URL:', url);
       
-      console.log('[fetchRoutines] Making fetch request...');
       const response = await fetch(url);
-      console.log('[fetchRoutines] Response received - Status:', response.status);
-      console.log('[fetchRoutines] Response OK:', response.ok);
-      console.log('[fetchRoutines] Response headers:', Object.fromEntries(response.headers.entries()));
-      
-      console.log('[fetchRoutines] Parsing response JSON...');
       const data = await response.json();
-      console.log('[fetchRoutines] Response data:', JSON.stringify(data, null, 2));
       
       if (!response.ok) {
-        console.log('[fetchRoutines] Response not OK, throwing error');
         throw new Error(data.error || "Failed to fetch routines");
       }
       
-      console.log('[fetchRoutines] Success! Setting routines:', data.workouts?.length || 0, 'routines');
       setRoutines(data.workouts || []);
     } catch (err) {
       console.error("[fetchRoutines] Error caught:", err);
@@ -121,7 +105,6 @@ export default function HomeTab() {
       console.error("[fetchRoutines] Error stack:", err instanceof Error ? err.stack : 'No stack trace');
       setError(err instanceof Error ? err.message : "Failed to fetch routines");
     } finally {
-      console.log('[fetchRoutines] Setting loading state to false');
       setLoading(false);
     }
   };
@@ -150,7 +133,6 @@ export default function HomeTab() {
       console.log('[fetchPastWorkouts] Response received - Status:', response.status);
       
       const data = await response.json();
-      console.log('[fetchPastWorkouts] Response data:', JSON.stringify(data, null, 2));
       
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch past workouts");
@@ -212,6 +194,32 @@ export default function HomeTab() {
     router.push(`/active-workout?routineId=${routineId}`);
   };
 
+  const handleDeleteRoutine = async (routineId: string) => {
+    try {
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+      const url = `${API_BASE_URL}/api/workouts/${routineId}`;
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to delete routine: ${errorText}`);
+      }
+
+      // Remove the routine from local state
+      setRoutines(prevRoutines => prevRoutines.filter(routine => routine.id !== routineId));
+      
+      Alert.alert('Success', 'Routine deleted successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete routine. Please try again.');
+    }
+  };
+
   const handleViewMoreWorkouts = () => {
     const newPageSize = workoutsPageSize + 10;
     setWorkoutsPageSize(newPageSize);
@@ -258,40 +266,13 @@ export default function HomeTab() {
   }
 
   const renderRoutineCard = (routine: Routine, index: number) => (
-    <Pressable 
-      key={routine.id} 
-      style={styles.routineCard}
-      onPress={() => handleStartRoutineWorkout(routine.id)}
-    >
-      <View style={styles.routineCardHeader}>
-        <View style={styles.routineCardContent}>
-          <Typography variant="label-medium" color="contentPrimary" style={styles.routineName}>
-            {routine.name}
-          </Typography>
-          <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.routineExerciseCount}>
-            {routine.exercises?.length || 0} exercises
-          </Typography>
-        </View>
-        
-        <Pressable 
-          style={styles.editButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleEditRoutine(routine.id);
-          }}
-        >
-          <Typography variant="paragraph-xsmall" color="contentSecondary" style={styles.editIcon}>
-            ✏️
-          </Typography>
-        </Pressable>
-      </View>
-      
-      <View style={styles.playButton}>
-        <Typography variant="label-medium" color="contentOnColor" style={styles.playIcon}>
-          ▶
-        </Typography>
-      </View>
-    </Pressable>
+    <RoutineCard
+      key={routine.id}
+      routine={routine}
+      onStart={handleStartRoutineWorkout}
+      onEdit={handleEditRoutine}
+      onDelete={handleDeleteRoutine}
+    />
   );
 
   const renderWorkoutChip = (session: WorkoutSession) => {
@@ -378,14 +359,9 @@ export default function HomeTab() {
               </Button>
             </View>
           ) : (
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.routinesCarousel}
-              contentContainerStyle={styles.routinesCarouselContent}
-            >
+            <View style={styles.routinesList}>
               {routines.map(renderRoutineCard)}
-            </ScrollView>
+            </View>
           )}
         </View>
 
@@ -478,58 +454,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Routines Carousel
-  routinesCarousel: {
-    paddingLeft: 16,
-  },
-  routinesCarouselContent: {
-    paddingRight: 16,
-  },
-  routineCard: {
-    width: 200,
-    height: 120,
-    backgroundColor: getColor('backgroundPrimary'),
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: getColor('borderOpaque'),
-    marginRight: 12,
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  routineCardHeader: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  routineCardContent: {
-    flex: 1,
-  },
-  routineName: {
-    marginBottom: 4,
-  },
-  editButton: {
-    padding: 4,
-    marginTop: -4,
-    marginRight: -4,
-  },
-  editIcon: {
-    fontSize: 16,
-  },
-  routineExerciseCount: {
-    marginBottom: 0,
-  },
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: getColor('backgroundAccent'),
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-  },
-  playIcon: {
-    marginLeft: 2, // Optical centering for play icon
+  // Routines List
+  routinesList: {
+    paddingHorizontal: 16,
   },
 
   // Past Workouts List
