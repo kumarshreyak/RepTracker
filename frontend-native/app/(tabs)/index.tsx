@@ -79,41 +79,25 @@ export default function HomeTab() {
   const [workoutsPageSize, setWorkoutsPageSize] = useState(5);
 
   const fetchRoutines = async () => {
-    console.log('[fetchRoutines] Starting fetch routine...');
-    console.log('[fetchRoutines] User ID:', user?.id);
-    
     if (!user?.id) {
-      console.log('[fetchRoutines] No user ID found, exiting early');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('[fetchRoutines] Setting loading state to true');
       setLoading(true);
       setError(null);
       
       const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
       const url = `${API_BASE_URL}/api/workouts?userId=${user.id}`;
-      console.log('[fetchRoutines] API Base URL:', API_BASE_URL);
-      console.log('[fetchRoutines] Full URL:', url);
       
-      console.log('[fetchRoutines] Making fetch request...');
       const response = await fetch(url);
-      console.log('[fetchRoutines] Response received - Status:', response.status);
-      console.log('[fetchRoutines] Response OK:', response.ok);
-      console.log('[fetchRoutines] Response headers:', Object.fromEntries(response.headers.entries()));
-      
-      console.log('[fetchRoutines] Parsing response JSON...');
       const data = await response.json();
-      console.log('[fetchRoutines] Response data:', JSON.stringify(data, null, 2));
       
       if (!response.ok) {
-        console.log('[fetchRoutines] Response not OK, throwing error');
         throw new Error(data.error || "Failed to fetch routines");
       }
       
-      console.log('[fetchRoutines] Success! Setting routines:', data.workouts?.length || 0, 'routines');
       setRoutines(data.workouts || []);
     } catch (err) {
       console.error("[fetchRoutines] Error caught:", err);
@@ -121,7 +105,6 @@ export default function HomeTab() {
       console.error("[fetchRoutines] Error stack:", err instanceof Error ? err.stack : 'No stack trace');
       setError(err instanceof Error ? err.message : "Failed to fetch routines");
     } finally {
-      console.log('[fetchRoutines] Setting loading state to false');
       setLoading(false);
     }
   };
@@ -150,7 +133,6 @@ export default function HomeTab() {
       console.log('[fetchPastWorkouts] Response received - Status:', response.status);
       
       const data = await response.json();
-      console.log('[fetchPastWorkouts] Response data:', JSON.stringify(data, null, 2));
       
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch past workouts");
@@ -234,7 +216,6 @@ export default function HomeTab() {
       
       Alert.alert('Success', 'Routine deleted successfully');
     } catch (error) {
-      console.error('[handleDeleteRoutine] Error:', error);
       Alert.alert('Error', 'Failed to delete routine. Please try again.');
     }
   };
