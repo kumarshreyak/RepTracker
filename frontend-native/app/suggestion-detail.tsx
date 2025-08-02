@@ -10,7 +10,6 @@ import {
 import { Typography, Button } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { 
   WorkoutChange, 
   SuggestedWorkout, 
@@ -105,9 +104,11 @@ export default function SuggestionDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={getColor('contentPrimary')} />
+          <Typography variant="label-medium" color="contentPrimary">
+            ←
+          </Typography>
         </TouchableOpacity>
-        <Typography variant="label-small" color="contentPrimary" style={styles.headerTitle}>
+        <Typography variant="label-medium" color="contentPrimary">
           Workout Suggestion
         </Typography>
         <View style={styles.headerSpacer} />
@@ -309,16 +310,12 @@ const styles = StyleSheet.create({
   },
   
   backButton: {
-    padding: 4,
-  },
-  
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
+    padding: 8,
+    marginLeft: -8,
   },
   
   headerSpacer: {
-    width: 32,
+    width: 24,
   },
   
   scrollView: {
