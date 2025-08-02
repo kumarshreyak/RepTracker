@@ -9,4 +9,5 @@ export type { InputProps } from './Input';
 export { NumberInput } from './NumberInput';
 export type { NumberInputProps } from './NumberInput';
 export { ExerciseHistory } from './ExerciseHistory';
-export type { ExerciseHistoryProps } from './ExerciseHistory'; 
+export type { ExerciseHistoryProps } from './ExerciseHistory';
+export { RoutineCard } from './RoutineCard'; 

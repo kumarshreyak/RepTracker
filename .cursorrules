@@ -40,6 +40,14 @@ Before writing any code that involves colors, styling, or UI components:
 - ✅ **Form labels**: `label-small` + `contentPrimary`
 - ✅ **Captions/meta**: `paragraph-xsmall` + `contentTertiary`
 
+#### **Content Typography Size Limits:**
+- 🎯 **CRITICAL: `label-medium` is the MAXIMUM font size for page content** - Never use larger typography variants for content within pages
+- ✅ **Card/component titles**: Use `label-medium` as the largest size
+- ✅ **Card subtitles/metadata**: Use `label-small` or `label-xsmall`
+- ✅ **Content hierarchy**: `label-medium` → `label-small` → `label-xsmall`
+- ❌ **NEVER use heading variants inside content cards/components** - Reserve headings only for page titles and major section headers
+- ❌ **NEVER use paragraph variants for UI element labels** - Use label variants for UI elements
+
 #### **Typography Strict Rules:**
 - ❌ **NEVER use basic HTML elements**: No `<h1>`, `<h2>`, `<p>`, `<span>`, etc.
 - ❌ **NEVER hardcode typography styles**: No `fontSize`, `fontWeight`, `lineHeight` in StyleSheet
@@ -50,20 +58,55 @@ Before writing any code that involves colors, styling, or UI components:
 
 #### **Quick Typography Reference:**
 - **App/page titles**: `heading-xlarge` + `contentPrimary`
-- **Card/section titles**: `heading-small` + `contentPrimary`  
-- **List item titles**: `heading-xsmall` + `contentPrimary`
-- **Primary body text**: `paragraph-medium` + `contentSecondary`
-- **Secondary descriptions**: `paragraph-small` + `contentSecondary`
+- **Major section headers**: `heading-small` + `contentPrimary`  
+- **Card/component titles**: `label-medium` + `contentPrimary` (MAX SIZE FOR CONTENT)
+- **Card subtitles**: `label-small` + `contentSecondary`
+- **Card metadata/details**: `label-xsmall` + `contentSecondary`
 - **Button text**: Handled automatically by Button component
 - **Form field labels**: `label-small` + `contentPrimary`
-- **Error messages**: `paragraph-xsmall` + `contentNegative`
-- **Success messages**: `paragraph-xsmall` + `contentPositive`
+- **Error messages**: `label-xsmall` + `contentNegative`
+- **Success messages**: `label-xsmall` + `contentPositive`
+- **Reading content**: Use `paragraph-*` variants sparingly, prefer `label-*` for UI
 
 ### Buttons
 - Use `Button` component from `@/components` for all interactive buttons
 - Available variants: `default`, `primary`, `danger`, `secondary`, `text`, `success`
 - Available sizes: `small`, `default`, `large`, `xlarge`
 - Support for icons and icon-only buttons
+
+### Icons - Material Icons
+**CRITICAL: Always use Material Icons from `@expo/vector-icons` for icon buttons**
+
+#### **Icon Usage Rules:**
+- ✅ **ALWAYS use MaterialIcons**: `import { MaterialIcons } from '@expo/vector-icons'`
+- ✅ **Standard icon sizes**: `16px` (small), `20px` (medium), `24px` (large)
+- ✅ **Use semantic colors**: Pass `getColor('contentPrimary')` etc. to color prop
+- ✅ **Choose appropriate icons**: Select contextually relevant Material Design icons
+- ❌ **NEVER use emoji for interface elements**: No ✏️, 🗑️, ▶ - use proper icons instead
+- ❌ **NEVER use custom icon fonts or images**: Stick to Material Icons for consistency
+
+#### **Common Icon Mappings:**
+- **Edit**: `edit` - For editing/modifying content
+- **Delete**: `delete` - For removing/deleting items
+- **Play**: `play-arrow` - For starting actions/playback
+- **Add**: `add` - For creating new items
+- **Close**: `close` - For dismissing/closing
+- **Search**: `search` - For search functionality
+- **Menu**: `menu` - For navigation menus
+- **Settings**: `settings` - For configuration
+- **Info**: `info` - For information/details
+- **Check**: `check` - For confirmation/completion
+
+#### **Icon Button Example:**
+```tsx
+<Pressable style={styles.iconButton} onPress={handleEdit}>
+  <MaterialIcons 
+    name="edit" 
+    size={20} 
+    color={getColor('contentSecondary')} 
+  />
+</Pressable>
+```
 
 ### Colors - Uber Base Semantic Color System
 **CRITICAL: Always follow the complete Uber Base semantic color system as documented in `@COLOR_SYSTEM.md`**
