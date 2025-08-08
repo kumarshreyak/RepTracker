@@ -105,31 +105,69 @@ class AuthService {
   // Sign in with Google
   async signInWithGoogle(): Promise<boolean> {
     try {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      });
+      console.log('🔐 Starting Google sign-in flow...');
+      console.log('📱 Platform info:', {
+        platform: require('react-native').Platform.OS,
+        version: require('react-native').Platform.Version,
+      });
+      
+      // Log Google Sign-in configuration
+      console.log('⚙️ Google Sign-in configuration:', {
+        currentUser: await GoogleSignin.getCurrentUser(),
+      });
+      
       this.setState({ isLoading: true });
 
       // Check if Google Play Services are available
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('🔍 Checking Google Play Services availability...');
+      const playServicesResult = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('✅ Google Play Services check result:', playServicesResult);
 
       // Get user info from Google
+      console.log('🚀 Attempting Google sign-in...');
+
       const userInfo = await GoogleSignin.signIn();
+      console.log('📋 Raw Google sign-in response:', JSON.stringify(userInfo, null, 2));
       
       if (userInfo.data?.user) {
         const googleUser = userInfo.data.user;
+        console.log('👤 Google user data extracted:', {
+          id: googleUser.id,
+          email: googleUser.email,
+          name: googleUser.name,
+          hasPhoto: !!googleUser.photo,
+        });
         
         try {
           // Call backend to create or get user
           const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+          console.log('🌐 Backend API URL:', API_BASE_URL);
+          
+          const requestBody = {
+            googleId: googleUser.id,
+            email: googleUser.email,
+            name: googleUser.name || '',
+            picture: googleUser.photo || undefined,
+          };
+          console.log('📤 Sending request to backend:', JSON.stringify(requestBody, null, 2));
+          
           const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              googleId: googleUser.id,
-              email: googleUser.email,
-              name: googleUser.name || '',
-              picture: googleUser.photo || undefined,
-            }),
+            body: JSON.stringify(requestBody),
+          });
+
+          console.log('📥 Backend response status:', response.status, response.statusText);
+          console.log('📥 Backend response headers:', {
+            contentType: response.headers.get('Content-Type'),
+            sessionToken: response.headers.get('X-Session-Token'),
+            allHeaders: [...response.headers.entries()],
           });
 
           if (response.ok) {
@@ -164,34 +202,55 @@ class AuthService {
               isAuthenticated: true,
             });
 
+            console.log('✅ Google sign-in completed successfully!');
             return true;
           } else {
-            console.error('Failed to create/login user in backend:', response.status, response.statusText);
+            console.error('❌ Failed to create/login user in backend:', response.status, response.statusText);
             const errorText = await response.text();
-            console.error('Backend error response:', errorText);
+            console.error('❌ Backend error response:', errorText);
             this.setState({ isLoading: false });
             return false;
           }
         } catch (backendError) {
-          console.error('Error calling backend during sign-in:', backendError);
+          console.error('❌ Error calling backend during sign-in:', backendError);
+          console.error('❌ Backend error details:', {
+            message: backendError instanceof Error ? backendError.message : 'Unknown error',
+            stack: backendError instanceof Error ? backendError.stack : undefined,
+          });
           this.setState({ isLoading: false });
           return false;
         }
       } else {
+        console.log('❌ No user data received from Google sign-in');
+        console.log('❌ userInfo structure:', JSON.stringify(userInfo, null, 2));
         this.setState({ isLoading: false });
         return false;
       }
     } catch (error: any) {
-      console.error('Google sign-in error:', error);
+      console.error('💥 Google sign-in error caught in main try-catch:', error);
+      console.error('💥 Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        toString: error.toString(),
+      });
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('User cancelled the sign-in flow');
+        console.log('🚫 User cancelled the sign-in flow');
       } else if (error.code === statusCodes.IN_PROGRESS) {
-        console.log('Sign-in is in progress already');
+        console.log('⏳ Sign-in is in progress already');
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        console.log('Play services not available');
+        console.log('📵 Play services not available');
+      } else if (error.code === 'DEVELOPER_ERROR') {
+        console.log('🚨 DEVELOPER_ERROR detected! This usually means:');
+        console.log('   - SHA1/SHA256 fingerprint not added to Firebase console');
+        console.log('   - google-services.json not properly configured');
+        console.log('   - Package name mismatch');
+        console.log('   - OAuth client ID not set up correctly');
+        console.log('💡 Check your Firebase console configuration!');
       } else {
-        console.log('Some other error:', error);
+        console.log('❓ Some other error:', error);
       }
       
       this.setState({ isLoading: false });
