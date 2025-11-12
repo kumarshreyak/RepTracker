@@ -1,4 +1,4 @@
-package com.anonymous.gymlog
+package com.blaize.gymlog
 
 import android.os.Build
 import android.os.Bundle

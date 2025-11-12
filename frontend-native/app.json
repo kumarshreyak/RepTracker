@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.gymlog"
+      "bundleIdentifier": "com.blaize.gymlog"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.gymlog"
+      "package": "com.blaize.gymlog"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +35,9 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.973367800029-a3qja41dtg1usapkbii3aopr7cpl6qdk"
         }
-      ]
+      ],
+      "expo-router",
+      "expo-font"
     ],
     "sdkVersion": "53.0.0",
     "entryPoint": ".vscode/exponentIndex.js",
