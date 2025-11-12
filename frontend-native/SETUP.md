@@ -38,10 +38,22 @@
 
 2. **Update .env File**
    ```
+   # API Configuration
+   EXPO_PUBLIC_API_BASE_URL=http://localhost:8080
+   
+   # Google OAuth Configuration
    EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.googleusercontent.com
    EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_ios_client_id.googleusercontent.com
    EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_android_client_id.googleusercontent.com
    ```
+
+   **Important Notes for Environment Variables:**
+   - Environment variables MUST be prefixed with `EXPO_PUBLIC_` to be accessible in the app
+   - For Android builds, environment variables are automatically loaded from:
+     1. `.env` file in the project root (for local development)
+     2. `eas.json` env configuration (for EAS builds)
+     3. `app.json` extra configuration (for compiled builds)
+   - Production builds should set `EXPO_PUBLIC_API_BASE_URL` to your production API URL
 
 3. **Update app.json**
    Replace `YOUR_IOS_CLIENT_ID` in the `iosUrlScheme` with your actual iOS client ID:

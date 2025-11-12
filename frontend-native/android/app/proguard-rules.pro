@@ -12,3 +12,30 @@
 -keep class com.facebook.react.turbomodule.** { *; }
 
 # Add any project specific keep options here:
+# Google Play Services
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# Google Sign-In
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-keep class com.google.android.gms.internal.auth.** { *; }
+
+# Google API Client Library
+-keep class com.google.api.client.** { *; }
+-dontwarn com.google.api.client.**
+
+# If using specific Google APIs (e.g., Drive, Calendar), add rules for those as well.
+# Example for Google Drive API:
+#-keep class com.google.api.services.drive.** { *; }
+#-dontwarn com.google.api.services.drive.**
+
+# Keep all custom classes that extend from Google Play Services classes
+-keep class * extends com.google.android.gms.common.api.GoogleApiClient$Builder { *; }
+-keep class * extends com.google.android.gms.common.api.GoogleApiClient$ConnectionCallbacks { *; }
+-keep class * extends com.google.android.gms.common.api.GoogleApiClient$OnConnectionFailedListener { *; }
+
+# General rules for annotations and interfaces used by Google Play Services
+-keepattributes Signature
+-keepattributes SourceFile,LineNumberTable
+-keep public interface com.google.android.gms.common.api.Api$ApiOptions { *; }

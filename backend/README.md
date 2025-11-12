@@ -91,7 +91,7 @@ The server will start both:
 - `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/finish` - Finish exercise
 - `PUT /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}` - Update set
 - `POST /api/workout-sessions/{id}/progressive-overload` - Apply progressive overload to workout
-- `POST /api/workout-sessions/{id}/progressive-overload/ai` - Apply AI-powered progressive overload
+- `POST /api/workout-sessions/{id}/progressive-overload/ai` - Apply AI-powered progressive overload (async)
 - `GET /api/users/{userId}/ai-progressive-overload-responses` - List stored AI progressive overload responses
 
 #### Progressive Overload API Details
@@ -166,6 +166,47 @@ Response:
 After completing a workout session, call this API to automatically progress the workout difficulty for the next time the user performs this routine. This ensures continuous progression without manual intervention.
 
 #### AI Progressive Overload API Details
+
+**Apply AI-Powered Progressive Overload (Async)**
+```
+POST /api/workout-sessions/{id}/progressive-overload/ai
+```
+Applies AI-powered progressive overload analysis to a workout using Gemini AI. This endpoint now **runs asynchronously** - it immediately returns a response indicating that processing has started, then performs the AI analysis and workout updates in the background.
+
+**Request Body:**
+```json
+{
+  "workoutId": "workout_id_to_update"
+}
+```
+
+**Immediate Response:**
+```json
+{
+  "success": true,
+  "message": "AI progressive overload analysis started. Processing in background...",
+  "updatedWorkout": {
+    "id": "original_workout_id",
+    "name": "Push Day",
+    "exercises": [/* original exercises */]
+  }
+}
+```
+
+**Async Processing Flow:**
+1. **Immediate Return**: API returns immediately with `success: true` and processing message
+2. **Background Processing**: AI analysis, workout updates, and database storage happen asynchronously  
+3. **Status Tracking**: Results are stored and can be queried via the List AI Progressive Overload Responses endpoint
+4. **Error Handling**: Any errors during async processing are captured and stored with `success: false`
+
+**To Check Processing Status and Results:**
+Use the List AI Progressive Overload Responses endpoint below to monitor the status and retrieve results of your async AI analysis.
+
+**Benefits of Async Processing:**
+- **Non-blocking**: API responds immediately without waiting for AI processing
+- **Better UX**: Frontend can show immediate feedback and poll for results
+- **Reliability**: Long-running AI analysis doesn't risk request timeouts
+- **Scalability**: Server can handle multiple concurrent AI requests efficiently
 
 **List AI Progressive Overload Responses**
 ```

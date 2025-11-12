@@ -26,15 +26,14 @@ export default function ProfileTab() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Typography variant="heading-large" color="contentPrimary" style={styles.title}>
-            Profile
-          </Typography>
-        
-        </View>
+      {/* App Bar */}
+      <View style={styles.appBar}>
+        <Typography variant="heading-xsmall" color="contentPrimary">
+          Profile
+        </Typography>
+      </View>
 
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* User Profile Card */}
         <View style={styles.section}>
           <View style={styles.profileHeader}>
@@ -42,10 +41,10 @@ export default function ProfileTab() {
               <Image source={{ uri: user.picture }} style={styles.avatar} />
             )}
             <View style={styles.userInfo}>
-              <Typography variant="heading-medium" color="contentPrimary" style={styles.userName}>
+              <Typography variant="label-medium" color="contentPrimary" style={styles.userName}>
                 {user.name}
               </Typography>
-              <Typography variant="paragraph-medium" color="contentSecondary">
+              <Typography variant="label-small" color="contentSecondary">
                 {user.email}
               </Typography>
             </View>
@@ -71,21 +70,24 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getColor('backgroundSecondary'),
+    backgroundColor: getColor('backgroundPrimary'),
   },
   scrollView: {
     flex: 1,
   },
-  header: {
+  appBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  title: {
-    marginBottom: 8,
+    paddingVertical: 12,
+    backgroundColor: getColor('backgroundPrimary'),
+    borderBottomWidth: 1,
+    borderBottomColor: getColor('borderOpaque'),
   },
   section: {
     paddingHorizontal: 16,
+    paddingTop: 24,
     marginBottom: 24,
   },
   profileHeader: {

@@ -773,9 +773,9 @@ func (s *WorkoutSessionService) UpdateExerciseInAllUserWorkouts(ctx context.Cont
 }
 
 // ApplyAIProgressiveOverload applies progressive overload using AI analysis of the workout session
+// This method now runs asynchronously - it immediately returns a response indicating processing has started,
+// then performs the AI analysis and updates in a background goroutine
 func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, req *pb.ApplyProgressiveOverloadRequest) (*pb.ApplyProgressiveOverloadResponse, error) {
-	startTime := time.Now()
-
 	if req.SessionId == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
@@ -783,23 +783,21 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 		return nil, status.Error(codes.InvalidArgument, "workout_id is required")
 	}
 
-	log.Printf("ApplyAIProgressiveOverload: Starting for session %s, workout %s", req.SessionId, req.WorkoutId)
+	log.Printf("ApplyAIProgressiveOverload: Starting async processing for session %s, workout %s", req.SessionId, req.WorkoutId)
 
-	// Get the workout session
+	// Validate inputs before starting async processing
 	sessionReq := &pb.GetWorkoutSessionRequest{Id: req.SessionId}
 	session, err := s.GetWorkoutSession(ctx, sessionReq)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "workout session not found: %v", err)
 	}
 
-	// Get the workout/routine
 	workoutReq := &pb.GetWorkoutRequest{Id: req.WorkoutId}
 	workout, err := s.workoutService.GetWorkout(ctx, workoutReq)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "workout not found: %v", err)
 	}
 
-	// Get user profile
 	userReq := &pb.GetUserRequest{Id: session.UserId}
 	user, err := s.userService.GetUser(ctx, userReq)
 	if err != nil {
@@ -807,23 +805,46 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 		return nil, status.Errorf(codes.NotFound, "user not found: %v", err)
 	}
 
-	log.Printf("ApplyAIProgressiveOverload: User goal: %s", user.Goal)
+	// Store initial "processing" response to indicate work has started
+	startTime := time.Now()
+	processingMessage := "AI progressive overload analysis started. Processing in background..."
+	err = s.storeAIProgressiveOverloadResponse(ctx, session, workout, "", nil, false, processingMessage, 0, 0)
+	if err != nil {
+		log.Printf("ApplyAIProgressiveOverload: Failed to store initial processing response: %v", err)
+		// Don't fail the request if storage fails, just log the error
+	}
+
+	// Start background processing
+	go s.processAIProgressiveOverloadAsync(session, workout, user, startTime)
+
+	// Return immediate response
+	return &pb.ApplyProgressiveOverloadResponse{
+		Success:        true,
+		Message:        processingMessage,
+		UpdatedWorkout: workout, // Return original workout since processing is async
+	}, nil
+}
+
+// processAIProgressiveOverloadAsync handles the actual AI processing in the background
+func (s *WorkoutSessionService) processAIProgressiveOverloadAsync(session *pb.WorkoutSession, workout *pb.Workout, user *pb.User, startTime time.Time) {
+	// Create a background context for the async operation
+	ctx := context.Background()
+
+	log.Printf("processAIProgressiveOverloadAsync: Starting AI generation for session %s", session.Id)
 
 	// Generate AI recommendations
-	log.Printf("ApplyAIProgressiveOverload: Generating AI recommendations")
 	updatedExercises, analysisSummary, recentSessionsCount, err := s.generateAIProgressiveOverload(ctx, user, session, workout)
 	if err != nil {
-		log.Printf("ApplyAIProgressiveOverload: Failed to generate AI recommendations: %v", err)
+		log.Printf("processAIProgressiveOverloadAsync: Failed to generate AI recommendations: %v", err)
 
 		// Store failed response
 		processingTime := time.Since(startTime).Milliseconds()
 		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, "", nil, false, fmt.Sprintf("Failed to generate AI recommendations: %v", err), 0, processingTime)
-
-		return nil, status.Errorf(codes.Internal, "failed to generate AI recommendations: %v", err)
+		return
 	}
 
-	log.Printf("ApplyAIProgressiveOverload: AI analysis: %s", analysisSummary)
-	log.Printf("ApplyAIProgressiveOverload: Generated %d updated exercises", len(updatedExercises))
+	log.Printf("processAIProgressiveOverloadAsync: AI analysis: %s", analysisSummary)
+	log.Printf("processAIProgressiveOverloadAsync: Generated %d updated exercises", len(updatedExercises))
 
 	successMessage := "AI progressive overload applied successfully to all user workouts - " + analysisSummary
 
@@ -833,16 +854,11 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 		// Store no-changes response
 		processingTime := time.Since(startTime).Milliseconds()
 		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, analysisSummary, nil, true, successMessage, recentSessionsCount, processingTime)
-
-		return &pb.ApplyProgressiveOverloadResponse{
-			Success:        true,
-			Message:        successMessage,
-			UpdatedWorkout: workout,
-		}, nil
+		return
 	}
 
 	// Apply the AI recommendations to all user workouts containing these exercises
-	log.Printf("ApplyAIProgressiveOverload: Applying AI recommendations to all user workouts")
+	log.Printf("processAIProgressiveOverloadAsync: Applying AI recommendations to all user workouts")
 
 	// Group updated exercises by exercise ID for batch updates
 	exerciseUpdates := make(map[string]*pb.WorkoutExercise)
@@ -855,10 +871,10 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 	for exerciseID, updatedExercise := range exerciseUpdates {
 		err := s.UpdateExerciseInAllUserWorkouts(ctx, session.UserId, exerciseID, updatedExercise.Sets, updatedExercise.Notes, updatedExercise.RestSeconds)
 		if err != nil {
-			log.Printf("ApplyAIProgressiveOverload: Failed to update exercise %s across all workouts: %v", exerciseID, err)
+			log.Printf("processAIProgressiveOverloadAsync: Failed to update exercise %s across all workouts: %v", exerciseID, err)
 			updateErrors = append(updateErrors, fmt.Sprintf("Exercise %s: %v", exerciseID, err))
 		} else {
-			log.Printf("ApplyAIProgressiveOverload: Successfully updated exercise %s across all user workouts", exerciseID)
+			log.Printf("processAIProgressiveOverloadAsync: Successfully updated exercise %s across all user workouts", exerciseID)
 		}
 	}
 
@@ -869,14 +885,13 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 		// Store partial failure response
 		processingTime := time.Since(startTime).Milliseconds()
 		_ = s.storeAIProgressiveOverloadResponse(ctx, session, workout, analysisSummary, updatedExercises, false, errorMessage, recentSessionsCount, processingTime)
-
-		return nil, status.Errorf(codes.Internal, "failed to update some exercises: %s", errorMessage)
+		return
 	}
 
-	// Get the updated workout to return (the original workout should now be updated)
-	updatedWorkout, err := s.workoutService.GetWorkout(ctx, &pb.GetWorkoutRequest{Id: req.WorkoutId})
+	// Get the updated workout to store in the response
+	updatedWorkout, err := s.workoutService.GetWorkout(ctx, &pb.GetWorkoutRequest{Id: workout.Id})
 	if err != nil {
-		log.Printf("ApplyAIProgressiveOverload: Failed to fetch updated workout: %v", err)
+		log.Printf("processAIProgressiveOverloadAsync: Failed to fetch updated workout: %v", err)
 		// Still consider this a success since the updates were applied
 		updatedWorkout = workout
 		updatedWorkout.Exercises = updatedExercises
@@ -886,17 +901,10 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 	processingTime := time.Since(startTime).Milliseconds()
 	err = s.storeAIProgressiveOverloadResponse(ctx, session, updatedWorkout, analysisSummary, updatedExercises, true, successMessage, recentSessionsCount, processingTime)
 	if err != nil {
-		log.Printf("ApplyAIProgressiveOverload: Failed to store AI response: %v", err)
-		// Don't fail the request if storage fails, just log the error
+		log.Printf("processAIProgressiveOverloadAsync: Failed to store AI response: %v", err)
 	}
 
-	log.Printf("ApplyAIProgressiveOverload: Successfully applied AI recommendations")
-
-	return &pb.ApplyProgressiveOverloadResponse{
-		Success:        true,
-		Message:        successMessage,
-		UpdatedWorkout: updatedWorkout,
-	}, nil
+	log.Printf("processAIProgressiveOverloadAsync: Successfully completed AI recommendations processing")
 }
 
 // generateAIProgressiveOverload uses Gemini AI to generate progressive overload recommendations
