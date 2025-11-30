@@ -2,45 +2,13 @@
   "expo": {
     "name": "RepTracker",
     "slug": "frontend-native",
+    "scheme": "reptracker",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "gymlog",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.blaize.gymlog"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.blaize.gymlog"
-    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-web-browser",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.973367800029-a3qja41dtg1usapkbii3aopr7cpl6qdk"
-        }
-      ],
-      "expo-router",
-      "expo-font"
-    ],
     "sdkVersion": "53.0.0",
-    "entryPoint": ".vscode/exponentIndex.js",
     "extra": {
       "eas": {
         "projectId": "160f751a-2d29-4613-a35f-917da6e034fe"
