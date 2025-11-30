@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography, Button } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useRouter, useLocalSearchParams } from 'expo-router';

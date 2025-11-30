@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   Image,
   ScrollView,
   Alert,
   TouchableOpacity,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Typography, Button, RoutineCard } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
