@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   Pressable,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Typography, Button, getColor, ExerciseHistory, type SemanticColor } from '../src/components';
 import { useAuth } from '../src/hooks/useAuth';

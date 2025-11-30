@@ -2,10 +2,10 @@ import React from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
