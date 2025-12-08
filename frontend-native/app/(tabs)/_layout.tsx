@@ -28,7 +28,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'home-sharp' : 'home-outline'} 
-              color={color} 
+              color={color || getColor(focused ? 'accent' : 'contentSecondary')} 
               size={24} 
             />
           ),
@@ -42,7 +42,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'bulb' : 'bulb-outline'} 
-              color={color} 
+              color={color || getColor(focused ? 'accent' : 'contentSecondary')} 
               size={24} 
             />
           ),
@@ -56,7 +56,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'person' : 'person-outline'} 
-              color={color} 
+              color={color || getColor(focused ? 'accent' : 'contentSecondary')} 
               size={24} 
             />
           ),

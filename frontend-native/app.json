@@ -22,6 +22,14 @@
     "updates": {
       "url": "https://u.expo.dev/160f751a-2d29-4613-a35f-917da6e034fe"
     },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.973367800029-qmbs0f3kvsa4v383tsrt34d8aedv24vl"
+        }
+      ]
+    ],
     "android": {},
     "ios": {}
   },

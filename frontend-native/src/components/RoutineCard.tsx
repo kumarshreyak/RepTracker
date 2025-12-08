@@ -89,7 +89,7 @@ export const RoutineCard: React.FC<RoutineCardProps> = ({
             <MaterialIcons 
               name="edit" 
               size={20} 
-              color={getColor('contentSecondary')} 
+              color={getColor('contentPrimary')} 
             />
           </Pressable>
           
@@ -110,7 +110,7 @@ export const RoutineCard: React.FC<RoutineCardProps> = ({
           >
             <MaterialIcons 
               name="play-arrow" 
-              size={16} 
+              size={20} 
               color={getColor('contentOnColor')} 
             />
           </Pressable>
@@ -145,13 +145,15 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 8,
-    minWidth: 32,
+    minWidth: 36,
+    minHeight: 36,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   playButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: getColor('backgroundAccent'),
     justifyContent: 'center',
     alignItems: 'center',
