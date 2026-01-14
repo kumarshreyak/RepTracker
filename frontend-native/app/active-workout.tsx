@@ -17,6 +17,7 @@ import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Exercise, WorkoutSet, WorkoutExercise, ActiveWorkout } from '@/types/exercise';
+import { apiGet, apiPost, apiPut } from '../src/utils/api';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = 260;
@@ -119,37 +120,17 @@ export default function ActiveWorkoutScreen() {
       setLoading(true);
       setError(null);
 
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      const routineData = await apiGet<any>(`/api/workouts/${routineId}/start`);
       
-      const routineResponse = await fetch(`${API_BASE_URL}/api/workouts/${routineId}/start`);
-      
-      if (!routineResponse.ok) {
-        throw new Error('Failed to load routine');
-      }
-
-      const routineData = await routineResponse.json();
-      
+      // Note: userId is no longer needed in request body - backend gets it from auth context
       const sessionData = {
-        userId: user?.id,
         routineId: routineData.id,
         name: `${routineData.name} - ${new Date().toLocaleDateString()}`,
         description: `Active workout session for ${routineData.name}`,
         notes: '',
       };
 
-      const sessionResponse = await fetch(`${API_BASE_URL}/api/workout-sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(sessionData),
-      });
-
-      if (!sessionResponse.ok) {
-        throw new Error('Failed to create workout session');
-      }
-
-      const sessionResult = await sessionResponse.json();
+      const sessionResult = await apiPost<any>('/api/workout-sessions', sessionData);
       
       const workout: ActiveWorkout = {
         sessionId: sessionResult.id,
@@ -228,8 +209,6 @@ export default function ActiveWorkoutScreen() {
     }
 
     try {
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      
       const updateData = {
         actualReps: currentSet.actualReps,
         actualWeight: currentSet.actualWeight,
@@ -239,20 +218,10 @@ export default function ActiveWorkoutScreen() {
         completed: newCompletedState,
       };
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/sets/${setIndex}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updateData),
-        }
+      await apiPut(
+        `/api/workout-sessions/${activeWorkout.sessionId}/exercises/${exerciseIndex}/sets/${setIndex}`,
+        updateData
       );
-
-      if (!response.ok) {
-        console.error('Failed to update set in backend');
-      }
     } catch (error) {
       console.error('Error updating set:', error);
     }
@@ -338,36 +307,16 @@ export default function ActiveWorkoutScreen() {
         notes: activeWorkout.notes || `Completed ${activeWorkout.exercises.filter(ex => ex.completed).length}/${activeWorkout.exercises.length} exercises`,
       };
 
-      const updateResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update workout session');
-      }
+      await apiPut(`/api/workout-sessions/${activeWorkout.sessionId}`, updateData);
 
       // Apply progressive overload after successfully updating the session
       if (activeWorkout.routineId) {
         try {
-          const progressiveOverloadResponse = await fetch(`${API_BASE_URL}/api/workout-sessions/${activeWorkout.sessionId}/progressive-overload/ai`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              workoutId: activeWorkout.routineId,
-            }),
-          });
-
-          if (!progressiveOverloadResponse.ok) {
-            console.warn('Progressive overload failed, but workout was saved successfully');
-          } else {
-            console.log('Progressive overload applied successfully');
-          }
+          await apiPost(
+            `/api/workout-sessions/${activeWorkout.sessionId}/progressive-overload/ai`,
+            { workoutId: activeWorkout.routineId }
+          );
+          console.log('Progressive overload applied successfully');
         } catch (progressiveOverloadError) {
           console.warn('Progressive overload error:', progressiveOverloadError);
           // Don't throw here - workout was saved successfully, progressive overload is optional
@@ -642,7 +591,6 @@ export default function ActiveWorkoutScreen() {
         {currentExercise.exerciseId && user?.id && (
           <ExerciseHistory 
             exerciseId={currentExercise.exerciseId}
-            userId={user.id}
             exerciseName={currentExercise.exercise?.name}
           />
         )}

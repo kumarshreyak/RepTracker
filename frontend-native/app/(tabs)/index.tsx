@@ -13,7 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Typography, Button, RoutineCard } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
-import { authService, User } from '../../src/auth/AuthService';
+import { apiGet, apiDelete } from '../../src/utils/api';
 
 interface Routine {
   id: string;
@@ -88,16 +88,7 @@ export default function HomeTab() {
       setLoading(true);
       setError(null);
       
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-      const url = `${API_BASE_URL}/api/workouts?userId=${user.id}`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch routines");
-      }
-      
+      const data = await apiGet<{ workouts: Routine[] }>('/api/workouts');
       setRoutines(data.workouts || []);
     } catch (err) {
       console.error("[fetchRoutines] Error caught:", err);
@@ -124,19 +115,9 @@ export default function HomeTab() {
       setWorkoutsLoading(true);
       setWorkoutsError(null);
       
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      // Fetch completed workout sessions (not active ones) ordered by most recent
-      const url = `${API_BASE_URL}/api/workout-sessions?userId=${user.id}&pageSize=${pageSize}&activeOnly=false`;
-      console.log('[fetchPastWorkouts] URL:', url);
-      
-      const response = await fetch(url);
-      console.log('[fetchPastWorkouts] Response received - Status:', response.status);
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch past workouts");
-      }
+      const data = await apiGet<{ sessions: WorkoutSession[]; nextPageToken?: string }>(
+        `/api/workout-sessions?pageSize=${pageSize}&activeOnly=false`
+      );
       
       const fetchedSessions = data.sessions || [];
       // Filter out active sessions and only show completed ones
@@ -196,20 +177,7 @@ export default function HomeTab() {
 
   const handleDeleteRoutine = async (routineId: string) => {
     try {
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
-      const url = `${API_BASE_URL}/api/workouts/${routineId}`;
-      
-      const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to delete routine: ${errorText}`);
-      }
+      await apiDelete(`/api/workouts/${routineId}`);
 
       // Remove the routine from local state
       setRoutines(prevRoutines => prevRoutines.filter(routine => routine.id !== routineId));

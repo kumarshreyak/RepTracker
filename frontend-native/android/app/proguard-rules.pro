@@ -39,3 +39,4 @@
 -keepattributes Signature
 -keepattributes SourceFile,LineNumberTable
 -keep public interface com.google.android.gms.common.api.Api$ApiOptions { *; }
+

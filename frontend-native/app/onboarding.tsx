@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Typography, Button, Input } from '../src/components';
 import { getColor } from '../src/components/Colors';
-import { authService } from '../src/auth/AuthService';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { userService } from '../src/auth/UserService';
 
 // Goal options with icons (matching backend constants)
@@ -22,6 +22,8 @@ const GOALS = [
 ];
 
 export default function OnboardingRoute() {
+  const { getToken } = useAuth();
+  const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   
   // Form state
@@ -77,24 +79,32 @@ export default function OnboardingRoute() {
         : parseFloat(weight) * 0.453592;
 
       // Update user profile via API
-      const user = authService.getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
+
+      const sessionToken = await getToken();
+      if (!sessionToken) {
+        throw new Error('No session token available');
+      }
       
       const userData = {
+        email: user.primaryEmailAddress?.emailAddress || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         height: heightInCm,
         weight: weightInKg,
         age: parseInt(age),
         goal: goal,
+        picture: user.imageUrl || '',
       };
 
       console.log('Submitting user data:', userData);
       
-      const success = await userService.updateUserProfile(user.id, userData);
+      const success = await userService.createOrUpdateUserProfile(user.id, userData, sessionToken);
       
       if (!success) {
-        throw new Error('Failed to update user profile');
+        throw new Error('Failed to create or update user profile');
       }
       
       // Navigate to main app

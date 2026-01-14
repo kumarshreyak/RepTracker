@@ -14,6 +14,7 @@ import { Typography, Button, Input } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
 import { RoutineExercise, RoutineSet } from '@/types/exercise';
+import { apiGet, apiPost, apiPut } from '../src/utils/api';
 
 // Workout interface for API responses
 interface Workout {
@@ -71,14 +72,7 @@ export default function CreateRoutineRoute() {
     console.log('🔄 fetchExistingRoutine: Starting fetch for routineId:', id);
     try {
       setInitialDataLoading(true);
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_BASE_URL}/api/workouts/${id}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch routine');
-      }
-      
-      const workout: Workout = await response.json();
+      const workout: Workout = await apiGet<Workout>(`/api/workouts/${id}`);
       console.log('📦 fetchExistingRoutine: Received workout data:', JSON.stringify(workout, null, 2));
       
       // Set routine name
@@ -90,45 +84,25 @@ export default function CreateRoutineRoute() {
         workout.exercises.map(async (ex) => {
           try {
             // Fetch detailed exercise data from the exercise API
-            const exerciseResponse = await fetch(`${API_BASE_URL}/api/exercises/${ex.exerciseId}`);
+            const exerciseData = await apiGet<any>(`/api/exercises/${ex.exerciseId}`);
+            console.log(`📦 fetchExistingRoutine: Fetched exercise ${ex.exerciseId}:`, exerciseData.name);
             
-            if (exerciseResponse.ok) {
-              const exerciseData = await exerciseResponse.json();
-              console.log(`📦 fetchExistingRoutine: Fetched exercise ${ex.exerciseId}:`, exerciseData.name);
-              
-              return {
-                id: ex.exerciseId,
-                name: exerciseData.name,
-                primaryMuscles: exerciseData.primaryMuscles || [],
-                secondaryMuscles: exerciseData.secondaryMuscles || [],
-                sets: ex.sets.map(set => ({
-                  reps: set.reps,
-                  weight: set.weight,
-                  durationSeconds: set.durationSeconds,
-                  distance: set.distance,
-                  notes: set.notes,
-                }))
-              };
-            } else {
-              // Fallback to workout data if exercise API fails
-              console.warn(`⚠️ fetchExistingRoutine: Failed to fetch exercise ${ex.exerciseId}, using fallback data`);
-              return {
-                id: ex.exerciseId,
-                name: ex.exercise?.name || `Exercise ${ex.exerciseId}`,
-                primaryMuscles: ex.exercise?.primaryMuscles || [],
-                secondaryMuscles: ex.exercise?.secondaryMuscles || [],
-                sets: ex.sets.map(set => ({
-                  reps: set.reps,
-                  weight: set.weight,
-                  durationSeconds: set.durationSeconds,
-                  distance: set.distance,
-                  notes: set.notes,
-                }))
-              };
-            }
+            return {
+              id: ex.exerciseId,
+              name: exerciseData.name,
+              primaryMuscles: exerciseData.primaryMuscles || [],
+              secondaryMuscles: exerciseData.secondaryMuscles || [],
+              sets: ex.sets.map(set => ({
+                reps: set.reps,
+                weight: set.weight,
+                durationSeconds: set.durationSeconds,
+                distance: set.distance,
+                notes: set.notes,
+              }))
+            };
           } catch (error) {
-            console.error(`❌ fetchExistingRoutine: Error fetching exercise ${ex.exerciseId}:`, error);
             // Fallback to workout data if exercise API fails
+            console.warn(`⚠️ fetchExistingRoutine: Failed to fetch exercise ${ex.exerciseId}, using fallback data`);
             return {
               id: ex.exerciseId,
               name: ex.exercise?.name || `Exercise ${ex.exerciseId}`,
@@ -186,63 +160,32 @@ export default function CreateRoutineRoute() {
 
     const fetchQuickAddExercises = async () => {
       console.log('🏋️ fetchQuickAddExercises: Starting fetch process');
-      console.log('👤 fetchQuickAddExercises: User object:', user);
-      console.log('🆔 fetchQuickAddExercises: User ID:', user?.id);
       
       try {
-        const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-        console.log('🌐 fetchQuickAddExercises: API_BASE_URL:', API_BASE_URL);
-        
-        const url = new URL(`${API_BASE_URL}/api/exercises/quick-add`);
-        if (user?.id) {
-          url.searchParams.append('userId', user.id);
-          console.log('✅ fetchQuickAddExercises: Added userId to URL');
-        } else {
-          console.log('⚠️ fetchQuickAddExercises: No user ID available, fetching default exercises');
-        }
-        url.searchParams.append('limit', '5');
-        
-        const finalUrl = url.toString();
-        console.log('📡 fetchQuickAddExercises: Making request to:', finalUrl);
+        // User ID is now handled by authentication, no need to pass it as query param
+        const endpoint = '/api/exercises/quick-add?limit=5';
+        console.log('📡 fetchQuickAddExercises: Making request to:', endpoint);
 
-        const response = await fetch(finalUrl);
-        console.log('📥 fetchQuickAddExercises: Response received:', {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok,
-          headers: Object.fromEntries(response.headers.entries()),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('📦 fetchQuickAddExercises: Raw response data:', JSON.stringify(data, null, 2));
-          
-          if (data.exercises && Array.isArray(data.exercises)) {
-            const quickAddData = data.exercises.map((exercise: any) => ({
-              id: exercise.id,
-              name: exercise.name,
-              primaryMuscles: exercise.primaryMuscles || [],
-              secondaryMuscles: exercise.secondaryMuscles || [],
-              sets: [
-                { reps: 10, weight: 0 },
-                { reps: 10, weight: 0 },
-                { reps: 10, weight: 0 }
-              ]
-            }));
-            console.log('🔧 fetchQuickAddExercises: Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
-            setQuickAddExercises(quickAddData);
-            console.log('✅ fetchQuickAddExercises: Successfully set quick add exercises');
-          } else {
-            console.log('⚠️ fetchQuickAddExercises: No exercises array in response or invalid format');
-            setQuickAddExercises([]);
-          }
+        const data = await apiGet<{ exercises: any[] }>(endpoint);
+        console.log('📦 fetchQuickAddExercises: Raw response data:', JSON.stringify(data, null, 2));
+        
+        if (data.exercises && Array.isArray(data.exercises)) {
+          const quickAddData = data.exercises.map((exercise: any) => ({
+            id: exercise.id,
+            name: exercise.name,
+            primaryMuscles: exercise.primaryMuscles || [],
+            secondaryMuscles: exercise.secondaryMuscles || [],
+            sets: [
+              { reps: 10, weight: 0 },
+              { reps: 10, weight: 0 },
+              { reps: 10, weight: 0 }
+            ]
+          }));
+          console.log('🔧 fetchQuickAddExercises: Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
+          setQuickAddExercises(quickAddData);
+          console.log('✅ fetchQuickAddExercises: Successfully set quick add exercises');
         } else {
-          const errorText = await response.text();
-          console.error('❌ fetchQuickAddExercises: Response not ok:', {
-            status: response.status,
-            statusText: response.statusText,
-            errorBody: errorText,
-          });
+          console.log('⚠️ fetchQuickAddExercises: No exercises array in response or invalid format');
           setQuickAddExercises([]);
         }
       } catch (error) {
@@ -299,63 +242,32 @@ export default function CreateRoutineRoute() {
 
       const fetchQuickAddExercises = async () => {
         console.log('🔄 fetchQuickAddExercises (focus): Starting fetch process');
-        console.log('👤 fetchQuickAddExercises (focus): User object:', user);
-        console.log('🆔 fetchQuickAddExercises (focus): User ID:', user?.id);
         
         try {
-          const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-          console.log('🌐 fetchQuickAddExercises (focus): API_BASE_URL:', API_BASE_URL);
-          
-          const url = new URL(`${API_BASE_URL}/api/exercises/quick-add`);
-          if (user?.id) {
-            url.searchParams.append('userId', user.id);
-            console.log('✅ fetchQuickAddExercises (focus): Added userId to URL');
-          } else {
-            console.log('⚠️ fetchQuickAddExercises (focus): No user ID available, fetching default exercises');
-          }
-          url.searchParams.append('limit', '5');
-          
-          const finalUrl = url.toString();
-          console.log('📡 fetchQuickAddExercises (focus): Making request to:', finalUrl);
+          // User ID is now handled by authentication, no need to pass it as query param
+          const endpoint = '/api/exercises/quick-add?limit=5';
+          console.log('📡 fetchQuickAddExercises (focus): Making request to:', endpoint);
 
-          const response = await fetch(finalUrl);
-          console.log('📥 fetchQuickAddExercises (focus): Response received:', {
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok,
-            headers: Object.fromEntries(response.headers.entries()),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log('📦 fetchQuickAddExercises (focus): Raw response data:', JSON.stringify(data, null, 2));
-            
-            if (data.exercises && Array.isArray(data.exercises)) {
-              const quickAddData = data.exercises.map((exercise: any) => ({
-                id: exercise.id,
-                name: exercise.name,
-                primaryMuscles: exercise.primaryMuscles || [],
-                secondaryMuscles: exercise.secondaryMuscles || [],
-                sets: [
-                  { reps: 10, weight: 0 },
-                  { reps: 10, weight: 0 },
-                  { reps: 10, weight: 0 }
-                ]
-              }));
-              console.log('🔧 fetchQuickAddExercises (focus): Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
-              setQuickAddExercises(quickAddData);
-              console.log('✅ fetchQuickAddExercises (focus): Successfully set quick add exercises');
-            } else {
-              console.log('⚠️ fetchQuickAddExercises (focus): No exercises array in response or invalid format');
-              setQuickAddExercises([]);
-            }
+          const data = await apiGet<{ exercises: any[] }>(endpoint);
+          console.log('📦 fetchQuickAddExercises (focus): Raw response data:', JSON.stringify(data, null, 2));
+          
+          if (data.exercises && Array.isArray(data.exercises)) {
+            const quickAddData = data.exercises.map((exercise: any) => ({
+              id: exercise.id,
+              name: exercise.name,
+              primaryMuscles: exercise.primaryMuscles || [],
+              secondaryMuscles: exercise.secondaryMuscles || [],
+              sets: [
+                { reps: 10, weight: 0 },
+                { reps: 10, weight: 0 },
+                { reps: 10, weight: 0 }
+              ]
+            }));
+            console.log('🔧 fetchQuickAddExercises (focus): Transformed quick add data:', JSON.stringify(quickAddData, null, 2));
+            setQuickAddExercises(quickAddData);
+            console.log('✅ fetchQuickAddExercises (focus): Successfully set quick add exercises');
           } else {
-            const errorText = await response.text();
-            console.error('❌ fetchQuickAddExercises (focus): Response not ok:', {
-              status: response.status,
-              statusText: response.statusText,
-              errorBody: errorText,
-            });
+            console.log('⚠️ fetchQuickAddExercises (focus): No exercises array in response or invalid format');
             setQuickAddExercises([]);
           }
         } catch (error) {
@@ -453,8 +365,8 @@ export default function CreateRoutineRoute() {
       routineId,
     });
 
-    // Check if user_id is in proper MongoDB ObjectID format (24 characters)
-    const isValidUserId = user?.id && typeof user.id === 'string' && user.id.length === 24;
+    // Validate that we have a user ID (Clerk ID format: user_xxxxx)
+    const isValidUserId = user?.id && typeof user.id === 'string' && user.id.length > 0;
     
     if (!routineName.trim() || exercises.length === 0 || !user?.id || !isValidUserId) {
       console.log(`❌ handleSaveRoutine: Validation failed:`, {
@@ -511,58 +423,29 @@ export default function CreateRoutineRoute() {
 
       if (isEditing) {
         // Update existing routine
-        url = `${API_BASE_URL}/api/workouts/${routineId}`;
-        method = 'PUT';
         requestData = {
           name: routineName,
           description: `Workout routine with ${exercises.length} exercises`,
           exercises: workoutExercises,
           notes: "",
         };
+        console.log(`📦 handleSaveRoutine: Final ${actionName} data:`, JSON.stringify(requestData, null, 2));
+        const result = await apiPut(`/api/workouts/${routineId}`, requestData);
+        console.log(`✅ handleSaveRoutine: Routine ${actionName}d successfully:`, JSON.stringify(result, null, 2));
       } else {
         // Create new routine
-        url = `${API_BASE_URL}/api/workouts`;
-        method = 'POST';
+        // Note: userId is no longer needed in request body - backend gets it from auth context
         requestData = {
-          userId: user.id,
           name: routineName,
           description: `Workout routine with ${exercises.length} exercises`,
           exercises: workoutExercises,
           startedAt: null,
           notes: "",
         };
+        console.log(`📦 handleSaveRoutine: Final ${actionName} data:`, JSON.stringify(requestData, null, 2));
+        const result = await apiPost('/api/workouts', requestData);
+        console.log(`✅ handleSaveRoutine: Routine ${actionName}d successfully:`, JSON.stringify(result, null, 2));
       }
-
-      console.log(`📦 handleSaveRoutine: Final ${actionName} data:`, JSON.stringify(requestData, null, 2));
-      console.log(`🌐 handleSaveRoutine: Making API request to:`, url);
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      console.log('📡 handleSaveRoutine: Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ handleSaveRoutine: Response not ok:`, {
-          status: response.status,
-          statusText: response.statusText,
-          errorBody: errorText,
-        });
-        throw new Error(`Failed to ${actionName} routine: ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log(`✅ handleSaveRoutine: Routine ${actionName}d successfully:`, JSON.stringify(result, null, 2));
 
       // Clear AsyncStorage after successful save (both create and edit modes)
       console.log('🗑️ handleSaveRoutine: Clearing AsyncStorage');

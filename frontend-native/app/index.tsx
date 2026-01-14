@@ -1,15 +1,65 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { router, Redirect } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useAuthAndProfile } from '../src/hooks/useAuthAndProfile';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { getColor } from '../src/components/Colors';
+import { userService } from '../src/auth/UserService';
 
 export default function Index() {
-  const { isLoading, isAuthenticated, needsOnboarding } = useAuthAndProfile();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { user } = useUser();
+  const [isCheckingProfile, setIsCheckingProfile] = useState(false);
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
 
-  // Show loading screen while checking authentication and profile
-  if (isLoading) {
+  // Check user profile when signed in
+  useEffect(() => {
+    async function checkUserProfile() {
+      if (!isLoaded) {
+        // Wait for Clerk to load
+        return;
+      }
+
+      if (!isSignedIn || !user) {
+        // Not signed in, let the redirect handle it
+        setProfileComplete(null);
+        return;
+      }
+
+      setIsCheckingProfile(true);
+      try {
+        const token = await getToken();
+        if (!token) {
+          console.error('No token available');
+          setProfileComplete(false);
+          return;
+        }
+
+        const userProfile = await userService.getUserProfile(user.id, token);
+        
+        if (!userProfile) {
+          // User profile not found, needs onboarding
+          setProfileComplete(false);
+          return;
+        }
+
+        // Check if profile is complete (has height, weight, age, goal)
+        const isComplete = userService.isProfileComplete(userProfile);
+        setProfileComplete(isComplete);
+      } catch (error) {
+        console.error('Error checking user profile:', error);
+        // On error, assume profile is incomplete and send to onboarding
+        setProfileComplete(false);
+      } finally {
+        setIsCheckingProfile(false);
+      }
+    }
+
+    checkUserProfile();
+  }, [isLoaded, isSignedIn, user?.id]);
+
+  // Show loading screen while checking authentication or profile
+  if (!isLoaded || (isSignedIn && isCheckingProfile)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={getColor('accent')} />
@@ -18,14 +68,27 @@ export default function Index() {
     );
   }
 
-  // Redirect based on authentication and profile state
-  if (!isAuthenticated) {
+  // Redirect based on authentication state
+  if (!isSignedIn) {
     return <Redirect href="/(auth)/sign-in" />;
-  } else if (needsOnboarding) {
+  }
+
+  // Redirect based on profile completion
+  if (profileComplete === false) {
     return <Redirect href="/onboarding" />;
-  } else {
+  }
+
+  if (profileComplete === true) {
     return <Redirect href="/(tabs)" />;
   }
+
+  // Still checking profile, show loading
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={getColor('accent')} />
+      <StatusBar style="auto" />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

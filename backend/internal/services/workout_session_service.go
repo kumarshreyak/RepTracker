@@ -805,19 +805,12 @@ func (s *WorkoutSessionService) ApplyAIProgressiveOverload(ctx context.Context, 
 		return nil, status.Errorf(codes.NotFound, "user not found: %v", err)
 	}
 
-	// Store initial "processing" response to indicate work has started
-	startTime := time.Now()
-	processingMessage := "AI progressive overload analysis started. Processing in background..."
-	err = s.storeAIProgressiveOverloadResponse(ctx, session, workout, "", nil, false, processingMessage, 0, 0)
-	if err != nil {
-		log.Printf("ApplyAIProgressiveOverload: Failed to store initial processing response: %v", err)
-		// Don't fail the request if storage fails, just log the error
-	}
-
 	// Start background processing
+	startTime := time.Now()
 	go s.processAIProgressiveOverloadAsync(session, workout, user, startTime)
 
 	// Return immediate response
+	processingMessage := "AI progressive overload analysis started. Processing in background..."
 	return &pb.ApplyProgressiveOverloadResponse{
 		Success:        true,
 		Message:        processingMessage,

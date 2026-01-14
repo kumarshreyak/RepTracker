@@ -12,6 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography, Button, getColor, ExerciseHistory, type SemanticColor } from '../src/components';
 import { useAuth } from '../src/hooks/useAuth';
 import { MaterialIcons } from '@expo/vector-icons';
+import { apiGet } from '../src/utils/api';
 
 interface WorkoutSessionSet {
   targetReps: number;
@@ -79,14 +80,7 @@ export default function WorkoutDetailScreen() {
       setLoading(true);
       setError(null);
       
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_BASE_URL}/api/workout-sessions/${id}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch workout details');
-      }
-      
-      const data = await response.json();
+      const data = await apiGet<any>(`/api/workout-sessions/${id}`);
       
       // Use the correct property or the data directly if it contains the workout
       const workoutData = data.session || data.workout || data.workoutSession || (data.id ? data : null);
@@ -410,7 +404,6 @@ export default function WorkoutDetailScreen() {
                 <View style={styles.exerciseHistoryContainer}>
                   <ExerciseHistory
                     exerciseId={exercise.exerciseId}
-                    userId={user.id}
                     exerciseName={exercise.exercise?.name}
                   />
                 </View>

@@ -8,9 +8,9 @@ import (
 
 type User struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	ClerkID   string             `bson:"clerk_id" json:"clerk_id"` // Clerk user ID
 	Email     string             `bson:"email" json:"email"`
 	Name      string             `bson:"name" json:"name"`
-	GoogleID  string             `bson:"google_id,omitempty" json:"google_id,omitempty"`
 	Picture   string             `bson:"picture,omitempty" json:"picture,omitempty"`
 	Height    float64            `bson:"height,omitempty" json:"height,omitempty"` // Height in cm
 	Weight    float64            `bson:"weight,omitempty" json:"weight,omitempty"` // Weight in kg

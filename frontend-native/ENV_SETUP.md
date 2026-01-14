@@ -54,10 +54,13 @@ This document explains how environment variables are configured and loaded in th
 # API Configuration
 EXPO_PUBLIC_API_BASE_URL=http://localhost:8080
 
-# Google OAuth Configuration
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.googleusercontent.com
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_ios_client_id.googleusercontent.com
-EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_android_client_id.googleusercontent.com
+# Clerk Authentication (NEW - replaces Google OAuth)
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_key_here
+
+# Google OAuth Configuration (DEPRECATED - no longer used)
+# EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.googleusercontent.com
+# EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_ios_client_id.googleusercontent.com
+# EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_android_client_id.googleusercontent.com
 ```
 
 ## Build Profile URLs
