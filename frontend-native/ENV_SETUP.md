@@ -94,3 +94,36 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 - Different build profiles can have different environment variable values
 - Local .env file is gitignored for security (contains sensitive OAuth keys)
 - .env.example is tracked in git as a template
+
+## Switching Between Clerk Instances (Dev/Production)
+
+When switching between Clerk development and production instances, you **MUST** clear the cached tokens:
+
+### Problem:
+- Clerk tokens are cached in SecureStore
+- Changing `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in `.env` doesn't clear cached tokens
+- Old dev tokens will still be sent to backend even with production publishable key
+
+### Solution:
+1. **Clear app data/cache** (recommended):
+   - **iOS**: Delete and reinstall the app
+   - **Android**: Settings → Apps → RepTracker → Storage → Clear Data
+   
+2. **Programmatic cache clearing**:
+   ```typescript
+   import { clearClerkCache } from '@/app/utils/tokenCache';
+   
+   // Call this when switching environments
+   await clearClerkCache();
+   ```
+
+3. **Update eas.json**:
+   - Ensure each build profile has the correct `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
+   - Development profile should use `pk_test_...` (dev instance)
+   - Preview/Production profiles should use `pk_live_...` (production instance)
+
+### Best Practice:
+- Use separate Clerk instances for development and production
+- Configure `eas.json` with correct keys for each build profile
+- Clear cache when switching between instances
+- Test authentication flow after environment changes

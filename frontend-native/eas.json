@@ -8,19 +8,22 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8080"
+        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8080",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bGVnaWJsZS1tYXlmbHktMzIuY2xlcmsuYWNjb3VudHMuZGV2JA"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://gymlog-973367800029.asia-south1.run.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://gymlog-973367800029.asia-south1.run.app",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bGVnaWJsZS1tYXlmbHktMzIuY2xlcmsuYWNjb3VudHMuZGV2JA"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://gymlog-973367800029.asia-south1.run.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://gymlog-973367800029.asia-south1.run.app",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsucmVwLXRyYWNrZXIub3JnJA"
       }
     }
   },
