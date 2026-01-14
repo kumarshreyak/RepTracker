@@ -10,16 +10,15 @@ import { Typography } from './Typography';
 import { getColor } from './Colors';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ExerciseHistoryResponse, ExerciseHistoryEntry } from '@/types/exercise';
+import { apiGet } from '@/utils/api';
 
 export interface ExerciseHistoryProps {
   exerciseId: string;
-  userId: string;
   exerciseName?: string;
 }
 
 export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
   exerciseId,
-  userId,
   exerciseName,
 }) => {
   const [historyData, setHistoryData] = useState<ExerciseHistoryResponse | null>(null);
@@ -29,21 +28,16 @@ export const ExerciseHistory: React.FC<ExerciseHistoryProps> = ({
 
   useEffect(() => {
     fetchExerciseHistory();
-  }, [exerciseId, userId]);
+  }, [exerciseId]);
 
   const fetchExerciseHistory = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_BASE_URL}/api/exercises/${exerciseId}/history?user_id=${userId}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch exercise history');
-      }
-
-      const data: ExerciseHistoryResponse = await response.json();
+      const data = await apiGet<ExerciseHistoryResponse>(
+        `/api/exercises/${exerciseId}/history`
+      );
       setHistoryData(data);
     } catch (err) {
       console.error('Error fetching exercise history:', err);

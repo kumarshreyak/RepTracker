@@ -1,7 +1,8 @@
-import { authService } from './AuthService';
+import { apiGet, apiPut } from '../utils/api';
 
 export interface UserProfile {
   id: string;
+  clerkId: string;
   email: string;
   name: string;
   firstName: string;
@@ -10,26 +11,23 @@ export interface UserProfile {
   weight: number; // in kg
   age: number;
   goal: string;
-  googleId: string;
   picture?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface UpdateUserData {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
   height: number;
   weight: number;
   age: number;
   goal: string;
+  picture?: string;
 }
 
 class UserService {
-  private apiBaseUrl: string;
-
-  constructor() {
-    this.apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-  }
-
   /**
    * Check if user profile is complete (has height, weight, age, and goal)
    */
@@ -38,32 +36,20 @@ class UserService {
   }
 
   /**
-   * Fetch current user profile from backend
+   * Get user profile for the authenticated user
+   * Note: The backend will create a user record if it doesn't exist
+   * @param clerkUserId - Clerk user ID (kept for backwards compatibility but not used in API call)
+   * @param sessionToken - Clerk session token
    */
-  async getCurrentUserProfile(): Promise<UserProfile | null> {
+  async getUserProfile(clerkUserId: string, sessionToken: string): Promise<UserProfile | null> {
     try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser) {
-        console.log('No authenticated user found');
-        return null;
-      }
-
-      const response = await fetch(`${this.apiBaseUrl}/api/auth/validate`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${currentUser.sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        console.error('Failed to fetch user profile:', response.status, response.statusText);
-        return null;
-      }
-
-      const userProfile: UserProfile = await response.json();
+      // The backend extracts the user ID from the JWT token
+      // No need to pass userId in the URL - it's more secure this way
+      const userProfile = await apiGet<UserProfile>(
+        `/api/users`,
+        sessionToken
+      );
       console.log('User profile fetched:', userProfile);
-      
       return userProfile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -72,38 +58,45 @@ class UserService {
   }
 
   /**
-   * Update user profile with onboarding data
+   * Create or update user profile with onboarding data (upsert)
+   * @param clerkUserId - Clerk user ID (kept for backwards compatibility but not used in API call)
+   * @param userData - Profile data to update
+   * @param sessionToken - Clerk session token
    */
-  async updateUserProfile(userId: string, userData: UpdateUserData): Promise<boolean> {
+  async createOrUpdateUserProfile(
+    clerkUserId: string,
+    userData: UpdateUserData,
+    sessionToken: string
+  ): Promise<boolean> {
     try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser) {
-        throw new Error('User not authenticated');
-      }
-
-      const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${currentUser.sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Failed to update user profile:', response.status, response.statusText, errorText);
-        return false;
-      }
-
-      const updatedProfile: UserProfile = await response.json();
-      console.log('User profile updated successfully:', updatedProfile);
-      
+      // The backend extracts the user ID from the JWT token
+      // No need to pass userId in the URL - it's more secure this way
+      const updatedProfile = await apiPut<UserProfile>(
+        `/api/users`,
+        userData,
+        sessionToken
+      );
+      console.log('User profile created/updated successfully:', updatedProfile);
       return true;
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      console.error('Error creating/updating user profile:', error);
       return false;
     }
+  }
+
+  /**
+   * @deprecated Use createOrUpdateUserProfile instead
+   * Update user profile with onboarding data
+   * @param clerkUserId - Clerk user ID
+   * @param userData - Profile data to update
+   * @param sessionToken - Clerk session token
+   */
+  async updateUserProfile(
+    clerkUserId: string,
+    userData: UpdateUserData,
+    sessionToken: string
+  ): Promise<boolean> {
+    return this.createOrUpdateUserProfile(clerkUserId, userData, sessionToken);
   }
 }
 

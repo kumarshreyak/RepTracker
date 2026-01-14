@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Ensure Node.js is in PATH for React Native builds
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+
 #
 # Copyright © 2015-2021 the original authors.
 #

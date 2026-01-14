@@ -4,19 +4,27 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useClerk } from '@clerk/clerk-expo';
 import { Typography, Button } from '../../src/components';
 import { getColor } from '../../src/components/Colors';
 import { useAuth } from '../../src/hooks/useAuth';
-import { authService } from '../../src/auth/AuthService';
 
 export default function ProfileTab() {
   const { user } = useAuth();
+  const { signOut } = useClerk();
 
-  const handleSignOut = () => {
-    router.replace('/sign-in');
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace('/(auth)/sign-in');
+    } catch (err) {
+      console.error('Sign out error:', JSON.stringify(err, null, 2));
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   if (!user) {

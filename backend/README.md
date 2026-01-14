@@ -1,6 +1,6 @@
 # GymLog Backend
 
-A Go backend service for the GymLog application with MongoDB integration and Google OAuth authentication.
+A Go backend service for the GymLog application with MongoDB integration and Clerk authentication.
 
 ## Setup
 
@@ -8,6 +8,7 @@ A Go backend service for the GymLog application with MongoDB integration and Goo
 
 - Go 1.23+
 - MongoDB (local or cloud)
+- Clerk account (for authentication)
 - Environment variables
 
 ### Environment Variables
@@ -19,16 +20,14 @@ Create a `.env` file in the backend directory with the following variables:
 MONGODB_URI=mongodb://localhost:27017
 DB_NAME=gymlog
 
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-here
-
-# Google OAuth Configuration  
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+# Clerk Configuration
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your-clerk-publishable-key
 
 # Google Gemini API Configuration
 GEMINI_API_KEY=your-gemini-api-key
 ```
+
+**Note:** JWT_SECRET is no longer needed as authentication is handled by Clerk.
 
 ### Installation
 
@@ -51,18 +50,121 @@ The server will start both:
 - gRPC server on port 50051
 - HTTP server on port 8080
 
+## Authentication
+
+This backend uses **Clerk** for authentication. All API endpoints (except health checks) require a valid Clerk JWT token in the Authorization header:
+
+```
+Authorization: Bearer <clerk-jwt-token>
+```
+
+### Authentication Flow
+
+1. **Frontend**: User signs in/up via Clerk (email/password, OAuth, etc.)
+2. **Frontend**: Obtains JWT token from Clerk session
+3. **Frontend**: Includes token in Authorization header for all API requests
+4. **Backend**: Validates token using Clerk's JWKS (JSON Web Key Set)
+5. **Backend**: Extracts Clerk user ID from token claims
+6. **Backend**: Creates/updates user record in MongoDB if needed
+
+### User Management
+
+Users are automatically created in the MongoDB database when they first make an authenticated request. The backend stores:
+- **clerk_id**: Clerk user ID (primary identifier for linking to Clerk)
+- **email**: User's email address
+- **name**: User's full name
+- **picture**: Profile picture URL
+- **height, weight, age, goal**: User profile data (set during onboarding)
+
+### Security Notes
+
+- No passwords are stored in the backend (handled by Clerk)
+- JWT tokens are validated against Clerk's public keys
+- Tokens are short-lived and automatically refreshed by Clerk
+- All API endpoints are protected by authentication middleware
+
 ## API Endpoints
 
 ### Authentication
-- `POST /auth/google` - Google OAuth authentication
-- `POST /auth/validate` - Validate session token  
-- `POST /auth/logout` - Logout user
+All endpoints require authentication via Clerk JWT tokens. No separate authentication endpoints are needed.
 
 ### Users
-- `POST /api/users` - Create user
-- `GET /api/users/{userId}` - Get user by ID
-- `PUT /api/users/{userId}` - Update user
-- `GET /api/users` - List users
+- `GET /api/users` - Get authenticated user profile
+- `PUT /api/users` - Create or update authenticated user (upsert)
+
+**Note:** User ID is automatically extracted from the JWT token. No need to pass userId in the URL.
+
+#### User API Details
+
+**Get User Profile**
+```
+GET /api/users
+```
+Retrieves the profile of the authenticated user. The user ID is automatically extracted from the JWT token for security.
+
+Response:
+```json
+{
+  "id": "user_id",
+  "clerkId": "clerk_user_id",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "firstName": "John",
+  "lastName": "Doe",
+  "height": 180,
+  "weight": 75,
+  "age": 30,
+  "goal": "gain_muscle",
+  "picture": "https://...",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:35:00Z"
+}
+```
+
+Returns `404 Not Found` if the user profile doesn't exist (e.g., user hasn't completed onboarding).
+
+**Create or Update User**
+```
+PUT /api/users
+```
+Creates a new user if one doesn't exist with the authenticated Clerk user ID, or updates an existing user. This is useful for onboarding flows where the user may or may not have profile data already stored. The user ID is automatically extracted from the JWT token for security.
+
+Request body:
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "height": 180,
+  "weight": 75,
+  "age": 30,
+  "goal": "gain_muscle"
+}
+```
+
+Response:
+```json
+{
+  "id": "user_id",
+  "clerkId": "clerk_user_id",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "firstName": "John",
+  "lastName": "Doe",
+  "height": 180,
+  "weight": 75,
+  "age": 30,
+  "goal": "gain_muscle",
+  "picture": "https://...",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:35:00Z"
+}
+```
+
+**Behavior:**
+- If user with `userId` exists: Updates the provided fields
+- If user with `userId` doesn't exist: Creates a new user with the provided data
+- Partial updates supported: Only provided fields are updated
+- Goal validation: Must be one of `lose_fat`, `gain_muscle`, or `maintain`
 
 ### Exercises
 - `GET /api/exercises` - List exercises with filtering
@@ -71,10 +173,10 @@ The server will start both:
 - `PUT /api/exercises/{id}` - Update exercise
 - `DELETE /api/exercises/{id}` - Delete exercise
 - `GET /api/exercises/quick-add` - Get exercises for quick add
-- `GET /api/exercises/{id}/history?user_id={userId}` - Get exercise history from last 3 workout sessions
+- `GET /api/exercises/{id}/history` - Get exercise history from last 3 workout sessions for authenticated user
 
 ### Workouts (Routines)
-- `GET /api/workouts` - List workouts
+- `GET /api/workouts` - List workouts for authenticated user
 - `POST /api/workouts` - Create workout
 - `GET /api/workouts/{id}` - Get workout by ID
 - `GET /api/workouts/{id}/start` - Get workout with exercise details for starting
@@ -82,8 +184,8 @@ The server will start both:
 - `DELETE /api/workouts/{id}` - Delete workout
 
 ### Workout Sessions
-- `GET /api/users/{userId}/workout-sessions` - List workout sessions
-- `POST /api/users/{userId}/workout-sessions` - Create workout session
+- `GET /api/workout-sessions` - List workout sessions for authenticated user
+- `POST /api/workout-sessions` - Create workout session
 - `GET /api/workout-sessions/{id}` - Get workout session
 - `PUT /api/workout-sessions/{id}` - Update workout session
 - `DELETE /api/workout-sessions/{id}` - Delete workout session
@@ -92,6 +194,8 @@ The server will start both:
 - `PUT /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}` - Update set
 - `POST /api/workout-sessions/{id}/progressive-overload` - Apply progressive overload to workout
 - `POST /api/workout-sessions/{id}/progressive-overload/ai` - Apply AI-powered progressive overload (async)
+
+**Note:** All workout and workout session endpoints automatically filter by the authenticated user. No need to pass userId as a query parameter.
 - `GET /api/users/{userId}/ai-progressive-overload-responses` - List stored AI progressive overload responses
 
 #### Progressive Overload API Details
@@ -265,25 +369,31 @@ Retrieves stored AI progressive overload responses for a user in descending orde
 Track the history of AI recommendations to understand progression patterns, analyze AI decision-making, and monitor the effectiveness of different progression strategies over time.
 
 ### Metrics
-- `GET /api/users/{userId}/metrics` - Get user metrics
-- `GET /api/users/{userId}/metrics/trends` - Get volume trends
+- `GET /api/users/metrics` - Get user metrics for authenticated user
+- `GET /api/users/metrics/trends` - Get volume trends for authenticated user
 - `GET /api/workout-sessions/{sessionId}/metrics` - Get workout metrics
 
 ### Insights
-- `POST /api/users/{userId}/insights` - Generate workout insights
-- `GET /api/users/{userId}/insights/recent` - Get recent insights
+- `POST /api/users/insights` - Generate workout insights for authenticated user
+- `GET /api/users/insights` - Get recent insights for authenticated user
 
 ### Workout Suggestions
-- `POST /api/users/{userId}/suggestions/workouts` - Generate AI workout suggestions
-- `GET /api/users/{userId}/suggestions/stored` - Get stored workout suggestions (paginated, ordered by creation date desc)
+- `POST /api/users/suggestions/workouts` - Generate AI workout suggestions for authenticated user
+- `GET /api/users/suggestions/stored` - Get stored workout suggestions for authenticated user (paginated, ordered by creation date desc)
+- `POST /api/users/suggestions/{suggestionId}/confirm` - Confirm or reject a workout suggestion
+
+### AI Progressive Overload
+- `GET /api/users/ai-progressive-overload-responses` - Get AI progressive overload analysis history for authenticated user
+
+**Note:** All user-specific endpoints under `/api/users` automatically apply to the authenticated user. The user ID is extracted from the JWT token for security.
 
 #### Workout Suggestions API Details
 
 **Generate Workout Suggestions**
 ```
-POST /api/users/{userId}/suggestions/workouts
+POST /api/users/suggestions/workouts
 ```
-Generates AI-powered workout suggestions based on recent workout sessions and stores them in the database.
+Generates AI-powered workout suggestions based on recent workout sessions and stores them in the database. The user ID is automatically extracted from the JWT token.
 
 Request body (optional):
 ```json
@@ -322,9 +432,9 @@ Response:
 
 **Get Stored Suggestions**
 ```
-GET /api/users/{userId}/suggestions/stored?pageSize=10&pageToken=...
+GET /api/users/suggestions/stored?pageSize=10&pageToken=...
 ```
-Retrieves previously generated workout suggestions with "pending" status in decreasing order of creation date. Only suggestions that haven't been accepted or rejected are returned.
+Retrieves previously generated workout suggestions with "pending" status in decreasing order of creation date for the authenticated user. Only suggestions that haven't been accepted or rejected are returned. The user ID is automatically extracted from the JWT token.
 
 Query parameters:
 - `pageSize` (optional): Number of suggestion sets per page (default: 10, max: 50)

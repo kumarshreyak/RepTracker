@@ -1,13 +1,37 @@
-import { useState, useEffect } from 'react';
-import { authService, AuthState } from '../auth/AuthService';
+import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-expo';
 
-export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>(() => authService.getState());
+export interface AuthState {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    picture?: string;
+  } | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  getToken: () => Promise<string | null>;
+}
 
-  useEffect(() => {
-    const unsubscribe = authService.subscribe(setAuthState);
-    return unsubscribe;
-  }, []);
+export const useAuth = (): AuthState => {
+  const { isSignedIn, isLoaded, getToken } = useClerkAuth();
+  const { user } = useUser();
 
-  return authState;
+  return {
+    user: user ? {
+      id: user.id,
+      email: user.primaryEmailAddress?.emailAddress || '',
+      name: user.fullName || user.firstName || '',
+      picture: user.imageUrl,
+    } : null,
+    isLoading: !isLoaded,
+    isAuthenticated: isSignedIn || false,
+    getToken: async () => {
+      try {
+        return await getToken();
+      } catch (error) {
+        console.error('Error getting Clerk token:', error);
+        return null;
+      }
+    },
+  };
 }; 

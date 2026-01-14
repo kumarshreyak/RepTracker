@@ -8,30 +8,21 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "sdkVersion": "53.0.0",
     "extra": {
       "eas": {
         "projectId": "160f751a-2d29-4613-a35f-917da6e034fe"
       },
       "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}",
-      "googleWebClientId": "${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}",
-      "googleIosClientId": "${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID}",
-      "googleAndroidClientId": "${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}"
+      "clerkPublishableKey": "${EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}"
     },
     "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/160f751a-2d29-4613-a35f-917da6e034fe"
     },
-    "plugins": [
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.973367800029-qmbs0f3kvsa4v383tsrt34d8aedv24vl"
-        }
-      ]
-    ],
-    "android": {},
+    "plugins": [],
+    "android": {
+      "package": "com.blaize.gymlog"
+    },
     "ios": {}
-  },
-  "name": "RepTracker"
+  }
 }

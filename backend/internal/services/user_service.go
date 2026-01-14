@@ -104,7 +104,7 @@ func (s *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 	return s.modelToProto(&user), nil
 }
 
-// UpdateUser updates an existing user
+// UpdateUser updates an existing user or creates one if it doesn't exist (upsert)
 func (s *UserService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.User, error) {
 	objectID, err := primitive.ObjectIDFromHex(req.Id)
 	if err != nil {
@@ -116,40 +116,65 @@ func (s *UserService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 		return nil, status.Error(codes.InvalidArgument, "invalid goal: must be lose_fat, gain_muscle, or maintain")
 	}
 
-	update := bson.M{
-		"updated_at": time.Now(),
-	}
+	// Check if user exists
+	var existingUser models.User
+	err = s.usersColl.FindOne(ctx, bson.M{"_id": objectID}).Decode(&existingUser)
+	userExists := err == nil
 
-	if req.Email != "" {
-		update["email"] = req.Email
-	}
-	if req.FirstName != "" || req.LastName != "" {
-		name := fmt.Sprintf("%s %s", req.FirstName, req.LastName)
-		update["name"] = name
-	}
-	if req.Height > 0 {
-		update["height"] = req.Height
-	}
-	if req.Weight > 0 {
-		update["weight"] = req.Weight
-	}
-	if req.Age > 0 {
-		update["age"] = req.Age
-	}
-	if req.Goal != "" {
-		update["goal"] = req.Goal
-	}
+	now := time.Now()
 
-	result, err := s.usersColl.UpdateOne(
-		ctx,
-		bson.M{"_id": objectID},
-		bson.M{"$set": update},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to update user")
-	}
-	if result.MatchedCount == 0 {
-		return nil, status.Error(codes.NotFound, "user not found")
+	if userExists {
+		// Update existing user
+		update := bson.M{
+			"updated_at": now,
+		}
+
+		if req.Email != "" {
+			update["email"] = req.Email
+		}
+		if req.FirstName != "" || req.LastName != "" {
+			name := fmt.Sprintf("%s %s", req.FirstName, req.LastName)
+			update["name"] = name
+		}
+		if req.Height > 0 {
+			update["height"] = req.Height
+		}
+		if req.Weight > 0 {
+			update["weight"] = req.Weight
+		}
+		if req.Age > 0 {
+			update["age"] = req.Age
+		}
+		if req.Goal != "" {
+			update["goal"] = req.Goal
+		}
+
+		_, err := s.usersColl.UpdateOne(
+			ctx,
+			bson.M{"_id": objectID},
+			bson.M{"$set": update},
+		)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to update user")
+		}
+	} else {
+		// Create new user with the provided ID
+		user := models.User{
+			ID:        objectID,
+			Email:     req.Email,
+			Name:      fmt.Sprintf("%s %s", req.FirstName, req.LastName),
+			Height:    req.Height,
+			Weight:    req.Weight,
+			Age:       req.Age,
+			Goal:      req.Goal,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+
+		_, err := s.usersColl.InsertOne(ctx, user)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to create user")
+		}
 	}
 
 	return s.GetUser(ctx, &pb.GetUserRequest{Id: req.Id})
@@ -183,15 +208,10 @@ func (s *UserService) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (
 	}, nil
 }
 
-// CreateOrUpdateGoogleUser creates or updates a user from Google OAuth
-func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, email, name, picture string) (*models.User, error) {
-	// Try to find existing user by google_id or email
-	filter := bson.M{
-		"$or": []bson.M{
-			{"google_id": googleID},
-			{"email": email},
-		},
-	}
+// CreateOrUpdateClerkUser creates or updates a user from Clerk authentication with full profile data
+func (s *UserService) CreateOrUpdateClerkUser(ctx context.Context, clerkID, email, name, picture string, height float64, weight float64, age int32, goal string) (*models.User, error) {
+	// Try to find existing user by clerk_id
+	filter := bson.M{"clerk_id": clerkID}
 
 	var user models.User
 	err := s.usersColl.FindOne(ctx, filter).Decode(&user)
@@ -199,12 +219,16 @@ func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, em
 	now := time.Now()
 
 	if err == mongo.ErrNoDocuments {
-		// Create new user
+		// Create new user with all profile data
 		user = models.User{
+			ClerkID:   clerkID,
 			Email:     email,
 			Name:      name,
-			GoogleID:  googleID,
 			Picture:   picture,
+			Height:    height,
+			Weight:    weight,
+			Age:       age,
+			Goal:      goal,
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
@@ -217,16 +241,26 @@ func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, em
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	} else {
-		// Update existing user - preserve existing profile data
+		// Update existing user with all provided data
 		update := bson.M{
 			"name":       name,
+			"email":      email,
 			"picture":    picture,
 			"updated_at": now,
 		}
 
-		// Update google_id if not already set
-		if user.GoogleID == "" {
-			update["google_id"] = googleID
+		// Only update profile fields if they are provided (non-zero values)
+		if height > 0 {
+			update["height"] = height
+		}
+		if weight > 0 {
+			update["weight"] = weight
+		}
+		if age > 0 {
+			update["age"] = age
+		}
+		if goal != "" {
+			update["goal"] = goal
 		}
 
 		_, err = s.usersColl.UpdateOne(
@@ -240,14 +274,36 @@ func (s *UserService) CreateOrUpdateGoogleUser(ctx context.Context, googleID, em
 
 		// Update local user object with the new values
 		user.Name = name
+		user.Email = email
 		user.Picture = picture
-		user.UpdatedAt = now
-		if user.GoogleID == "" {
-			user.GoogleID = googleID
+		if height > 0 {
+			user.Height = height
 		}
-		// Note: Height, Weight, Age, and Goal are preserved from the existing user data
+		if weight > 0 {
+			user.Weight = weight
+		}
+		if age > 0 {
+			user.Age = age
+		}
+		if goal != "" {
+			user.Goal = goal
+		}
+		user.UpdatedAt = now
 	}
 
+	return &user, nil
+}
+
+// GetUserByClerkID retrieves a user by their Clerk ID
+func (s *UserService) GetUserByClerkID(ctx context.Context, clerkID string) (*models.User, error) {
+	var user models.User
+	err := s.usersColl.FindOne(ctx, bson.M{"clerk_id": clerkID}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
 	return &user, nil
 }
 

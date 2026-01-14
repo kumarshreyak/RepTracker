@@ -16,6 +16,7 @@ import {
   AIProgressiveOverloadResponse,
   ListAIProgressiveOverloadResponsesResponse
 } from '../../src/types/ai-progressive';
+import { apiGet } from '../../src/utils/api';
 
 export default function InsightsTab() {
   const { user } = useAuth();
@@ -32,16 +33,9 @@ export default function InsightsTab() {
       if (!isRefreshing) setLoading(true);
       setError(null);
       
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const response = await fetch(
-        `${API_BASE_URL}/api/users/${user.id}/ai-progressive-overload-responses?pageSize=20`
+      const data = await apiGet<ListAIProgressiveOverloadResponsesResponse>(
+        '/api/users/ai-progressive-overload-responses?pageSize=20'
       );
-      
-      const data: ListAIProgressiveOverloadResponsesResponse = await response.json();
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch AI analyses");
-      }
       
       setAnalyses(data.responses || []);
     } catch (err) {

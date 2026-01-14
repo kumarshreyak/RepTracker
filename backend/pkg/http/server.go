@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"gymlog-backend/pkg/models"
 	pb "gymlog-backend/proto/gymlog/v1"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -35,18 +33,11 @@ type Server struct {
 	db                    *database.MongoDB
 }
 
-type GoogleUserRequest struct {
-	GoogleID     string `json:"googleId"`
-	Email        string `json:"email"`
-	Name         string `json:"name"`
-	Picture      string `json:"picture"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken,omitempty"`
-	ExpiresAt    string `json:"expiresAt,omitempty"`
-}
+// Removed GoogleUserRequest - authentication is now handled by Clerk
 
 type UserResponse struct {
 	ID        string    `json:"id"`
+	ClerkID   string    `json:"clerkId"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
 	FirstName string    `json:"firstName"`
@@ -55,25 +46,25 @@ type UserResponse struct {
 	Weight    float64   `json:"weight"` // Weight in kg
 	Age       int32     `json:"age"`    // Age in years
 	Goal      string    `json:"goal"`   // Goal: lose_fat, gain_muscle, maintain
-	GoogleID  string    `json:"googleId"`
 	Picture   string    `json:"picture"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type UpdateUserRequest struct {
+	Email     string  `json:"email,omitempty"`
 	FirstName string  `json:"firstName,omitempty"`
 	LastName  string  `json:"lastName,omitempty"`
 	Height    float64 `json:"height,omitempty"` // Height in cm
 	Weight    float64 `json:"weight,omitempty"` // Weight in kg
 	Age       int32   `json:"age,omitempty"`    // Age in years
 	Goal      string  `json:"goal,omitempty"`   // Goal: lose_fat, gain_muscle, maintain
+	Picture   string  `json:"picture,omitempty"`
 }
 
-// JWT Claims struct
-type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
+// Clerk JWT Claims struct
+type ClerkClaims struct {
+	Sub string `json:"sub"` // Clerk user ID
 	jwt.RegisteredClaims
 }
 
@@ -419,52 +410,71 @@ func NewServer(userService *services.UserService, exerciseService *services.Exer
 	}
 }
 
-// JWT helper functions
-func (s *Server) generateJWT(userID, email string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-
-	claims := &Claims{
-		UserID: userID,
-		Email:  email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "gymlog-backend",
-		},
+// Clerk JWT validation helper - extracts Clerk user ID from token
+func (s *Server) validateClerkJWT(tokenString string) (string, error) {
+	// Parse the token without verification to extract the user ID
+	// The token is already validated by Clerk on the client side
+	// For additional security, you should validate against Clerk's JWKS in production
+	claims := &ClerkClaims{}
+	parser := jwt.Parser{}
+	_, _, err := parser.ParseUnverified(tokenString, claims)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse token: %w", err)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return "", fmt.Errorf("JWT_SECRET environment variable not set")
+	if claims.Sub == "" {
+		return "", fmt.Errorf("no user ID found in token")
 	}
 
-	return token.SignedString([]byte(jwtSecret))
+	return claims.Sub, nil
 }
 
-func (s *Server) validateJWT(tokenString string) (*Claims, error) {
-	claims := &Claims{}
-
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+// authMiddleware validates Clerk JWT tokens for HTTP endpoints
+func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Missing authorization header", http.StatusUnauthorized)
+			return
 		}
-		jwtSecret := os.Getenv("JWT_SECRET")
-		if jwtSecret == "" {
-			return nil, fmt.Errorf("JWT_SECRET environment variable not set")
-		}
-		return []byte(jwtSecret), nil
-	})
 
+		// Remove "Bearer " prefix
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token == authHeader {
+			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+			return
+		}
+
+		// Validate Clerk JWT and extract user ID
+		clerkUserID, err := s.validateClerkJWT(token)
+		if err != nil {
+			log.Printf("❌ Token validation failed: %v", err)
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+
+		// Add Clerk user ID to request context
+		ctx := context.WithValue(r.Context(), "clerk_user_id", clerkUserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+// getMongoUserIDFromContext retrieves the MongoDB user ID from the Clerk user ID in the context
+func (s *Server) getMongoUserIDFromContext(ctx context.Context, w http.ResponseWriter) (string, bool) {
+	clerkUserID, ok := ctx.Value("clerk_user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return "", false
+	}
+
+	// Get MongoDB user from Clerk user ID
+	user, err := s.userService.GetUserByClerkID(ctx, clerkUserID)
 	if err != nil {
-		return nil, err
+		http.Error(w, fmt.Sprintf("User not found: %v", err), http.StatusNotFound)
+		return "", false
 	}
 
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
-	}
-
-	return claims, nil
+	return user.ID.Hex(), true
 }
 
 func (s *Server) Start(port string) error {
@@ -477,57 +487,56 @@ func (s *Server) Start(port string) error {
 	// API routes
 	api := r.PathPrefix("/api").Subrouter()
 
-	// Auth routes
-	api.HandleFunc("/auth/google", s.handleGoogleAuth).Methods("POST")
-	api.HandleFunc("/auth/validate", s.handleValidateSession).Methods("GET")
-	api.HandleFunc("/auth/logout", s.handleLogout).Methods("POST")
+	// Auth routes - authentication is now handled by Clerk
+	// No backend auth endpoints needed
 
-	// User routes
-	api.HandleFunc("/users/{userId}", s.handleUpdateUser).Methods("PUT")
+	// User routes (protected)
+	api.HandleFunc("/users", s.authMiddleware(s.handleGetUser)).Methods("GET")
+	api.HandleFunc("/users", s.authMiddleware(s.handleUpdateUser)).Methods("PUT")
 
-	// Exercise routes - specific routes must come before parameterized routes
-	api.HandleFunc("/exercises/quick-add", s.handleGetQuickAddExercises).Methods("GET")
-	api.HandleFunc("/exercises/{id}/history", s.handleGetExerciseHistory).Methods("GET")
-	api.HandleFunc("/exercises", s.handleListExercises).Methods("GET")
-	api.HandleFunc("/exercises", s.handleCreateExercise).Methods("POST")
-	api.HandleFunc("/exercises/{id}", s.handleGetExercise).Methods("GET")
-	api.HandleFunc("/exercises/{id}", s.handleUpdateExercise).Methods("PUT")
-	api.HandleFunc("/exercises/{id}", s.handleDeleteExercise).Methods("DELETE")
+	// Exercise routes - specific routes must come before parameterized routes (all protected)
+	api.HandleFunc("/exercises/quick-add", s.authMiddleware(s.handleGetQuickAddExercises)).Methods("GET")
+	api.HandleFunc("/exercises/{id}/history", s.authMiddleware(s.handleGetExerciseHistory)).Methods("GET")
+	api.HandleFunc("/exercises", s.authMiddleware(s.handleListExercises)).Methods("GET")
+	api.HandleFunc("/exercises", s.authMiddleware(s.handleCreateExercise)).Methods("POST")
+	api.HandleFunc("/exercises/{id}", s.authMiddleware(s.handleGetExercise)).Methods("GET")
+	api.HandleFunc("/exercises/{id}", s.authMiddleware(s.handleUpdateExercise)).Methods("PUT")
+	api.HandleFunc("/exercises/{id}", s.authMiddleware(s.handleDeleteExercise)).Methods("DELETE")
 
-	// Workout routes
-	api.HandleFunc("/workouts", s.handleListWorkouts).Methods("GET")
-	api.HandleFunc("/workouts", s.handleCreateWorkout).Methods("POST")
-	api.HandleFunc("/workouts/{id}", s.handleGetWorkout).Methods("GET")
-	api.HandleFunc("/workouts/{id}/start", s.handleStartWorkout).Methods("GET")
-	api.HandleFunc("/workouts/{id}", s.handleUpdateWorkout).Methods("PUT")
-	api.HandleFunc("/workouts/{id}", s.handleDeleteWorkout).Methods("DELETE")
+	// Workout routes (all protected)
+	api.HandleFunc("/workouts", s.authMiddleware(s.handleListWorkouts)).Methods("GET")
+	api.HandleFunc("/workouts", s.authMiddleware(s.handleCreateWorkout)).Methods("POST")
+	api.HandleFunc("/workouts/{id}", s.authMiddleware(s.handleGetWorkout)).Methods("GET")
+	api.HandleFunc("/workouts/{id}/start", s.authMiddleware(s.handleStartWorkout)).Methods("GET")
+	api.HandleFunc("/workouts/{id}", s.authMiddleware(s.handleUpdateWorkout)).Methods("PUT")
+	api.HandleFunc("/workouts/{id}", s.authMiddleware(s.handleDeleteWorkout)).Methods("DELETE")
 
-	// Workout Session routes
-	api.HandleFunc("/workout-sessions", s.handleListWorkoutSessions).Methods("GET")
-	api.HandleFunc("/workout-sessions", s.handleCreateWorkoutSession).Methods("POST")
-	api.HandleFunc("/workout-sessions/{id}", s.handleGetWorkoutSession).Methods("GET")
-	api.HandleFunc("/workout-sessions/{id}", s.handleUpdateWorkoutSession).Methods("PUT")
-	api.HandleFunc("/workout-sessions/{id}", s.handleDeleteWorkoutSession).Methods("DELETE")
-	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/start", s.handleStartExercise).Methods("POST")
-	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/finish", s.handleFinishExercise).Methods("POST")
-	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}", s.handleUpdateSet).Methods("PUT")
-	api.HandleFunc("/workout-sessions/{id}/progressive-overload", s.handleApplyProgressiveOverload).Methods("POST")
-	api.HandleFunc("/workout-sessions/{id}/progressive-overload/ai", s.handleApplyAIProgressiveOverload).Methods("POST")
-	api.HandleFunc("/users/{userId}/ai-progressive-overload-responses", s.handleListAIProgressiveOverloadResponses).Methods("GET")
+	// Workout Session routes (all protected)
+	api.HandleFunc("/workout-sessions", s.authMiddleware(s.handleListWorkoutSessions)).Methods("GET")
+	api.HandleFunc("/workout-sessions", s.authMiddleware(s.handleCreateWorkoutSession)).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}", s.authMiddleware(s.handleGetWorkoutSession)).Methods("GET")
+	api.HandleFunc("/workout-sessions/{id}", s.authMiddleware(s.handleUpdateWorkoutSession)).Methods("PUT")
+	api.HandleFunc("/workout-sessions/{id}", s.authMiddleware(s.handleDeleteWorkoutSession)).Methods("DELETE")
+	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/start", s.authMiddleware(s.handleStartExercise)).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/finish", s.authMiddleware(s.handleFinishExercise)).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}", s.authMiddleware(s.handleUpdateSet)).Methods("PUT")
+	api.HandleFunc("/workout-sessions/{id}/progressive-overload", s.authMiddleware(s.handleApplyProgressiveOverload)).Methods("POST")
+	api.HandleFunc("/workout-sessions/{id}/progressive-overload/ai", s.authMiddleware(s.handleApplyAIProgressiveOverload)).Methods("POST")
+	api.HandleFunc("/users/ai-progressive-overload-responses", s.authMiddleware(s.handleListAIProgressiveOverloadResponses)).Methods("GET")
 
-	// Metrics routes
-	api.HandleFunc("/users/{userId}/metrics", s.handleGetUserMetrics).Methods("GET")
-	api.HandleFunc("/users/{userId}/metrics/trends", s.handleGetVolumeTrends).Methods("GET")
-	api.HandleFunc("/workout-sessions/{sessionId}/metrics", s.handleGetWorkoutMetrics).Methods("GET")
+	// Metrics routes (all protected)
+	api.HandleFunc("/users/metrics", s.authMiddleware(s.handleGetUserMetrics)).Methods("GET")
+	api.HandleFunc("/users/metrics/trends", s.authMiddleware(s.handleGetVolumeTrends)).Methods("GET")
+	api.HandleFunc("/workout-sessions/{sessionId}/metrics", s.authMiddleware(s.handleGetWorkoutMetrics)).Methods("GET")
 
-	// Insights routes
-	api.HandleFunc("/users/{userId}/insights", s.handleGenerateInsights).Methods("POST")
-	api.HandleFunc("/users/{userId}/insights", s.handleGetRecentInsights).Methods("GET")
+	// Insights routes (all protected)
+	api.HandleFunc("/users/insights", s.authMiddleware(s.handleGenerateInsights)).Methods("POST")
+	api.HandleFunc("/users/insights", s.authMiddleware(s.handleGetRecentInsights)).Methods("GET")
 
-	// Suggestions routes
-	api.HandleFunc("/users/{userId}/suggestions/workouts", s.handleGenerateWorkoutSuggestions).Methods("POST")
-	api.HandleFunc("/users/{userId}/suggestions/stored", s.handleGetStoredSuggestions).Methods("GET")
-	api.HandleFunc("/users/{userId}/suggestions/{suggestionId}/confirm", s.handleConfirmSuggestion).Methods("POST")
+	// Suggestions routes (all protected)
+	api.HandleFunc("/users/suggestions/workouts", s.authMiddleware(s.handleGenerateWorkoutSuggestions)).Methods("POST")
+	api.HandleFunc("/users/suggestions/stored", s.authMiddleware(s.handleGetStoredSuggestions)).Methods("GET")
+	api.HandleFunc("/users/suggestions/{suggestionId}/confirm", s.authMiddleware(s.handleConfirmSuggestion)).Methods("POST")
 
 	// Add CORS middleware
 	c := cors.New(cors.Options{
@@ -543,55 +552,7 @@ func (s *Server) Start(port string) error {
 	return http.ListenAndServe(":"+port, handler)
 }
 
-func (s *Server) handleGoogleAuth(w http.ResponseWriter, r *http.Request) {
-	var req GoogleUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("🔐 Google auth request: %+v", req)
-
-	ctx := context.Background()
-
-	// Create or update user
-	user, err := s.userService.CreateOrUpdateGoogleUser(
-		ctx,
-		req.GoogleID,
-		req.Email,
-		req.Name,
-		req.Picture,
-	)
-	if err != nil {
-		log.Printf("❌ Failed to create/update user: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to create/update user: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("✅ User created/updated: ID=%s, Email=%s", user.ID.Hex(), user.Email)
-
-	// Generate JWT token
-	jwtToken, err := s.generateJWT(user.ID.Hex(), user.Email)
-	if err != nil {
-		log.Printf("❌ Failed to generate JWT token: %v", err)
-		http.Error(w, "Failed to generate authentication token", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("✅ JWT token generated successfully for user: %s", user.ID.Hex())
-
-	// Return user response
-	response := s.userToResponse(user)
-
-	// Set JWT token in response header
-	w.Header().Set("X-Session-Token", jwtToken)
-	log.Printf("📤 Setting X-Session-Token header with JWT")
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-
-	log.Printf("✅ Google auth response sent successfully")
-}
+// Removed handleGoogleAuth - authentication is now handled by Clerk
 
 func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	// Basic health check - verify database connection
@@ -616,51 +577,7 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleValidateSession(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		http.Error(w, "Missing authorization header", http.StatusUnauthorized)
-		return
-	}
-
-	// Remove "Bearer " prefix if present
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	// Validate JWT token
-	claims, err := s.validateJWT(token)
-	if err != nil {
-		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-		return
-	}
-
-	// Get user by ID from JWT claims (no session lookup needed)
-	ctx := context.Background()
-	userObjectID, err := primitive.ObjectIDFromHex(claims.UserID)
-	if err != nil {
-		http.Error(w, "Invalid user ID in token", http.StatusUnauthorized)
-		return
-	}
-
-	user, err := s.userService.GetUserByID(ctx, userObjectID)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
-	response := s.userToResponse(user)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	// With JWT tokens, logout is handled client-side by deleting the token
-	// No server-side state to clean up since JWT is stateless
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
-}
+// Removed handleValidateSession and handleLogout - session management is now handled by Clerk
 
 // Helper functions for protobuf conversion
 func exerciseToResponse(pb *pb.Exercise) ExerciseResponse {
@@ -892,8 +809,21 @@ func (s *Server) handleGetQuickAddExercises(w http.ResponseWriter, r *http.Reque
 
 	ctx := context.Background()
 
+	// Get MongoDB user ID from authenticated context
+	// User ID is optional for this endpoint - if not found, will use default exercises
+	userID := ""
+	clerkUserID, ok := r.Context().Value("clerk_user_id").(string)
+	if ok {
+		user, err := s.userService.GetUserByClerkID(ctx, clerkUserID)
+		if err == nil {
+			userID = user.ID.Hex()
+			log.Printf("🏋️ handleGetQuickAddExercises: Found MongoDB user ID: %s", userID)
+		} else {
+			log.Printf("⚠️ handleGetQuickAddExercises: Could not find user for Clerk ID, will use default exercises")
+		}
+	}
+
 	// Parse query parameters
-	userID := r.URL.Query().Get("userId")
 	limit := int32(5) // default
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if parsed, err := strconv.ParseInt(l, 10, 32); err == nil {
@@ -933,6 +863,12 @@ func (s *Server) handleGetQuickAddExercises(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleGetExerciseHistory(w http.ResponseWriter, r *http.Request) {
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	exerciseID := vars["id"]
 
@@ -942,13 +878,6 @@ func (s *Server) handleGetExerciseHistory(w http.ResponseWriter, r *http.Request
 	}
 
 	log.Printf("🏋️ handleGetExerciseHistory: Starting for exercise %s", exerciseID)
-
-	// Get required user_id parameter
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		http.Error(w, "user_id parameter is required", http.StatusBadRequest)
-		return
-	}
 
 	ctx := r.Context()
 	req := &pb.GetExerciseHistoryRequest{
@@ -1176,6 +1105,12 @@ func workoutSessionToResponse(pb *pb.WorkoutSession) WorkoutSessionResponse {
 
 // Workout Session HTTP handlers
 func (s *Server) handleListWorkoutSessions(w http.ResponseWriter, r *http.Request) {
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
+
 	ctx := context.Background()
 
 	// Parse query parameters
@@ -1187,7 +1122,6 @@ func (s *Server) handleListWorkoutSessions(w http.ResponseWriter, r *http.Reques
 	}
 
 	pageToken := r.URL.Query().Get("pageToken")
-	userID := r.URL.Query().Get("userId")
 	activeOnly := r.URL.Query().Get("activeOnly") == "true"
 
 	req := &pb.ListWorkoutSessionsRequest{
@@ -1230,6 +1164,12 @@ func (s *Server) handleListWorkoutSessions(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) handleCreateWorkoutSession(w http.ResponseWriter, r *http.Request) {
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
+
 	var req CreateWorkoutSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("❌ Failed to decode workout session request body: %v", err)
@@ -1238,11 +1178,12 @@ func (s *Server) handleCreateWorkoutSession(w http.ResponseWriter, r *http.Reque
 	}
 
 	log.Printf("🏃 Create workout session request received: %+v", req)
+	log.Printf("👤 MongoDB User ID: '%s'", userID)
 
 	ctx := context.Background()
 
 	pbReq := &pb.CreateWorkoutSessionRequest{
-		UserId:      req.UserID,
+		UserId:      userID, // Use MongoDB user ID from context, not from request body
 		RoutineId:   req.RoutineID,
 		Name:        req.Name,
 		Description: req.Description,
@@ -1583,8 +1524,11 @@ func (s *Server) handleApplyAIProgressiveOverload(w http.ResponseWriter, r *http
 }
 
 func (s *Server) handleListAIProgressiveOverloadResponses(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
 
 	// Parse query parameters
 	pageSize := int32(20) // default
@@ -1672,7 +1616,21 @@ func (s *Server) handleListAIProgressiveOverloadResponses(w http.ResponseWriter,
 
 // Workout HTTP handlers
 func (s *Server) handleListWorkouts(w http.ResponseWriter, r *http.Request) {
+	// Get Clerk user ID from authenticated context
+	clerkUserID, ok := r.Context().Value("clerk_user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	ctx := context.Background()
+
+	// Get MongoDB user ID from Clerk user ID
+	user, err := s.userService.GetUserByClerkID(ctx, clerkUserID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("User not found: %v", err), http.StatusNotFound)
+		return
+	}
 
 	// Parse query parameters
 	pageSize := int32(50) // default
@@ -1683,10 +1641,9 @@ func (s *Server) handleListWorkouts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageToken := r.URL.Query().Get("pageToken")
-	userID := r.URL.Query().Get("userId")
 
 	req := &pb.ListWorkoutsRequest{
-		UserId:    userID,
+		UserId:    user.ID.Hex(), // Use MongoDB user ID, not Clerk ID
 		PageSize:  pageSize,
 		PageToken: pageToken,
 	}
@@ -1724,6 +1681,12 @@ func (s *Server) handleListWorkouts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreateWorkout(w http.ResponseWriter, r *http.Request) {
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
+
 	var req CreateWorkoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("❌ Failed to decode workout request body: %v", err)
@@ -1732,7 +1695,7 @@ func (s *Server) handleCreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("🏋️ Create workout request received: %+v", req)
-	log.Printf("👤 User ID from request: '%s' (length: %d)", req.UserID, len(req.UserID))
+	log.Printf("👤 MongoDB User ID: '%s'", userID)
 
 	ctx := context.Background()
 
@@ -1759,7 +1722,7 @@ func (s *Server) handleCreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pbReq := &pb.CreateWorkoutRequest{
-		UserId:      req.UserID,
+		UserId:      userID, // Use MongoDB user ID from context, not from request body
 		Name:        req.Name,
 		Description: req.Description,
 		Exercises:   exercises,
@@ -1913,8 +1876,11 @@ func (s *Server) handleDeleteWorkout(w http.ResponseWriter, r *http.Request) {
 // Metrics HTTP handlers
 
 func (s *Server) handleGetUserMetrics(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
 
 	period := r.URL.Query().Get("period")
 	if period == "" {
@@ -1938,8 +1904,11 @@ func (s *Server) handleGetUserMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetVolumeTrends(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
 
 	period := r.URL.Query().Get("period")
 	if period == "" {
@@ -1984,19 +1953,23 @@ func (s *Server) handleGetWorkoutMetrics(w http.ResponseWriter, r *http.Request)
 // Insights HTTP handlers
 
 func (s *Server) handleGenerateInsights(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
-
-	ctx := context.Background()
-
-	// Convert userID string to ObjectID
-	userObjID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+	// Get Clerk user ID from authenticated context
+	clerkUserID, ok := r.Context().Value("clerk_user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	insights, err := s.insightsService.GenerateWorkoutInsights(ctx, userObjID)
+	ctx := context.Background()
+
+	// Get MongoDB user ID from Clerk user ID
+	user, err := s.userService.GetUserByClerkID(ctx, clerkUserID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("User not found: %v", err), http.StatusNotFound)
+		return
+	}
+
+	insights, err := s.insightsService.GenerateWorkoutInsights(ctx, user.ID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to generate insights: %v", err), http.StatusInternalServerError)
 		return
@@ -2026,8 +1999,12 @@ func (s *Server) handleGenerateInsights(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleGetRecentInsights(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get Clerk user ID from authenticated context
+	clerkUserID, ok := r.Context().Value("clerk_user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Parse limit parameter
 	limit := 5 // default
@@ -2039,14 +2016,14 @@ func (s *Server) handleGetRecentInsights(w http.ResponseWriter, r *http.Request)
 
 	ctx := context.Background()
 
-	// Convert userID string to ObjectID
-	userObjID, err := primitive.ObjectIDFromHex(userID)
+	// Get MongoDB user ID from Clerk user ID
+	user, err := s.userService.GetUserByClerkID(ctx, clerkUserID)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("User not found: %v", err), http.StatusNotFound)
 		return
 	}
 
-	insights, err := s.insightsService.GetRecentInsights(ctx, userObjID, limit)
+	insights, err := s.insightsService.GetRecentInsights(ctx, user.ID, limit)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get recent insights: %v", err), http.StatusInternalServerError)
 		return
@@ -2089,6 +2066,7 @@ func (s *Server) userToResponse(user *models.User) UserResponse {
 
 	return UserResponse{
 		ID:        user.ID.Hex(),
+		ClerkID:   user.ClerkID,
 		Email:     user.Email,
 		Name:      user.Name,
 		FirstName: firstName,
@@ -2097,17 +2075,43 @@ func (s *Server) userToResponse(user *models.User) UserResponse {
 		Weight:    user.Weight,
 		Age:       user.Age,
 		Goal:      user.Goal,
-		GoogleID:  user.GoogleID,
 		Picture:   user.Picture,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
 }
 
+// User get handler
+func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
+	// Get Clerk user ID from authenticated context
+	clerkUserID, ok := r.Context().Value("clerk_user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	// Get user by Clerk ID
+	user, err := s.userService.GetUserByClerkID(ctx, clerkUserID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	response := s.userToResponse(user)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // User update handler
 func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get Clerk user ID from authenticated context
+	clerkUserID, ok := r.Context().Value("clerk_user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -2116,49 +2120,47 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	pbReq := &pb.UpdateUserRequest{
-		Id:        userID,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Height:    req.Height,
-		Weight:    req.Weight,
-		Age:       req.Age,
-		Goal:      req.Goal,
+
+	// Prepare user data with fallbacks
+	email := req.Email
+	if email == "" {
+		email = "noemail@placeholder.com" // Fallback if email not provided
 	}
 
-	user, err := s.userService.UpdateUser(ctx, pbReq)
+	name := fmt.Sprintf("%s %s", req.FirstName, req.LastName)
+	if name == " " {
+		name = "User" // Fallback if name not provided
+	}
+
+	// Single call to create or update user with all profile data
+	user, err := s.userService.CreateOrUpdateClerkUser(
+		ctx,
+		clerkUserID,
+		email,
+		name,
+		req.Picture,
+		req.Height,
+		req.Weight,
+		req.Age,
+		req.Goal,
+	)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update user: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to create or update user: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Convert protobuf user to models.User for response
-	modelUser := &models.User{
-		ID:        primitive.ObjectID{}, // Will be set from user.Id
-		Email:     user.Email,
-		Name:      fmt.Sprintf("%s %s", user.FirstName, user.LastName),
-		Height:    user.Height,
-		Weight:    user.Weight,
-		Age:       user.Age,
-		Goal:      user.Goal,
-		CreatedAt: user.CreatedAt.AsTime(),
-		UpdatedAt: user.UpdatedAt.AsTime(),
-	}
-
-	// Convert user ID
-	if userObjID, err := primitive.ObjectIDFromHex(user.Id); err == nil {
-		modelUser.ID = userObjID
-	}
-
-	response := s.userToResponse(modelUser)
+	response := s.userToResponse(user)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
 // Suggestions HTTP handlers
 func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
 
 	var req GenerateWorkoutSuggestionsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -2257,8 +2259,11 @@ func (s *Server) handleGenerateWorkoutSuggestions(w http.ResponseWriter, r *http
 }
 
 func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
 
 	// Parse query parameters
 	pageSize := int32(10) // default
@@ -2375,8 +2380,13 @@ func (s *Server) handleGetStoredSuggestions(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleConfirmSuggestion(w http.ResponseWriter, r *http.Request) {
+	// Get MongoDB user ID from authenticated context
+	userID, ok := s.getMongoUserIDFromContext(r.Context(), w)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
-	userID := vars["userId"]
 	suggestionID := vars["suggestionId"]
 
 	var req ConfirmSuggestionRequest

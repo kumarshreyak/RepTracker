@@ -17,8 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Typography, Button, ExerciseHistory } from '../src/components';
 import { getColor } from '../src/components/Colors';
 import { useAuth } from '../src/hooks/useAuth';
-import { User } from '../src/auth/AuthService';
 import { Exercise, RoutineExercise, RoutineSet, RoutineSetInput } from '@/types/exercise';
+import { apiGet } from '../src/utils/api';
 
 export default function ExerciseSearchRoute() {
   const { user } = useAuth();
@@ -40,12 +40,7 @@ export default function ExerciseSearchRoute() {
       const params = new URLSearchParams();
       if (query) params.append("search", query);
       
-      const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_BASE_URL}/api/exercises?${params.toString()}`);
-      
-      if (!response.ok) throw new Error("Failed to fetch exercises");
-      
-      const data = await response.json();
+      const data = await apiGet<{ exercises: Exercise[] }>(`/api/exercises?${params.toString()}`);
       setExercises(data.exercises || []);
     } catch (error) {
       console.error("Error fetching exercises:", error);
@@ -357,7 +352,6 @@ export default function ExerciseSearchRoute() {
               </Typography>
               <ExerciseHistory 
                 exerciseId={selectedExercise.id}
-                userId={user.id}
                 exerciseName={selectedExercise.name}
               />
             </View>
