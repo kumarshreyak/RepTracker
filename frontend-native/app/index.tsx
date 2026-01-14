@@ -15,7 +15,14 @@ export default function Index() {
   // Check user profile when signed in
   useEffect(() => {
     async function checkUserProfile() {
+      if (!isLoaded) {
+        // Wait for Clerk to load
+        return;
+      }
+
       if (!isSignedIn || !user) {
+        // Not signed in, let the redirect handle it
+        setProfileComplete(null);
         return;
       }
 
@@ -49,7 +56,7 @@ export default function Index() {
     }
 
     checkUserProfile();
-  }, [isSignedIn, user, getToken]);
+  }, [isLoaded, isSignedIn, user?.id]);
 
   // Show loading screen while checking authentication or profile
   if (!isLoaded || (isSignedIn && isCheckingProfile)) {
