@@ -1,38 +1,8 @@
 pluginManagement {
-  // Detect Node.js path dynamically for cross-platform compatibility
-  // Works on both local macOS (/opt/homebrew/bin/node) and EAS build servers (/usr/bin/node)
-  def nodeExecutable = System.getProperty("react.nodeExecutableAndArgs")
-  if (nodeExecutable == null) {
-    // Try common Node.js locations
-    def nodePaths = [
-      "/opt/homebrew/bin/node",  // macOS Homebrew (Apple Silicon)
-      "/usr/local/bin/node",      // macOS Homebrew (Intel)
-      "/usr/bin/node",            // Linux (EAS build servers)
-      "node"                      // Fallback to PATH
-    ]
-    for (path in nodePaths) {
-      try {
-        def result = providers.exec {
-          commandLine(path, "--version")
-          ignoreExitValue = true
-        }
-        if (result.exitValue.get() == 0) {
-          nodeExecutable = path
-          break
-        }
-      } catch (Exception e) {
-        // Continue to next path
-      }
-    }
-    if (nodeExecutable == null) {
-      nodeExecutable = "node"  // Final fallback
-    }
-  }
-  
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine(nodeExecutable, "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
     }.standardOutput.asText.get().trim()
   ).getParentFile().absolutePath
   includeBuild(reactNativeGradlePlugin)
@@ -40,7 +10,7 @@ pluginManagement {
   def expoPluginsPath = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine(nodeExecutable, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
     }.standardOutput.asText.get().trim(),
     "../android/expo-gradle-plugin"
   ).absolutePath
@@ -54,7 +24,7 @@ plugins {
 
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
-    ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+    ex.autolinkLibrariesFromCommand()
   } else {
     ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
   }

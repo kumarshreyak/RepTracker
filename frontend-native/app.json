@@ -3,8 +3,9 @@
     "name": "RepTracker",
     "slug": "frontend-native",
     "scheme": "reptracker",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -15,14 +16,18 @@
       "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}",
       "clerkPublishableKey": "${EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.2.0",
     "updates": {
       "url": "https://u.expo.dev/160f751a-2d29-4613-a35f-917da6e034fe"
     },
     "plugins": [],
     "android": {
-      "package": "com.blaize.gymlog"
+      "package": "com.blaize.gymlog",
+      "versionCode": 6
     },
-    "ios": {}
+    "ios": {
+      "bundleIdentifier": "com.blaize.gymlog",
+      "buildNumber": "10"
+    }
   }
 }
