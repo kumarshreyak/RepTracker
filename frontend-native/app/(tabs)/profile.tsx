@@ -5,6 +5,8 @@ import {
   ScrollView,
   Image,
   Alert,
+  Pressable,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -24,6 +26,22 @@ export default function ProfileTab() {
     } catch (err) {
       console.error('Sign out error:', JSON.stringify(err, null, 2));
       Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const deleteFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdS-SsF6rY91h53evUPfd6RAjOn1dbpGJVmM498HQolcRl26g/viewform?usp=sharing&ouid=108074063199428464488';
+    
+    try {
+      const supported = await Linking.canOpenURL(deleteFormUrl);
+      if (supported) {
+        await Linking.openURL(deleteFormUrl);
+      } else {
+        Alert.alert('Error', 'Unable to open the link.');
+      }
+    } catch (err) {
+      console.error('Error opening delete form:', err);
+      Alert.alert('Error', 'Failed to open the deletion form.');
     }
   };
 
@@ -69,6 +87,15 @@ export default function ProfileTab() {
           >
             Sign Out
           </Button>
+        </View>
+
+        {/* Delete Account */}
+        <View style={styles.deleteAccountSection}>
+          <Pressable onPress={handleDeleteAccount}>
+            <Typography variant="label-xsmall" color="contentTertiary" style={styles.deleteAccountText}>
+              Delete my account
+            </Typography>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -124,5 +151,13 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     width: '100%',
+  },
+  deleteAccountSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    alignItems: 'center',
+  },
+  deleteAccountText: {
+    textDecorationLine: 'underline',
   },
 }); 
