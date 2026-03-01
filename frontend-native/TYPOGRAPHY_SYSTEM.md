@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GymLog app uses the complete **Uber Base Design System** typography system. This provides a comprehensive, scalable approach to typography that ensures consistency, accessibility, and visual hierarchy throughout the application.
+The RepTracker app uses the complete **Uber Base Design System** typography system. This provides a comprehensive, scalable approach to typography that ensures consistency, accessibility, and visual hierarchy throughout the application.
 
 ## 🎯 Typography Philosophy
 
@@ -414,4 +414,4 @@ const getTitleVariant = (screenSize: 'mobile' | 'tablet'): TypographyVariant => 
 
 ---
 
-This typography system provides a robust foundation for consistent, readable, and hierarchical text throughout the GymLog application. Always use the Typography component and semantic color system for the best results. 
+This typography system provides a robust foundation for consistent, readable, and hierarchical text throughout the RepTracker application. Always use the Typography component and semantic color system for the best results. 

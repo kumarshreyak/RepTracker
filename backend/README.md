@@ -1,6 +1,6 @@
-# GymLog Backend
+# RepTracker Backend
 
-Go backend service providing HTTP REST and gRPC APIs for the GymLog application, with MongoDB storage, Clerk authentication, and Google Gemini AI integration.
+Go backend service providing HTTP REST and gRPC APIs for the RepTracker application, with MongoDB storage, Clerk authentication, and Google Gemini AI integration.
 
 ## Table of Contents
 
