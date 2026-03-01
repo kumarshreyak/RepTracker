@@ -1,6 +1,6 @@
-# GymLog Frontend
+# RepTracker Frontend
 
-React Native (Expo) iOS/Android app for GymLog. Uses Expo Router for file-based navigation and Clerk for authentication.
+React Native (Expo) iOS/Android app for RepTracker. Uses Expo Router for file-based navigation and Clerk for authentication.
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ EOF
 
 ### 3. Get your Clerk key
 
-1. Go to [clerk.com](https://clerk.com) and create an application named "GymLog"
+1. Go to [clerk.com](https://clerk.com) and create an application named "RepTracker"
 2. Select **Email** as the authentication method
 3. Copy the **Publishable Key** from API Keys (starts with `pk_test_`)
 4. Use the same key in both `frontend-native/.env` and `backend/.env`

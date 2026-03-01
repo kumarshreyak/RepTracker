@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GymLog app now uses the complete **Uber Base Design System** semantic color system. This provides a comprehensive, scalable approach to color that ensures consistency and makes it easy to maintain and update the visual design.
+The RepTracker app now uses the complete **Uber Base Design System** semantic color system. This provides a comprehensive, scalable approach to color that ensures consistency and makes it easy to maintain and update the visual design.
 
 ## 🎨 Color Architecture
 
@@ -241,4 +241,4 @@ const getStateColor = (state: 'normal' | 'error' | 'success') => {
 
 ---
 
-This semantic color system provides a robust foundation for consistent, maintainable, and scalable color usage throughout the GymLog application. 
+This semantic color system provides a robust foundation for consistent, maintainable, and scalable color usage throughout the RepTracker application.

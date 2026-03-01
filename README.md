@@ -1,4 +1,4 @@
-# GymLog
+# RepTracker
 
 A full-stack fitness tracking application for creating workout routines, tracking live sessions, and analyzing performance with AI-powered insights.
 
@@ -16,7 +16,7 @@ A full-stack fitness tracking application for creating workout routines, trackin
 ## Architecture
 
 ```
-GymLog/
+RepTracker/
 ├── frontend-native/    # React Native (Expo) iOS/Android app
 └── backend/            # Go HTTP + gRPC server with MongoDB
 ```
@@ -58,7 +58,7 @@ GymLog/
 
 ```bash
 git clone <repo-url>
-cd GymLog
+cd RepTracker
 ```
 
 ### 2. Start the backend
@@ -110,7 +110,7 @@ npm start
 
 ### 4. Get your Clerk key
 
-1. Go to [clerk.com](https://clerk.com) and create an application named "GymLog"
+1. Go to [clerk.com](https://clerk.com) and create an application named "RepTracker"
 2. Select **Email** as the authentication method
 3. Copy the **Publishable Key** from API Keys (starts with `pk_test_`)
 4. Use the same key in both `backend/.env` and `frontend-native/.env`
