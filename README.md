@@ -1,95 +1,145 @@
-# GymLog - Workout Routine Manager
+# GymLog
 
-A full-stack application for creating and managing workout routines, built with Next.js frontend and Go gRPC backend.
+A full-stack fitness tracking application for creating workout routines, tracking live sessions, and analyzing performance with AI-powered insights.
 
 ## Features
 
-- ✅ **Create Routine Flow**: Navigate from home page to create workout routines
-- ✅ **Exercise Search**: Browse and search through a library of exercises
-- ✅ **Exercise Details**: View exercise descriptions, muscle groups, equipment, and instructions  
-- ✅ **Routine Builder**: Add exercises with custom sets, reps, and weights
-- ✅ **Modern UI**: Clean design using Airtable design system components
+- **Exercise Library** — 325+ exercises with descriptions, muscle groups, equipment, and instructions
+- **Routine Builder** — Create custom workout routines with sets, reps, weights, and rest periods
+- **Live Workout Tracking** — Real-time session tracking with set-by-set completion and timers
+- **Comprehensive Analytics** — 60+ workout metrics including volume, strength, recovery, and periodization
+- **AI Insights** — Google Gemini-powered analysis of training patterns, volume landmarks (MEV/MAV/MRV), and injury risk
+- **AI Progressive Overload** — Async AI-driven workout progression recommendations
+- **Workout Suggestions** — AI-generated routine improvements based on recent history
+- **Authentication** — Clerk-based email/password auth with JWT validation
 
 ## Architecture
 
-- **Frontend**: Next.js 14 with TypeScript and Tailwind CSS
-- **Backend**: Go with gRPC API
-- **Design System**: Custom Airtable-inspired components
-- **API**: RESTful HTTP endpoints bridging to gRPC services
+```
+GymLog/
+├── frontend-native/    # React Native (Expo) iOS/Android app
+└── backend/            # Go HTTP + gRPC server with MongoDB
+```
 
-## Getting Started
+```
+┌─────────────────────┐     HTTPS/JWT      ┌──────────────────────┐
+│  React Native App   │ ─────────────────► │   Go Backend         │
+│  (Expo Router)      │                    │   HTTP :8080         │
+│                     │                    │   gRPC :50051        │
+│  Clerk Auth SDK     │ ◄── Clerk JWKS ──► │   Auth Middleware    │
+└─────────────────────┘                    └──────────┬───────────┘
+                                                       │
+                              ┌────────────────────────┼────────────────────────┐
+                              │                        │                        │
+                    ┌─────────▼──────┐    ┌────────────▼──────┐    ┌───────────▼──────┐
+                    │   MongoDB      │    │  Google Gemini     │    │  Clerk (SaaS)    │
+                    │   (gymlog db)  │    │  2.5 Flash AI      │    │  Auth Provider   │
+                    └────────────────┘    └───────────────────┘    └──────────────────┘
+```
+
+**Stack:**
+- Frontend: React Native, Expo Router, TypeScript, Uber Base Design System
+- Backend: Go 1.23, gRPC, HTTP REST gateway
+- Database: MongoDB (7 collections)
+- Auth: Clerk (JWT/JWKS validation)
+- AI: Google Gemini 2.5 Flash
+
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
 - Go 1.23+
+- MongoDB (local or Atlas)
+- [Clerk account](https://clerk.com) (free tier)
+- [Google AI Studio API key](https://makersuite.google.com/app/apikey) (for AI features)
 
-### Backend Setup
+### 1. Clone and configure
 
-1. Navigate to the backend directory:
+```bash
+git clone <repo-url>
+cd GymLog
+```
+
+### 2. Start the backend
+
 ```bash
 cd backend
-```
 
-2. Install dependencies:
-```bash
-go mod download
-```
+# Create .env
+cat > .env << 'EOF'
+MONGODB_URI=mongodb://localhost:27017
+DB_NAME=gymlog
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_YOUR_CLERK_KEY
+GEMINI_API_KEY=YOUR_GEMINI_KEY
+EOF
 
-3. Start the gRPC server:
-```bash
+# Install dependencies and start MongoDB
+go mod tidy
+mongod &
+
+# Initialize database and populate exercises
+mongosh < scripts/init-mongo.js
+go run scripts/populate_exercises.go
+
+# Start server (HTTP :8080, gRPC :50051)
 go run cmd/server/main.go
 ```
 
-The backend will start on port `50051`.
+Or with Docker:
 
-### Frontend Setup
-
-1. Navigate to the frontend directory:
 ```bash
-cd frontend
+make docker-compose-up
 ```
 
-2. Install dependencies:
+### 3. Start the frontend
+
 ```bash
+cd frontend-native
+
+# Create .env
+cat > .env << 'EOF'
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8080
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_YOUR_CLERK_KEY
+EOF
+
 npm install
+npm start
+# Press i for iOS simulator, a for Android emulator
 ```
 
-3. Start the development server:
+### 4. Get your Clerk key
+
+1. Go to [clerk.com](https://clerk.com) and create an application named "GymLog"
+2. Select **Email** as the authentication method
+3. Copy the **Publishable Key** from API Keys (starts with `pk_test_`)
+4. Use the same key in both `backend/.env` and `frontend-native/.env`
+
+## Development Commands
+
+### Backend
+
 ```bash
-npm run dev
+cd backend
+make run              # Start server
+make test             # Run tests
+make build            # Build binary
+make docker-compose-up  # Start with MongoDB via Docker
+make populate-exercises # Populate exercise database
 ```
 
-The frontend will be available at `http://localhost:3000`.
+### Frontend
 
-## Usage Flow
+```bash
+cd frontend-native
+npm start             # Start Expo dev server
+npm run ios           # Run on iOS simulator
+npm run android       # Run on Android emulator
+npm run build:ios     # EAS cloud build for iOS
+npm run build:android # EAS cloud build for Android
+```
 
-1. **Home Page** (`/home`): Start here and click "Create Routine"
-2. **Create Routine** (`/routines/create`): Name your routine and click "Add Exercise"
-3. **Exercise Search** (`/exercises/search`): Search and select exercises, configure sets/reps
-4. **Add to Routine**: Exercises are added back to the routine builder
+## Project Documentation
 
-## API Endpoints
-
-### Frontend API Routes
-- `GET /api/exercises` - List exercises with optional search/filtering
-
-### Backend gRPC Services  
-- `ExerciseService` - CRUD operations for exercises
-- `UserService` - User management (planned)
-- `WorkoutService` - Workout tracking (planned)
-
-## Development Notes
-
-- Currently using mock data for exercises
-- Backend provides sample exercises through gRPC
-- Frontend uses HTTP API routes that bridge to gRPC
-- Ready for database integration
-
-## Next Steps
-
-- [ ] Database integration (PostgreSQL)
-- [ ] User authentication
-- [ ] Workout tracking and history
-- [ ] Exercise video/image assets
-- [ ] Mobile responsive optimizations
+- [Backend README](backend/README.md) — API reference, database schema, metrics system, deployment
+- [Frontend README](frontend-native/README.md) — Setup, navigation, authentication, building for production
