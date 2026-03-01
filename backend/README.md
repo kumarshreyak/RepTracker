@@ -1,108 +1,139 @@
 # GymLog Backend
 
-A Go backend service for the GymLog application with MongoDB integration and Clerk authentication.
+Go backend service providing HTTP REST and gRPC APIs for the GymLog application, with MongoDB storage, Clerk authentication, and Google Gemini AI integration.
+
+## Table of Contents
+
+- [Setup](#setup)
+- [Running the Server](#running-the-server)
+- [Authentication](#authentication)
+- [API Reference](#api-reference)
+- [Database Schema](#database-schema)
+- [Metrics System](#metrics-system)
+- [AI Services](#ai-services)
+- [Exercise Constants](#exercise-constants)
+- [Scripts](#scripts)
+- [Deployment](#deployment)
+
+---
 
 ## Setup
 
 ### Prerequisites
 
 - Go 1.23+
-- MongoDB (local or cloud)
-- Clerk account (for authentication)
-- Environment variables
+- MongoDB (local or Atlas)
+- Clerk account (publishable key)
+- Google Gemini API key (for AI features)
 
 ### Environment Variables
 
-Create a `.env` file in the backend directory with the following variables:
+Create a `.env` file in the `backend/` directory:
 
 ```env
-# MongoDB Configuration
 MONGODB_URI=mongodb://localhost:27017
 DB_NAME=gymlog
-
-# Clerk Configuration
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your-clerk-publishable-key
-
-# Google Gemini API Configuration
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
-**Note:** JWT_SECRET is no longer needed as authentication is handled by Clerk.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | Yes | MongoDB connection string |
+| `DB_NAME` | Yes | MongoDB database name |
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key for JWT validation |
+| `GEMINI_API_KEY` | No | Google Gemini API key (AI features disabled without it) |
 
-### Installation
+### Install Dependencies
 
-1. Install dependencies:
 ```bash
 go mod tidy
 ```
 
-2. Start MongoDB (if running locally):
-```bash
-mongod
-```
+---
 
-3. Start the server:
+## Running the Server
+
+### Locally
+
 ```bash
+# Start MongoDB
+mongod
+
+# Initialize collections (first time only)
+mongosh < scripts/init-mongo.js
+
+# Populate exercise database (first time only)
+go run scripts/populate_exercises.go
+
+# Start the server
 go run cmd/server/main.go
 ```
 
-The server will start both:
-- gRPC server on port 50051
-- HTTP server on port 8080
+The server starts on:
+- HTTP: `http://localhost:8080`
+- gRPC: `localhost:50051`
+
+### With Docker Compose
+
+```bash
+make docker-compose-up
+```
+
+### Makefile Commands
+
+```bash
+make setup              # Setup development environment
+make run                # Start the server
+make test               # Run tests
+make build              # Build binary
+make docker-compose-up  # Start with MongoDB via Docker
+make populate-exercises # Populate exercise database
+```
+
+---
 
 ## Authentication
 
-This backend uses **Clerk** for authentication. All API endpoints (except health checks) require a valid Clerk JWT token in the Authorization header:
+All API endpoints (except `GET /health`) require a valid Clerk JWT token:
 
 ```
 Authorization: Bearer <clerk-jwt-token>
 ```
 
-### Authentication Flow
+**Flow:**
+1. User signs in via Clerk on the frontend
+2. Frontend obtains a JWT from the Clerk session
+3. Frontend includes the JWT in the `Authorization` header
+4. Backend validates the token against Clerk's JWKS endpoint
+5. Backend extracts the Clerk user ID from token claims
+6. Backend creates or retrieves the user record in MongoDB
 
-1. **Frontend**: User signs in/up via Clerk (email/password, OAuth, etc.)
-2. **Frontend**: Obtains JWT token from Clerk session
-3. **Frontend**: Includes token in Authorization header for all API requests
-4. **Backend**: Validates token using Clerk's JWKS (JSON Web Key Set)
-5. **Backend**: Extracts Clerk user ID from token claims
-6. **Backend**: Creates/updates user record in MongoDB if needed
-
-### User Management
-
-Users are automatically created in the MongoDB database when they first make an authenticated request. The backend stores:
-- **clerk_id**: Clerk user ID (primary identifier for linking to Clerk)
-- **email**: User's email address
-- **name**: User's full name
-- **picture**: Profile picture URL
-- **height, weight, age, goal**: User profile data (set during onboarding)
-
-### Security Notes
-
+**Notes:**
 - No passwords are stored in the backend (handled by Clerk)
-- JWT tokens are validated against Clerk's public keys
 - Tokens are short-lived and automatically refreshed by Clerk
-- All API endpoints are protected by authentication middleware
+- User records are created automatically on first authenticated request
 
-## API Endpoints
+---
 
-### Authentication
-All endpoints require authentication via Clerk JWT tokens. No separate authentication endpoints are needed.
+## API Reference
+
+### Health Check
+
+```
+GET /health
+```
 
 ### Users
-- `GET /api/users` - Get authenticated user profile
-- `PUT /api/users` - Create or update authenticated user (upsert)
 
-**Note:** User ID is automatically extracted from the JWT token. No need to pass userId in the URL.
-
-#### User API Details
-
-**Get User Profile**
 ```
-GET /api/users
+GET  /api/users      # Get authenticated user profile
+PUT  /api/users      # Create or update user profile (upsert)
 ```
-Retrieves the profile of the authenticated user. The user ID is automatically extracted from the JWT token for security.
 
-Response:
+The user ID is extracted from the JWT token — no need to pass it in the URL.
+
+**GET /api/users response:**
 ```json
 {
   "id": "user_id",
@@ -121,15 +152,9 @@ Response:
 }
 ```
 
-Returns `404 Not Found` if the user profile doesn't exist (e.g., user hasn't completed onboarding).
+Returns `404` if user hasn't completed onboarding.
 
-**Create or Update User**
-```
-PUT /api/users
-```
-Creates a new user if one doesn't exist with the authenticated Clerk user ID, or updates an existing user. This is useful for onboarding flows where the user may or may not have profile data already stored. The user ID is automatically extracted from the JWT token for security.
-
-Request body:
+**PUT /api/users request body:**
 ```json
 {
   "firstName": "John",
@@ -141,486 +166,437 @@ Request body:
 }
 ```
 
-Response:
-```json
-{
-  "id": "user_id",
-  "clerkId": "clerk_user_id",
-  "email": "user@example.com",
-  "name": "John Doe",
-  "firstName": "John",
-  "lastName": "Doe",
-  "height": 180,
-  "weight": 75,
-  "age": 30,
-  "goal": "gain_muscle",
-  "picture": "https://...",
-  "createdAt": "2024-01-15T10:30:00Z",
-  "updatedAt": "2024-01-15T10:35:00Z"
-}
-```
+Goal must be one of: `lose_fat`, `gain_muscle`, `maintain`.
 
-**Behavior:**
-- If user with `userId` exists: Updates the provided fields
-- If user with `userId` doesn't exist: Creates a new user with the provided data
-- Partial updates supported: Only provided fields are updated
-- Goal validation: Must be one of `lose_fat`, `gain_muscle`, or `maintain`
+---
 
 ### Exercises
-- `GET /api/exercises` - List exercises with filtering
-- `POST /api/exercises` - Create exercise
-- `GET /api/exercises/{id}` - Get exercise by ID
-- `PUT /api/exercises/{id}` - Update exercise
-- `DELETE /api/exercises/{id}` - Delete exercise
-- `GET /api/exercises/quick-add` - Get exercises for quick add
-- `GET /api/exercises/{id}/history` - Get exercise history from last 3 workout sessions for authenticated user
+
+```
+GET    /api/exercises                    # List exercises (with filtering)
+POST   /api/exercises                    # Create exercise
+GET    /api/exercises/{id}               # Get exercise by ID
+PUT    /api/exercises/{id}               # Update exercise
+DELETE /api/exercises/{id}               # Delete exercise
+GET    /api/exercises/quick-add          # Get exercises for quick-add
+GET    /api/exercises/{id}/history       # Get exercise history (last 3 sessions)
+```
+
+**GET /api/exercises query parameters:**
+- `search` — Search by name
+- `category` — Filter by category
+- `equipment` — Filter by equipment
+- `muscleGroup` — Filter by muscle group
+
+**GET /api/exercises/{id}/history** returns the last 3 completed workout sessions where the exercise was performed, including actual vs. target performance and any AI progressive overload recommendations.
+
+---
 
 ### Workouts (Routines)
-- `GET /api/workouts` - List workouts for authenticated user
-- `POST /api/workouts` - Create workout
-- `GET /api/workouts/{id}` - Get workout by ID
-- `GET /api/workouts/{id}/start` - Get workout with exercise details for starting
-- `PUT /api/workouts/{id}` - Update workout
-- `DELETE /api/workouts/{id}` - Delete workout
+
+```
+GET    /api/workouts          # List workouts for authenticated user
+POST   /api/workouts          # Create workout
+GET    /api/workouts/{id}     # Get workout by ID
+GET    /api/workouts/{id}/start  # Get workout with exercise details for starting
+PUT    /api/workouts/{id}     # Update workout
+DELETE /api/workouts/{id}     # Delete workout
+```
+
+---
 
 ### Workout Sessions
-- `GET /api/workout-sessions` - List workout sessions for authenticated user
-- `POST /api/workout-sessions` - Create workout session
-- `GET /api/workout-sessions/{id}` - Get workout session
-- `PUT /api/workout-sessions/{id}` - Update workout session
-- `DELETE /api/workout-sessions/{id}` - Delete workout session
-- `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/start` - Start exercise
-- `POST /api/workout-sessions/{id}/exercises/{exerciseIndex}/finish` - Finish exercise
-- `PUT /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}` - Update set
-- `POST /api/workout-sessions/{id}/progressive-overload` - Apply progressive overload to workout
-- `POST /api/workout-sessions/{id}/progressive-overload/ai` - Apply AI-powered progressive overload (async)
 
-**Note:** All workout and workout session endpoints automatically filter by the authenticated user. No need to pass userId as a query parameter.
-- `GET /api/users/{userId}/ai-progressive-overload-responses` - List stored AI progressive overload responses
-
-#### Progressive Overload API Details
-
-**Apply Progressive Overload**
 ```
-POST /api/workout-sessions/{id}/progressive-overload
-```
-Applies progressive overload to a workout based on the performance recorded in a workout session. This automatically increases the difficulty of the workout for future use.
-
-**Progressive Overload Logic:**
-For each exercise in the workout session:
-1. **Increase rep count by 1** for all completed sets
-2. **If rep count > 15 after step 1:**
-   - If weight is non-zero: increase weight by 2.5 and set rep count to 8
-   - If weight is zero: do nothing (bodyweight exercises)
-3. **Skip exercises** that don't exist in the target workout
-4. **Only process completed sets** from the session
-
-Request body:
-```json
-{
-  "workoutId": "workout_id_to_update"
-}
+GET    /api/workout-sessions                                          # List sessions
+POST   /api/workout-sessions                                          # Create session
+GET    /api/workout-sessions/{id}                                     # Get session
+PUT    /api/workout-sessions/{id}                                     # Update session
+DELETE /api/workout-sessions/{id}                                     # Delete session
+POST   /api/workout-sessions/{id}/exercises/{exerciseIndex}/start     # Start exercise
+POST   /api/workout-sessions/{id}/exercises/{exerciseIndex}/finish    # Finish exercise
+PUT    /api/workout-sessions/{id}/exercises/{exerciseIndex}/sets/{setIndex}  # Update set
+POST   /api/workout-sessions/{id}/progressive-overload                # Apply progressive overload
+POST   /api/workout-sessions/{id}/progressive-overload/ai             # Apply AI progressive overload (async)
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "message": "Progressive overload applied successfully",
-  "updatedWorkout": {
-    "id": "workout_id",
-    "userId": "user_id",
-    "name": "Push Day",
-    "description": "Updated workout with progressive overload",
-    "exercises": [
-      {
-        "exerciseId": "exercise_id",
-        "exercise": {...},
-        "sets": [
-          {
-            "reps": 9,     // Was 8, increased by 1
-            "weight": 50.0,
-            "durationSeconds": 0,
-            "distance": 0,
-            "notes": ""
-          },
-          {
-            "reps": 8,     // Was 16, weight increased and reps reset
-            "weight": 22.5, // Was 20, increased by 2.5
-            "durationSeconds": 0,
-            "distance": 0,
-            "notes": ""
-          }
-        ],
-        "notes": "",
-        "restSeconds": 90
-      }
-    ],
-    "startedAt": null,
-    "finishedAt": null,
-    "durationSeconds": 0,
-    "notes": "",
-    "createdAt": "2024-01-15T10:30:00Z",
-    "updatedAt": "2024-01-15T10:35:00Z"
-  }
-}
-```
+**Progressive Overload Logic** (`POST /api/workout-sessions/{id}/progressive-overload`):
 
-**Use Case:**
-After completing a workout session, call this API to automatically progress the workout difficulty for the next time the user performs this routine. This ensures continuous progression without manual intervention.
+For each completed exercise in the session:
+1. Increase rep count by 1 for all completed sets
+2. If rep count exceeds 15 and weight is non-zero: increase weight by 2.5 and reset reps to 8
+3. Bodyweight exercises (weight = 0) are not weight-progressed
 
-#### AI Progressive Overload API Details
+Request body: `{ "workoutId": "workout_id_to_update" }`
 
-**Apply AI-Powered Progressive Overload (Async)**
-```
-POST /api/workout-sessions/{id}/progressive-overload/ai
-```
-Applies AI-powered progressive overload analysis to a workout using Gemini AI. This endpoint now **runs asynchronously** - it immediately returns a response indicating that processing has started, then performs the AI analysis and workout updates in the background.
+**AI Progressive Overload** (`POST /api/workout-sessions/{id}/progressive-overload/ai`):
 
-**Request Body:**
-```json
-{
-  "workoutId": "workout_id_to_update"
-}
-```
+Runs asynchronously — returns immediately with `success: true`, then processes AI analysis in the background. Results are stored and retrievable via `GET /api/users/ai-progressive-overload-responses`.
 
-**Immediate Response:**
-```json
-{
-  "success": true,
-  "message": "AI progressive overload analysis started. Processing in background...",
-  "updatedWorkout": {
-    "id": "original_workout_id",
-    "name": "Push Day",
-    "exercises": [/* original exercises */]
-  }
-}
-```
+Request body: `{ "workoutId": "workout_id_to_update" }`
 
-**Async Processing Flow:**
-1. **Immediate Return**: API returns immediately with `success: true` and processing message
-2. **Background Processing**: AI analysis, workout updates, and database storage happen asynchronously  
-3. **Status Tracking**: Results are stored and can be queried via the List AI Progressive Overload Responses endpoint
-4. **Error Handling**: Any errors during async processing are captured and stored with `success: false`
-
-**To Check Processing Status and Results:**
-Use the List AI Progressive Overload Responses endpoint below to monitor the status and retrieve results of your async AI analysis.
-
-**Benefits of Async Processing:**
-- **Non-blocking**: API responds immediately without waiting for AI processing
-- **Better UX**: Frontend can show immediate feedback and poll for results
-- **Reliability**: Long-running AI analysis doesn't risk request timeouts
-- **Scalability**: Server can handle multiple concurrent AI requests efficiently
-
-**List AI Progressive Overload Responses**
-```
-GET /api/users/{userId}/ai-progressive-overload-responses
-```
-Retrieves stored AI progressive overload responses for a user in descending order by creation time. This endpoint allows you to view the history of AI recommendations and their effectiveness.
-
-**Query Parameters:**
-- `pageSize` (optional): Number of responses per page (default: 20, max: 100)
-- `pageToken` (optional): Token for pagination to get next page of results
-
-**Response:**
-```json
-{
-  "responses": [
-    {
-      "id": "response_id",
-      "userId": "user_id",
-      "workoutSessionId": "session_id",
-      "workoutId": "workout_id",
-      "analysisSummary": "Strong progression shown across all exercises. User consistently completing target reps with room for advancement.",
-      "updatedExercises": [
-        {
-          "exerciseId": "exercise_id",
-          "exerciseName": "Bench Press",
-          "progressionApplied": true,
-          "reasoning": "User completed all sets with 2+ RIR, ready for weight increase",
-          "changesMade": "Increased weight from 80kg to 82.5kg based on consistent completion",
-          "sets": [
-            {
-              "reps": 8,
-              "weight": 82.5,
-              "durationSeconds": 0,
-              "distance": 0,
-              "notes": ""
-            }
-          ],
-          "notes": "Strong performance, continue progression",
-          "restSeconds": 180
-        }
-      ],
-      "success": true,
-      "message": "AI progressive overload applied successfully - Strong progression trends identified",
-      "recentSessionsCount": 7,
-      "aiModel": "gemini-2.5-flash",
-      "processingTimeMs": 1245,
-      "createdAt": "2024-01-15T10:35:00Z",
-      "updatedAt": "2024-01-15T10:35:00Z"
-    }
-  ],
-  "nextPageToken": "next_page_token_if_more_results"
-}
-```
-
-**Use Case:**
-Track the history of AI recommendations to understand progression patterns, analyze AI decision-making, and monitor the effectiveness of different progression strategies over time.
+---
 
 ### Metrics
-- `GET /api/users/metrics` - Get user metrics for authenticated user
-- `GET /api/users/metrics/trends` - Get volume trends for authenticated user
-- `GET /api/workout-sessions/{sessionId}/metrics` - Get workout metrics
+
+```
+GET /api/users/metrics            # Get user metrics (period: weekly|monthly|all)
+GET /api/users/metrics/trends     # Get volume trends (period: weekly|monthly)
+GET /api/workout-sessions/{id}/metrics  # Get metrics for a specific session
+```
+
+---
 
 ### Insights
-- `POST /api/users/insights` - Generate workout insights for authenticated user
-- `GET /api/users/insights` - Get recent insights for authenticated user
+
+```
+POST /api/users/insights    # Generate AI workout insights
+GET  /api/users/insights    # Get recent insights (query: limit=5)
+```
+
+---
 
 ### Workout Suggestions
-- `POST /api/users/suggestions/workouts` - Generate AI workout suggestions for authenticated user
-- `GET /api/users/suggestions/stored` - Get stored workout suggestions for authenticated user (paginated, ordered by creation date desc)
-- `POST /api/users/suggestions/{suggestionId}/confirm` - Confirm or reject a workout suggestion
 
-### AI Progressive Overload
-- `GET /api/users/ai-progressive-overload-responses` - Get AI progressive overload analysis history for authenticated user
-
-**Note:** All user-specific endpoints under `/api/users` automatically apply to the authenticated user. The user ID is extracted from the JWT token for security.
-
-#### Workout Suggestions API Details
-
-**Generate Workout Suggestions**
 ```
-POST /api/users/suggestions/workouts
+POST /api/users/suggestions/workouts              # Generate AI workout suggestions
+GET  /api/users/suggestions/stored                # Get stored suggestions (paginated)
+POST /api/users/suggestions/{suggestionId}/confirm  # Accept or reject a suggestion
 ```
-Generates AI-powered workout suggestions based on recent workout sessions and stores them in the database. The user ID is automatically extracted from the JWT token.
 
-Request body (optional):
+**POST /api/users/suggestions/workouts request body (optional):**
 ```json
 {
-  "daysToAnalyze": 14,    // Number of days of workout history to analyze (default: 14)
-  "maxSuggestions": 3     // Maximum number of suggestions to generate (default: 3)
+  "daysToAnalyze": 14,
+  "maxSuggestions": 3
 }
 ```
 
-Response:
+**POST /api/users/suggestions/{suggestionId}/confirm request body:**
 ```json
 {
-  "suggestions": [
-    {
-      "originalWorkoutId": "workout_id",
-      "name": "Improved Push Day",
-      "description": "Enhanced push workout with better progression",
-      "exercises": [...],
-      "changes": [
-        {
-          "type": "sets",
-          "exerciseId": "exercise_id", 
-          "exerciseName": "Bench Press",
-          "oldValue": "3 sets",
-          "newValue": "4 sets",
-          "reason": "Increase volume for better strength gains"
-        }
-      ],
-      "overallReasoning": "Based on your recent progress...",
-      "priority": 5
-    }
-  ],
-  "analysisSummary": "Analysis of your recent workout patterns shows..."
+  "suggestionIndex": 0,
+  "accept": true
 }
 ```
 
-**Get Stored Suggestions**
-```
-GET /api/users/suggestions/stored?pageSize=10&pageToken=...
-```
-Retrieves previously generated workout suggestions with "pending" status in decreasing order of creation date for the authenticated user. Only suggestions that haven't been accepted or rejected are returned. The user ID is automatically extracted from the JWT token.
+When accepted, the original workout is updated with the suggested changes.
 
-Query parameters:
-- `pageSize` (optional): Number of suggestion sets per page (default: 10, max: 50)
-- `pageToken` (optional): Token for pagination (timestamp-based)
+---
 
-Response:
-```json
-{
-  "storedSuggestions": [
-    {
-      "id": "suggestion_set_id",
-      "userId": "user_id", 
-      "suggestions": [
-        {
-          "originalWorkoutId": "workout_id",
-          "name": "Improved Push Day",
-          "description": "Enhanced push workout",
-          "exercises": [...],
-          "changes": [...],
-          "overallReasoning": "Based on your recent progress...",
-          "priority": 5,
-          "status": "pending",  // "pending", "accepted", "rejected"
-          "statusUpdatedAt": "2024-01-15T10:35:00Z"  // When status was last changed
-        }
-      ],
-      "analysisSummary": "Analysis summary from when suggestions were generated",
-      "daysAnalyzed": 14,
-      "createdAt": "2024-01-15T10:30:00Z",
-      "updatedAt": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "nextPageToken": "2024-01-14T10:30:00Z"  // For pagination
-}
+### AI Progressive Overload History
+
+```
+GET /api/users/ai-progressive-overload-responses  # List AI analysis history (paginated)
 ```
 
-**Confirm Suggestion (Accept/Reject)**
-```
-POST /api/users/{userId}/suggestions/{suggestionId}/confirm
-```
-Accepts or rejects a specific workout suggestion. When accepted, applies the suggested changes to the original workout.
+Query parameters: `pageSize` (default 20, max 100), `pageToken` (for pagination).
 
-Request body:
-```json
-{
-  "suggestionIndex": 0,  // Index of the suggestion within the stored suggestion set
-  "accept": true  // true to accept, false to reject
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "message": "Suggestion accepted and applied to workout"
-}
-```
-
-When a suggestion is accepted:
-- The original workout is updated with the suggested changes
-- The suggestion status is marked as "accepted"
-- The `statusUpdatedAt` timestamp is set
-
-When a suggestion is rejected:
-- The suggestion status is marked as "rejected" 
-- The `statusUpdatedAt` timestamp is set
-- No changes are applied to the original workout
-
-### Health Check
-- `GET /health` - Health check endpoint
+---
 
 ## Database Schema
 
+### Collections
+
+The following collections are defined in `scripts/init-mongo.js`:
+
+| Collection | Description |
+|------------|-------------|
+| `users` | User accounts and profiles |
+| `sessions` | Authentication sessions |
+| `exercises` | Exercise definitions and metadata |
+| `workouts` | Workout routines/templates |
+| `workout_sessions` | Active and completed workout sessions |
+| `workout_suggestions` | AI-generated workout suggestions |
+| `ai_progressive_overload_recommendations` | AI progressive overload analysis |
+
+**MongoDB field naming:** All MongoDB queries use `snake_case` field names (e.g., `user_id`, `finished_at`). Go struct tags define both BSON (snake_case) and JSON (camelCase) representations.
+
 ### Users Collection
+
 ```json
 {
   "_id": "ObjectId",
+  "clerk_id": "string",
   "email": "string",
-  "name": "string", 
-  "google_id": "string",
+  "name": "string",
   "picture": "string",
+  "height": "number",
+  "weight": "number",
+  "age": "number",
+  "goal": "string",
   "created_at": "Date",
   "updated_at": "Date"
 }
 ```
 
-### Sessions Collection
-```json
-{
-  "_id": "ObjectId",
-  "user_id": "ObjectId",
-  "access_token": "string",
-  "refresh_token": "string",
-  "expires_at": "Date",
-  "created_at": "Date"
-}
+---
+
+## Metrics System
+
+Metrics are automatically calculated when a workout session is completed (`FinishedAt` is set). The service is implemented in `internal/services/metrics_service.go`.
+
+### Metric Categories
+
+| Category | Key Metrics |
+|----------|-------------|
+| Volume | Total Volume Load, Tonnage, Volume per Muscle Group, Effective Reps, Hard Sets |
+| Performance | RPE Distribution, Set Completion Rate |
+| Intensity | Average Intensity, RPE-Adjusted Load, Intensity Distribution, Load Density |
+| Strength | Estimated 1RM (Epley & Brzycki), Wilks Score, Push:Pull Ratio, Power Output |
+| Progress & Adaptation | Progressive Overload Index, Week-over-Week Progress Rate, Plateau Detection, Strength Gain Velocity |
+| Recovery & Fatigue | Acute/Chronic Training Load (ATL/CTL), Training Stress Balance (TSB), Form/Freshness Index |
+| Muscle-Specific | Muscle Group Distribution, Imbalance Index, Antagonist Ratios, Stimulus-to-Fatigue Ratio |
+| Work Capacity | Total Work Capacity, Density Training Index, Time Under Tension, Mechanical Tension Score |
+| Training Patterns | Optimal Frequency, Recovery Time, Exercise Diversity Index, Consistency Score |
+| Injury Risk | Injury Risk Score, Load Spike Alert, Asymmetry Development |
+| Efficiency | Strength Efficiency, Volume Efficiency, RPE-Performance Correlation, Technique Consistency |
+| Periodization | CTL (42-day), ATL (7-day), TSB, Form/Freshness Index |
+| Compound | Fitness Age, Overall Fitness Score, Training Efficiency Quotient |
+| Predictive | Plateau Probability, Performance Trajectory, Goal Achievement Timeline, Detraining Risk |
+
+### Volume Landmarks (MEV/MAV/MRV)
+
+Calculated from 8 weeks of historical data per muscle group:
+- **MEV** (Minimum Effective Volume): `max(avg × 0.75, avg - std_dev)`
+- **MAV** (Maximum Adaptive Volume): `avg + (std_dev × 0.5)`
+- **MRV** (Maximum Recoverable Volume): `avg + (std_dev × 1.5)`
+
+### Key Formulas
+
+- **1RM Epley**: `Weight × (1 + Reps/30)`
+- **1RM Brzycki**: `Weight × (36 / (37 - Reps))`
+- **Progressive Overload Index**: `(Current Week Volume × Avg Intensity) / (Previous Week Volume × Avg Intensity)`
+- **Injury Risk Score**: `(ACWR × Imbalance Index × Fatigue Score) / Recovery Quality` — high risk if > 1.5
+- **Load Spike Alert**: triggered when weekly volume > 150% of 4-week rolling average
+
+---
+
+## AI Services
+
+All AI features use **Google Gemini 2.5 Flash**. Set `GEMINI_API_KEY` in `.env` to enable them.
+
+### Insights Service (`internal/services/insights_service.go`)
+
+Analyzes the last 7 days of workout metrics and generates prioritized, single-sentence actionable insights.
+
+**Insight types:**
+- `progress` — Progressive overload, plateau detection, 1RM trends
+- `volume` — MEV/MAV/MRV comparisons, muscle group distribution
+- `recovery` — Training stress balance, optimal frequency
+- `balance` — Push/pull ratios, muscle imbalances
+- `risk` — Injury risk, load spikes, asymmetries
+
+**Priority levels:** 5 (critical) → 1 (informational)
+
+### Workout Suggestions Service (`internal/services/suggestions_service.go`)
+
+Analyzes recent workout history and generates suggested routine improvements. Suggestions have a `pending` status until accepted or rejected via the confirm endpoint.
+
+### AI Progressive Overload Service
+
+Runs asynchronously. Uses Gemini to analyze recent session performance and generate exercise-specific progression recommendations with reasoning. Results stored in `ai_progressive_overload_recommendations` collection.
+
+---
+
+## Exercise Constants
+
+Defined in `pkg/models/exercise_constants.go`. Always use these typed constants instead of raw strings.
+
+### Categories
+
+```go
+models.CategoryStrength             // "strength"
+models.CategoryCardio               // "cardio"
+models.CategoryStretching           // "stretching"
+models.CategoryPlyometrics          // "plyometrics"
+models.CategoryStrongman            // "strongman"
+models.CategoryOlympicWeightlifting // "olympic weightlifting"
+models.CategoryCrossfit             // "crossfit"
+models.CategoryCalisthenics         // "calisthenics"
 ```
 
-#### Exercise History API Details
+### Equipment
 
-**Get Exercise History**
-```
-GET /api/exercises/{id}/history?user_id={userId}
-```
-Retrieves the workout session history for a specific exercise from the last 3 completed workout sessions where the exercise was performed. Includes both the actual performance data and AI progressive overload recommendations if available.
-
-**Query Parameters:**
-- `user_id` (required): Filter history for a specific user.
-
-**Response:**
-```json
-{
-  "history": [
-    {
-      "sessionExercise": {
-        "exerciseId": "exercise_id",
-        "exercise": {
-          "id": "exercise_id",
-          "name": "Bench Press",
-          "description": "...",
-          "category": "strength",
-          "primaryMuscles": ["chest"],
-          "secondaryMuscles": ["triceps", "shoulders"]
-        },
-        "sets": [
-          {
-            "targetReps": 10,
-            "targetWeight": 135.0,
-            "actualReps": 10,
-            "actualWeight": 135.0,
-            "completed": true,
-            "startedAt": "2024-01-15T10:00:00Z",
-            "finishedAt": "2024-01-15T10:02:00Z"
-          }
-        ],
-        "notes": "Felt strong today",
-        "restSeconds": 180,
-        "completed": true,
-        "startedAt": "2024-01-15T10:00:00Z",
-        "finishedAt": "2024-01-15T10:05:00Z"
-      },
-      "aiExercise": {
-        "exerciseId": "exercise_id",
-        "exerciseName": "Bench Press",
-        "progressionApplied": true,
-        "reasoning": "Strong consistent performance, ready for weight increase",
-        "changesMade": "Increased weight from 135 to 137.5 lbs",
-        "sets": [
-          {
-            "reps": 10,
-            "weight": 137.5
-          }
-        ],
-        "restSeconds": 180
-      },
-      "sessionInfo": {
-        "id": "session_id",
-        "name": "Push Day Workout",
-        "finishedAt": "2024-01-15T11:00:00Z"
-      }
-    }
-  ],
-  "exerciseName": "Bench Press"
-}
+```go
+models.EquipmentNone         // "none"
+models.EquipmentBarbell      // "barbell"
+models.EquipmentDumbbell     // "dumbbell"
+models.EquipmentKettlebell   // "kettlebell"
+models.EquipmentMachine      // "machine"
+models.EquipmentCable        // "cable"
+models.EquipmentBands        // "bands"
+models.EquipmentPullUpBar    // "pull-up bar"
+models.EquipmentBench        // "bench"
+// ... and more
 ```
 
-**Features:**
-- Returns last 3 workout sessions where the exercise was performed by the specified user
-- Includes complete exercise performance data (target vs actual reps/weights)
-- Includes AI progressive overload recommendations when available
-- Provides session context (workout name, completion time)
-- Requires user-specific filtering for data privacy and performance
-- Automatically excludes incomplete/active sessions
+### Muscle Groups
 
-## Documentation
+```go
+models.MuscleGroupArms       // "arms"
+models.MuscleGroupBack       // "back"
+models.MuscleGroupChest      // "chest"
+models.MuscleGroupCore       // "core"
+models.MuscleGroupLegs       // "legs"
+models.MuscleGroupShoulders  // "shoulders"
+models.MuscleGroupCalves     // "calves"
+```
 
-- **[METRICS.md](METRICS.md)** - Comprehensive guide to the workout metrics system, including all calculated metrics, formulas, API endpoints, and usage examples
-- **[INSIGHTS_SERVICE.md](INSIGHTS_SERVICE.md)** - Guide to the AI-powered insights service using Google Gemini, including setup, usage, and API endpoints
+### Helper Functions
 
-## Authentication Flow
+```go
+models.GetAllCategories()                          // All category values
+models.GetAllEquipment()                           // All equipment values
+models.GetAllMuscles()                             // All muscle values
+models.GetMusclesInGroup(models.MuscleGroupLegs)   // Muscles in a group
+models.GetMuscleGroup(models.MuscleBiceps)         // Group for a muscle
+models.IsValidCategory(category)                   // Validate category
+models.IsValidEquipment(equipment)                 // Validate equipment
+models.IsValidMuscle(muscle)                       // Validate muscle
+```
 
-1. Frontend initiates Google OAuth
-2. NextAuth handles OAuth callback
-3. Frontend calls `/api/auth/google` with user info
-4. Backend creates/updates user in MongoDB
-5. Backend creates session with access token
-6. Frontend stores session token
-7. All subsequent API calls include session token
-8. Backend validates session on each request
-9. Expired sessions redirect to login 
+### Exercise Filter Model
+
+```go
+query := models.NewExerciseQuery()
+query.Filter.Categories = []models.ExerciseCategory{models.CategoryStrength}
+query.Filter.Equipment = []models.EquipmentType{models.EquipmentBarbell}
+query.Filter.SearchTerm = "bench press"
+query.Pagination.Page = 1
+query.Pagination.Limit = 20
+```
+
+---
+
+## Scripts
+
+Located in `backend/scripts/`.
+
+### init-mongo.js
+
+Initializes MongoDB collections with indexes. Run once on first setup:
+
+```bash
+mongosh < scripts/init-mongo.js
+```
+
+### populate_exercises.go
+
+Clears and repopulates the `exercises` collection from `scripts/gymlog.exercises.json` (325 exercises from StrengthLog).
+
+```bash
+# Using the shell wrapper (recommended)
+./scripts/populate_exercises.sh
+
+# Or directly
+go run scripts/populate_exercises.go
+```
+
+**Warning:** This deletes all existing exercises before inserting. Safe to run multiple times (idempotent).
+
+Default connection: `mongodb://localhost:27017`, database `gymlog`. Override with `MONGODB_URI` and `DB_NAME` environment variables.
+
+---
+
+## Deployment
+
+The backend is deployed to Google Cloud Run. The Docker image is built and pushed via Cloud Build.
+
+### Prerequisites
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+gcloud auth configure-docker
+```
+
+### Deploy
+
+```bash
+# Manual deployment using deploy.sh
+./deploy.sh production YOUR_GCP_PROJECT_ID
+```
+
+The script automatically pulls secrets from Google Secret Manager and deploys to Cloud Run.
+
+### Cloud Build (CI/CD)
+
+```bash
+gcloud builds triggers create github \
+  --repo-name=YOUR_GITHUB_REPO \
+  --repo-owner=YOUR_GITHUB_USERNAME \
+  --branch-pattern="^main$" \
+  --build-config=backend/cloudbuild.yaml
+```
+
+### Manual gcloud Deployment
+
+```bash
+# Build and push image
+docker build -t gcr.io/YOUR_PROJECT_ID/gymlog-backend .
+docker push gcr.io/YOUR_PROJECT_ID/gymlog-backend
+
+# Deploy to Cloud Run
+gcloud run deploy gymlog-backend \
+  --image gcr.io/YOUR_PROJECT_ID/gymlog-backend \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 512Mi \
+  --cpu 1 \
+  --max-instances 10
+```
+
+### Google Secret Manager
+
+Secrets are stored in Secret Manager and injected at deploy time. The GCP project is `gymlog-462803`.
+
+```bash
+# List secrets
+gcloud secrets list
+
+# Create a secret
+echo "value" | gcloud secrets create SECRET_NAME --data-file=-
+
+# Update a secret
+echo "new-value" | gcloud secrets versions add SECRET_NAME --data-file=-
+
+# Read a secret (for debugging)
+gcloud secrets versions access latest --secret="SECRET_NAME"
+```
+
+Required secrets: `mongodb-uri`, `db-name`, `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`, `GEMINI_API_KEY`.
+
+### Production Environment Variables
+
+| Variable | Secret Name | Notes |
+|----------|-------------|-------|
+| `MONGODB_URI` | `mongodb-uri` | MongoDB Atlas connection string |
+| `DB_NAME` | `db-name` | `gymlog` |
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | `clerk-publishable-key` | Use `pk_live_...` in production |
+| `GEMINI_API_KEY` | `gemini-api-key` | Google AI Studio key |
+
+### Scaling
+
+```bash
+gcloud run services update gymlog-backend \
+  --min-instances=1 \
+  --max-instances=10 \
+  --concurrency=80 \
+  --cpu=1 \
+  --memory=512Mi \
+  --region us-central1
+```
+
+### Viewing Logs
+
+```bash
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=gymlog-backend" --limit=50
+```
+
+### Troubleshooting Deployment
+
+- **MongoDB connection issues**: Check Atlas network access allows Cloud Run IP ranges
+- **Secret not found**: Verify secret exists with `gcloud secrets list` and Cloud Build SA has `roles/secretmanager.secretAccessor`
+- **Build failures**: Check `go.mod` dependencies and Dockerfile syntax
